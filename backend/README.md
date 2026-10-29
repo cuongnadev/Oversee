@@ -57,7 +57,26 @@ backend/
 └── uv.lock
 ```
 
-## Dependencies
+## Environment Variables
+
+Copy `.env.example` to `.env` and adjust values as needed:
+
+```powershell
+cp .env.example .env
+```
+
+Available variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `APP_NAME` | Application name | `Oversee Backend` |
+| `APP_VERSION` | Application version | `0.1.0` |
+| `DEBUG` | Enable debug mode | `false` |
+| `HOST` | Server host | `127.0.0.1` |
+| `PORT` | Server port | `8000` |
+| `CORS_ORIGINS` | Allowed CORS origins (comma-separated; `*` for dev only) | `*` |
+
+Never commit `.env` or any secret. `.env` is ignored by `.gitignore`.
 
 Project dependencies are declared in `pyproject.toml` and locked in `uv.lock`. Use `uv add` to add dependencies and `uv remove` to remove them.
 
