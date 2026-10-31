@@ -75,6 +75,7 @@ Available variables:
 | `HOST` | Server host | `127.0.0.1` |
 | `PORT` | Server port | `8000` |
 | `CORS_ORIGINS` | Allowed CORS origins (comma-separated; `*` for dev only) | `*` |
+| `SECRET_KEY` | Secret key (min 32 chars, required) | (none) |
 
 Never commit `.env` or any secret. `.env` is ignored by `.gitignore`.
 
