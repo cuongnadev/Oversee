@@ -3,6 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
 from app.core.config import settings
+from app.core.logging import RequestLoggingMiddleware, configure_logging
+
+configure_logging(settings.log_level)
 
 tags_metadata = [
     {
@@ -39,6 +42,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.add_middleware(RequestLoggingMiddleware)
 
 app.include_router(api_router)
 

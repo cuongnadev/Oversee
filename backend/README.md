@@ -73,7 +73,7 @@ Available variables:
 | `APP_VERSION` | Application version | `0.1.0` |
 | `DEBUG` | Enable debug mode | `false` |
 | `HOST` | Server host | `127.0.0.1` |
-| `PORT` | Server port | `8000` |
+| `LOG_LEVEL` | Logging level (DEBUG, INFO, WARNING, ERROR) | `INFO` |
 | `CORS_ORIGINS` | Allowed CORS origins (comma-separated; `*` for dev only) | `*` |
 | `SECRET_KEY` | Secret key (min 32 chars, required) | (none) |
 
