@@ -139,7 +139,35 @@ def test_cors_credentials_rejected():
         _make(SECRET_KEY="a" * 32, CORS_ORIGINS="http://user:pass@example.com")
 
 
-def test_lru_cache_identity():
+def test_default_values():
+    s = _make(SECRET_KEY="a" * 32)
+    assert s.app_name == "Oversee Backend"
+    assert s.app_version == "0.1.0"
+    assert s.environment == "dev"
+    assert s.debug is False
+    assert s.host == "127.0.0.1"
+    assert s.port == 8000
+    assert s.cors_origins == "*"
+
+
+def test_override_env_var():
+    s = _make(
+        SECRET_KEY="b" * 32,
+        APP_NAME="Custom App",
+        APP_VERSION="2.0.0",
+        ENVIRONMENT="prod",
+        DEBUG="true",
+        HOST="0.0.0.0",
+        PORT="9000",
+        CORS_ORIGINS="https://example.com",
+    )
+    assert s.app_name == "Custom App"
+    assert s.app_version == "2.0.0"
+    assert s.environment == "prod"
+    assert s.debug is True
+    assert s.host == "0.0.0.0"
+    assert s.port == 9000
+    assert s.cors_origins == "https://example.com"
     saved = os.environ.get("SECRET_KEY")
     os.environ["SECRET_KEY"] = "a" * 32
     try:
