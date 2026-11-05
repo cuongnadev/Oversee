@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     host: str = "127.0.0.1"
     port: int = Field(default=8000, ge=1, le=65535)
     cors_origins: str = "*"
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     secret_key: str = Field(min_length=32)
 
     @property
