@@ -14,6 +14,7 @@ from app.models.enums import (
     RoleType,
     SprintStatus,
 )
+from app.models.issue import Issue
 from app.models.membership import ProjectMember, WorkspaceMember
 from app.models.project import Project
 from app.models.user import User
@@ -24,6 +25,7 @@ __all__ = [
     "Base",
     "BaseAuditEntity",
     "BaseEntity",
+    "Issue",
     "IssuePriority",
     "IssueStatus",
     "IssueType",

@@ -1,3 +1,9 @@
+from app.schemas.issue import (
+    IssueBase,
+    IssueCreate,
+    IssueResponse,
+    IssueUpdate,
+)
 from app.schemas.membership import (
     ProjectMemberCreate,
     ProjectMemberResponse,
@@ -21,6 +27,10 @@ from app.schemas.workspace import (
 )
 
 __all__ = [
+    "IssueBase",
+    "IssueCreate",
+    "IssueResponse",
+    "IssueUpdate",
     "ProjectBase",
     "ProjectCreate",
     "ProjectMemberCreate",
