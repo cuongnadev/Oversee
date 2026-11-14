@@ -12,11 +12,23 @@ def configure_logging(level: str = "INFO") -> None:
     normalized = level.upper()
     if normalized not in VALID_LEVELS:
         raise ValueError(f"Invalid log level: {level}")
+
+    root = logging.getLogger()
+    test_handlers = [
+        h
+        for h in root.handlers
+        if "LogCapture" in h.__class__.__name__ or "pytest" in h.__class__.__module__
+    ]
+
     logging.basicConfig(
         level=getattr(logging, normalized),
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
         force=True,
     )
+
+    for h in test_handlers:
+        if h not in root.handlers:
+            root.addHandler(h)
 
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
