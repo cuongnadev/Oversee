@@ -7,6 +7,7 @@ from app.models.base import (
     TimestampMixin,
     UUIDMixin,
 )
+from app.models.project import Project
 from app.models.user import User
 from app.models.workspace import Workspace
 
@@ -15,6 +16,7 @@ __all__ = [
     "Base",
     "BaseAuditEntity",
     "BaseEntity",
+    "Project",
     "SoftDeleteMixin",
     "TimestampMixin",
     "UUIDMixin",

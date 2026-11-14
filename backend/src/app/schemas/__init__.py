@@ -1,3 +1,9 @@
+from app.schemas.project import (
+    ProjectBase,
+    ProjectCreate,
+    ProjectResponse,
+    ProjectUpdate,
+)
 from app.schemas.user import UserBase, UserCreate, UserResponse, UserUpdate
 from app.schemas.workspace import (
     WorkspaceBase,
@@ -7,6 +13,10 @@ from app.schemas.workspace import (
 )
 
 __all__ = [
+    "ProjectBase",
+    "ProjectCreate",
+    "ProjectResponse",
+    "ProjectUpdate",
     "UserBase",
     "UserCreate",
     "UserResponse",
