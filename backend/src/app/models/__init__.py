@@ -7,6 +7,14 @@ from app.models.base import (
     TimestampMixin,
     UUIDMixin,
 )
+from app.models.enums import (
+    IssuePriority,
+    IssueStatus,
+    IssueType,
+    RoleType,
+    SprintStatus,
+)
+from app.models.membership import ProjectMember, WorkspaceMember
 from app.models.project import Project
 from app.models.user import User
 from app.models.workspace import Workspace
@@ -16,10 +24,17 @@ __all__ = [
     "Base",
     "BaseAuditEntity",
     "BaseEntity",
+    "IssuePriority",
+    "IssueStatus",
+    "IssueType",
     "Project",
+    "ProjectMember",
+    "RoleType",
     "SoftDeleteMixin",
+    "SprintStatus",
     "TimestampMixin",
     "UUIDMixin",
     "User",
     "Workspace",
+    "WorkspaceMember",
 ]
