@@ -7,6 +7,16 @@ from fastapi.testclient import TestClient
 from app.core.logging import RequestLoggingMiddleware, configure_logging
 
 
+@pytest.fixture(autouse=True)
+def preserve_caplog_handler(caplog):
+    root = logging.getLogger()
+    if caplog.handler not in root.handlers:
+        root.addHandler(caplog.handler)
+    yield
+    if caplog.handler not in root.handlers:
+        root.addHandler(caplog.handler)
+
+
 def test_configure_logging_valid_levels():
     for level in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
         configure_logging(level)
