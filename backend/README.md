@@ -98,13 +98,30 @@ Copy `.env.example` to `.env`. Never commit `.env` (it is gitignored).
 | `LOG_LEVEL` | Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`) | `INFO` | No | `DEBUG` |
 | `CORS_ORIGINS` | Comma-separated allowed origins; `*` only alone (dev) | `*` | No | `https://app.example.com` |
 | `SECRET_KEY` | Secret key, minimum 32 characters, must not be blank | (none) | **Yes** | `dev-secret-key-change-in-production-min-32-chars` |
+| `DATABASE_URL` | Database connection URL | `postgresql+psycopg://oversee:oversee_password@127.0.0.1:5432/oversee` | No | `postgresql+psycopg://oversee:oversee_password@127.0.0.1:5432/oversee` |
 
 Notes:
 - `SECRET_KEY` is required; the app fails fast with a clear error if missing or too short.
 - `CORS_ORIGINS=*` cannot be combined with other origins.
 - `LOG_LEVEL` must be one of the supported values.
 
-## E. Running the Backend
+## E. Database Setup (PostgreSQL)
+
+Oversee uses PostgreSQL as its primary database. A Docker Compose configuration is provided at the repository root.
+
+Start the PostgreSQL container:
+
+```bash
+docker compose up -d db
+```
+
+Stop the database:
+
+```bash
+docker compose down
+```
+
+## F. Running the Backend
 
 Start the development server:
 

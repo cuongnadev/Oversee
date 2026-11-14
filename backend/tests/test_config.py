@@ -178,3 +178,33 @@ def test_override_env_var():
         else:
             os.environ["SECRET_KEY"] = saved
         get_settings.cache_clear()
+
+
+def test_default_database_url():
+    s = _make(SECRET_KEY="a" * 32)
+    assert (
+        s.database_url
+        == "postgresql+psycopg://oversee:oversee_password@127.0.0.1:5432/oversee"
+    )
+
+
+def test_custom_database_url():
+    url = "postgresql+psycopg://user:pass@db.example.com:5432/oversee_prod"
+    s = _make(SECRET_KEY="a" * 32, DATABASE_URL=url)
+    assert s.database_url == url
+
+
+def test_sqlite_database_url():
+    url = "sqlite:///./test.db"
+    s = _make(SECRET_KEY="a" * 32, DATABASE_URL=url)
+    assert s.database_url == url
+
+
+def test_database_url_blank():
+    with pytest.raises(ValidationError):
+        _make(SECRET_KEY="a" * 32, DATABASE_URL="   ")
+
+
+def test_database_url_invalid_scheme():
+    with pytest.raises(ValidationError):
+        _make(SECRET_KEY="a" * 32, DATABASE_URL="mysql://root:pass@localhost/db")
