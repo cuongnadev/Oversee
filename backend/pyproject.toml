@@ -8,6 +8,7 @@ dependencies = [
     "fastapi[standard]>=0.157.0",
     "uvicorn>=0.35.0",
     "pydantic-settings>=2.0.0",
+    "sqlalchemy>=2.0.0",
 ]
 
 [dependency-groups]
