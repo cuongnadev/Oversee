@@ -1,3 +1,17 @@
+"""
+Base declarative entity definitions, mixins, and naming conventions.
+
+Conventions:
+- Table names: plural, lowercase snake_case (e.g. `users`, `workspaces`, `projects`,
+  `workspace_members`, `project_members`, `sprints`, `issues`).
+- Column names: lowercase snake_case (e.g. `id`, `created_at`, `updated_at`, `deleted_at`).
+- Primary keys: UUID v4 (`id`), constraint name `pk_<tablename>`.
+- Foreign keys: `fk_<tablename>_<column>_<target_table>`.
+- Unique constraints: `uq_<tablename>_<column>`.
+- Indexes: `ix_<column_label>`.
+- Check constraints: `ck_<tablename>_<constraint_name>`.
+"""
+
 import uuid
 from datetime import UTC, datetime
 from typing import Any
