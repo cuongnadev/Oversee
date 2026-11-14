@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     cors_origins: str = "*"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     secret_key: str = Field(min_length=32)
+    database_url: str = Field(
+        default="postgresql+psycopg://oversee:oversee_password@127.0.0.1:5432/oversee",
+        description="Database connection URL",
+    )
 
     @property
     def cors_origins_list(self) -> list[str]:
@@ -33,6 +37,26 @@ class Settings(BaseSettings):
         if len(value.strip()) < 32:
             raise ValueError("SECRET_KEY must be at least 32 characters")
         return value
+
+    @field_validator("database_url")
+    @classmethod
+    def validate_database_url(cls, value: str) -> str:
+        trimmed = value.strip()
+        if not trimmed:
+            raise ValueError("DATABASE_URL must not be blank")
+        valid_schemes = (
+            "postgresql://",
+            "postgresql+psycopg://",
+            "postgresql+asyncpg://",
+            "sqlite://",
+            "sqlite+aiosqlite://",
+        )
+        if not any(trimmed.startswith(scheme) for scheme in valid_schemes):
+            raise ValueError(
+                "DATABASE_URL must start with a valid scheme "
+                "(e.g. postgresql+psycopg://, postgresql://, or sqlite://)"
+            )
+        return trimmed
 
     @field_validator("cors_origins")
     @classmethod
