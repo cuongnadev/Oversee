@@ -8,6 +8,7 @@ from app.models.base import (
     UUIDMixin,
 )
 from app.models.user import User
+from app.models.workspace import Workspace
 
 __all__ = [
     "POSTGRES_NAMING_CONVENTION",
@@ -18,4 +19,5 @@ __all__ = [
     "TimestampMixin",
     "UUIDMixin",
     "User",
+    "Workspace",
 ]
