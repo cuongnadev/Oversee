@@ -10,6 +10,7 @@ from app.models.base import Base
 from app.models.enums import IssuePriority, IssueStatus, IssueType
 from app.models.issue import Issue
 from app.models.project import Project
+from app.models.sprint import Sprint
 from app.models.user import User
 from app.models.workspace import Workspace
 from app.schemas.issue import (
@@ -30,6 +31,7 @@ def db_session():
         User.__table__,
         Workspace.__table__,
         Project.__table__,
+        Sprint.__table__,
         Issue.__table__,
     ]
     Base.metadata.create_all(engine, tables=tables)

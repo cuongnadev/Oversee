@@ -9,6 +9,7 @@ from app.models.base import BaseEntity
 if TYPE_CHECKING:
     from app.models.issue import Issue
     from app.models.membership import ProjectMember
+    from app.models.sprint import Sprint
     from app.models.workspace import Workspace
 
 
@@ -58,6 +59,12 @@ class Project(BaseEntity):
     )
     issues: Mapped[list[Issue]] = relationship(
         "Issue",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="project",
+    )
+    sprints: Mapped[list[Sprint]] = relationship(
+        "Sprint",
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="project",
