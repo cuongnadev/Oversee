@@ -121,6 +121,34 @@ Stop the database:
 docker compose down
 ```
 
+### Database Migrations (Alembic)
+
+Alembic manages database schema migrations. Run all commands from the `backend/` directory:
+
+- **Apply all migrations to head:**
+
+  ```bash
+  uv run alembic upgrade head
+  ```
+
+- **Roll back the most recent migration:**
+
+  ```bash
+  uv run alembic downgrade -1
+  ```
+
+- **View current migration status:**
+
+  ```bash
+  uv run alembic current
+  ```
+
+- **Generate a new migration from models (autogenerate):**
+
+  ```bash
+  uv run alembic revision --autogenerate -m "describe_changes"
+  ```
+
 ## F. Running the Backend
 
 Start the development server:
@@ -135,7 +163,7 @@ uv run uvicorn app.main:app --reload
 
 Successful startup shows `Uvicorn running on http://127.0.0.1:8000`.
 
-## F. API Documentation and Verification
+## G. API Documentation and Verification
 
 | URL | Purpose |
 |-----|---------|
