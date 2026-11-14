@@ -7,6 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import BaseEntity
 
 if TYPE_CHECKING:
+    from app.models.membership import ProjectMember
     from app.models.workspace import Workspace
 
 
@@ -45,7 +46,14 @@ class Project(BaseEntity):
     workspace: Mapped[Workspace] = relationship(
         "Workspace",
         foreign_keys=[workspace_id],
-        backref="projects",
+        passive_deletes=True,
+        back_populates="projects",
+    )
+    members: Mapped[list[ProjectMember]] = relationship(
+        "ProjectMember",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="project",
     )
 
     def __repr__(self) -> str:
