@@ -2,7 +2,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Enum, ForeignKey, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, backref, mapped_column, relationship
 
 from app.models.base import BaseAuditEntity
 from app.models.enums import RoleType
@@ -50,7 +50,8 @@ class WorkspaceMember(BaseAuditEntity):
     user: Mapped[User] = relationship(
         "User",
         foreign_keys=[user_id],
-        backref="workspace_memberships",
+        passive_deletes=True,
+        backref=backref("workspace_memberships", passive_deletes=True),
     )
 
     def __repr__(self) -> str:
@@ -97,7 +98,8 @@ class ProjectMember(BaseAuditEntity):
     user: Mapped[User] = relationship(
         "User",
         foreign_keys=[user_id],
-        backref="project_memberships",
+        passive_deletes=True,
+        backref=backref("project_memberships", passive_deletes=True),
     )
 
     def __repr__(self) -> str:
