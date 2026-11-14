@@ -17,6 +17,7 @@ from app.models.enums import (
 from app.models.issue import Issue
 from app.models.membership import ProjectMember, WorkspaceMember
 from app.models.project import Project
+from app.models.sprint import Sprint
 from app.models.user import User
 from app.models.workspace import Workspace
 
@@ -33,6 +34,7 @@ __all__ = [
     "ProjectMember",
     "RoleType",
     "SoftDeleteMixin",
+    "Sprint",
     "SprintStatus",
     "TimestampMixin",
     "UUIDMixin",

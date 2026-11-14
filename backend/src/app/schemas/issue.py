@@ -14,6 +14,7 @@ class IssueBase(BaseModel):
     type: IssueType = IssueType.TASK
     status: IssueStatus = IssueStatus.BACKLOG
     priority: IssuePriority = IssuePriority.MEDIUM
+    backlog_rank: float = 0.0
 
 
 class IssueCreate(IssueBase):
@@ -23,6 +24,7 @@ class IssueCreate(IssueBase):
     issue_number: int = Field(ge=1)
     assignee_id: uuid.UUID | None = None
     parent_id: uuid.UUID | None = None
+    sprint_id: uuid.UUID | None = None
 
 
 class IssueUpdate(BaseModel):
@@ -35,6 +37,8 @@ class IssueUpdate(BaseModel):
     priority: IssuePriority | None = None
     assignee_id: uuid.UUID | None = None
     parent_id: uuid.UUID | None = None
+    sprint_id: uuid.UUID | None = None
+    backlog_rank: float | None = None
 
 
 class IssueResponse(IssueBase):
@@ -46,6 +50,8 @@ class IssueResponse(IssueBase):
     reporter_id: uuid.UUID
     assignee_id: uuid.UUID | None = None
     parent_id: uuid.UUID | None = None
+    sprint_id: uuid.UUID | None = None
+    is_backlog: bool = True
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None = None

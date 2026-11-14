@@ -18,6 +18,12 @@ from app.schemas.project import (
     ProjectResponse,
     ProjectUpdate,
 )
+from app.schemas.sprint import (
+    SprintBase,
+    SprintCreate,
+    SprintResponse,
+    SprintUpdate,
+)
 from app.schemas.user import UserBase, UserCreate, UserResponse, UserUpdate
 from app.schemas.workspace import (
     WorkspaceBase,
@@ -38,6 +44,10 @@ __all__ = [
     "ProjectMemberUpdate",
     "ProjectResponse",
     "ProjectUpdate",
+    "SprintBase",
+    "SprintCreate",
+    "SprintResponse",
+    "SprintUpdate",
     "UserBase",
     "UserCreate",
     "UserResponse",

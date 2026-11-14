@@ -1,7 +1,15 @@
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import Enum, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Enum,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseEntity
@@ -9,13 +17,14 @@ from app.models.enums import IssuePriority, IssueStatus, IssueType
 
 if TYPE_CHECKING:
     from app.models.project import Project
+    from app.models.sprint import Sprint
     from app.models.user import User
 
 
 class Issue(BaseEntity):
     """
     Issue entity representing tasks, stories, bugs, epics, or subtasks.
-    Supports parent-child hierarchy and assignment to project members.
+    Supports parent-child hierarchy, sprint iterations, and product backlog ranking.
     """
 
     __tablename__ = "issues"
@@ -75,6 +84,24 @@ class Issue(BaseEntity):
         index=True,
         default=None,
     )
+    sprint_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("sprints.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        default=None,
+    )
+    backlog_rank: Mapped[float] = mapped_column(
+        Float,
+        default=0.0,
+        server_default="0.0",
+        nullable=False,
+        index=True,
+        comment="Ordering position within the backlog",
+    )
+
+    def __init__(self, **kwargs: Any) -> None:
+        kwargs.setdefault("backlog_rank", 0.0)
+        super().__init__(**kwargs)
 
     # Relationships
     project: Mapped[Project] = relationship(
@@ -106,6 +133,16 @@ class Issue(BaseEntity):
         passive_deletes=True,
         back_populates="parent",
     )
+    sprint: Mapped[Sprint | None] = relationship(
+        "Sprint",
+        foreign_keys=[sprint_id],
+        back_populates="issues",
+    )
+
+    @property
+    def is_backlog(self) -> bool:
+        """Returns True if the issue is in the product backlog (unassigned to any sprint)."""
+        return self.sprint_id is None
 
     def __repr__(self) -> str:
         return (
