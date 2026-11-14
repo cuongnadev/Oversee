@@ -7,6 +7,7 @@ from app.models.base import (
     TimestampMixin,
     UUIDMixin,
 )
+from app.models.user import User
 
 __all__ = [
     "POSTGRES_NAMING_CONVENTION",
@@ -16,4 +17,5 @@ __all__ = [
     "SoftDeleteMixin",
     "TimestampMixin",
     "UUIDMixin",
+    "User",
 ]
