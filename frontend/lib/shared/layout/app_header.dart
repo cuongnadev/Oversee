@@ -6,6 +6,7 @@ import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/core/theme/theme_provider.dart';
 import 'package:frontend/core/utils/responsive_breakpoints.dart';
 import 'package:frontend/features/auth/application/auth_provider.dart';
+import 'package:frontend/features/workspace/presentation/widgets/workspace_switcher_dropdown.dart';
 import 'package:frontend/shared/widgets/widgets.dart';
 
 /// Top Bar / App Header for Oversee Shell.
@@ -66,26 +67,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  InkWell(
-                    onTap: () => context.go(AppRoutes.workspaces),
-                    borderRadius: BorderRadius.circular(4.0),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.hub_rounded, size: 16.0, color: AppColors.primary),
-                          const SizedBox(width: 6.0),
-                          Text(
-                            'Workspace: $workspaceId',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  WorkspaceSwitcherDropdown(activeWorkspaceId: workspaceId),
                   if (projectId != null) ...[
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4.0),
