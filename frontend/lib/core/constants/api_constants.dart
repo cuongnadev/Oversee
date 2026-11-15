@@ -2,10 +2,10 @@
 class ApiConstants {
   ApiConstants._();
 
-  /// Base URL configured via compile-time environment variable, defaults to local FastAPI server.
+  /// Base URL configured via compile-time environment variable, defaults to VPS FastAPI server.
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:8000/api/v1',
+    defaultValue: 'http://157.230.246.22/route/api/v1',
   );
 
   // Timeouts
