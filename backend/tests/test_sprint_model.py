@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
+from app.models.activity import Activity
 from app.models.base import Base
 from app.models.enums import IssuePriority, IssueStatus, IssueType, SprintStatus
 from app.models.issue import Issue
@@ -33,6 +34,7 @@ def db_session():
         Project.__table__,
         Sprint.__table__,
         Issue.__table__,
+        Activity.__table__,
     ]
     Base.metadata.create_all(engine, tables=tables)
     session_factory = sessionmaker(bind=engine)

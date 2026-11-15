@@ -1,3 +1,4 @@
+from app.models.activity import Activity
 from app.models.base import (
     POSTGRES_NAMING_CONVENTION,
     Base,
@@ -24,6 +25,7 @@ from app.models.workspace import Workspace
 
 __all__ = [
     "POSTGRES_NAMING_CONVENTION",
+    "Activity",
     "Base",
     "BaseAuditEntity",
     "BaseEntity",
