@@ -16,6 +16,7 @@ from app.schemas.sprint import (
     SprintCompleteResponse,
     SprintCreate,
     SprintPlanningResponse,
+    SprintProgressResponse,
     SprintRemoveIssuesRequest,
     SprintResponse,
     SprintStartRequest,
@@ -27,6 +28,7 @@ from app.services.sprint import (
     create_sprint,
     delete_sprint,
     get_sprint_planning,
+    get_sprint_progress,
     list_sprint_issues,
     remove_issue_from_sprint,
     remove_issues_from_sprint,
@@ -335,3 +337,23 @@ def complete_sprint_endpoint(
         actor=current_user,
         target_sprint_id=data.target_sprint_id if data else None,
     )
+
+
+# ---------------------------------------------------------------------------
+# Sprint Progress Calculation Endpoints (#103)
+# ---------------------------------------------------------------------------
+@router.get(
+    "/{sprint_id}/progress",
+    response_model=SprintProgressResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get sprint progress",
+    description="Retrieve sprint progress metrics including completion percentage by issue count and story points, status breakdown, and burndown data. Requires SPRINT_READ permission.",
+)
+def get_sprint_progress_endpoint(
+    sprint: Annotated[
+        Sprint, Depends(require_sprint_permission(Permission.SPRINT_READ))
+    ],
+    db: Annotated[Session, Depends(get_db)],
+) -> SprintProgressResponse:
+    """Get sprint progress metrics and burndown series."""
+    return get_sprint_progress(db=db, sprint=sprint)

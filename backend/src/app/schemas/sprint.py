@@ -207,3 +207,31 @@ class SprintCompleteResponse(BaseModel):
     moved_to_backlog: bool = False
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class BurndownPoint(BaseModel):
+    """Data point in the sprint burndown chart series."""
+
+    date: str
+    ideal_remaining: float
+    actual_remaining: float | None = None
+
+
+class SprintProgressResponse(BaseModel):
+    """Response containing sprint progress metrics and burndown series."""
+
+    sprint_id: uuid.UUID
+    sprint_name: str
+    status: SprintStatus
+    total_issues: int
+    completed_issues: int
+    remaining_issues: int
+    issue_progress_percentage: float
+    total_story_points: float
+    completed_story_points: float
+    remaining_story_points: float
+    story_point_progress_percentage: float
+    status_breakdown: dict[str, int]
+    burndown: list[BurndownPoint] = Field(default_factory=list)
+
+    model_config = ConfigDict(from_attributes=True)
