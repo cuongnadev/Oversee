@@ -42,16 +42,30 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
     final state = ref.watch(kanbanBoardProvider(widget.projectId));
     final notifier = ref.read(kanbanBoardProvider(widget.projectId).notifier);
 
-    // Listen to error messages and present a SnackBar
+    // Listen to error messages and present a floating SnackBar
     ref.listen(kanbanBoardProvider(widget.projectId), (previous, next) {
       if (next.errorMessage != null && next.errorMessage != previous?.errorMessage) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(next.errorMessage!),
+            content: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    next.errorMessage!,
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
           ),
         );
+        ref.read(kanbanBoardProvider(widget.projectId).notifier).clearErrorMessage();
       }
     });
 

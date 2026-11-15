@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/enums/app_enums.dart';
 import 'package:frontend/core/theme/app_colors.dart';
@@ -37,6 +38,11 @@ class _KanbanColumnWidgetState extends State<KanbanColumnWidget> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final isMouseDevice = kIsWeb ||
+        theme.platform == TargetPlatform.windows ||
+        theme.platform == TargetPlatform.macOS ||
+        theme.platform == TargetPlatform.linux;
+
     final columnBg = isDark
         ? (_isDragOver ? AppColors.surfaceDark.withAlpha(220) : const Color(0xFF131B2E))
         : (_isDragOver ? Colors.indigo.shade50 : const Color(0xFFF1F5F9));
@@ -78,41 +84,109 @@ class _KanbanColumnWidgetState extends State<KanbanColumnWidget> {
               _buildColumnHeader(context, isDark),
               const Divider(height: 1, thickness: 1),
 
+              // Visual Drop Preview Banner when dragging over this column
+              if (_isDragOver) ...[
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                  decoration: BoxDecoration(
+                    color: widget.status.color.withAlpha(25),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: widget.status.color,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.arrow_downward_rounded, size: 16, color: widget.status.color),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Drop to move to ${widget.status.label}',
+                        style: TextStyle(
+                          color: widget.status.color,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
               // Scrollable Column Cards
               Expanded(
-                child: widget.issues.isEmpty
+                child: widget.issues.isEmpty && !_isDragOver
                     ? _buildEmptyColumnPlaceholder(context, isDark)
                     : ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                         itemCount: widget.issues.length,
                         itemBuilder: (context, index) {
                           final issue = widget.issues[index];
-                          return LongPressDraggable<IssueModel>(
-                            data: issue,
-                            feedback: Material(
-                              elevation: 6,
-                              borderRadius: BorderRadius.circular(10),
+                          final card = KanbanIssueCard(
+                            issue: issue,
+                            projectKey: widget.projectKey,
+                            onUpdated: widget.onCardUpdated,
+                          );
+
+                          final feedback = Material(
+                            elevation: 8,
+                            color: Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                            child: Transform.rotate(
+                              angle: 0.03,
                               child: SizedBox(
                                 width: 280,
-                                child: KanbanIssueCard(
-                                  issue: issue,
-                                  projectKey: widget.projectKey,
+                                child: Opacity(
+                                  opacity: 0.95,
+                                  child: KanbanIssueCard(
+                                    issue: issue,
+                                    projectKey: widget.projectKey,
+                                  ),
                                 ),
                               ),
                             ),
-                            childWhenDragging: Opacity(
-                              opacity: 0.35,
-                              child: KanbanIssueCard(
-                                issue: issue,
-                                projectKey: widget.projectKey,
+                          );
+
+                          final childWhenDragging = Opacity(
+                            opacity: 0.3,
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(vertical: 4),
+                              height: 75,
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.white10 : Colors.black.withAlpha(10),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isDark ? Colors.white24 : Colors.black12,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  Icons.drag_indicator,
+                                  size: 20,
+                                  color: isDark ? Colors.white24 : Colors.black26,
+                                ),
                               ),
                             ),
-                            child: KanbanIssueCard(
-                              issue: issue,
-                              projectKey: widget.projectKey,
-                              onUpdated: widget.onCardUpdated,
-                            ),
                           );
+
+                          return isMouseDevice
+                              ? Draggable<IssueModel>(
+                                  data: issue,
+                                  feedback: feedback,
+                                  childWhenDragging: childWhenDragging,
+                                  child: card,
+                                )
+                              : LongPressDraggable<IssueModel>(
+                                  data: issue,
+                                  delay: const Duration(milliseconds: 250),
+                                  hapticFeedbackOnStart: true,
+                                  feedback: feedback,
+                                  childWhenDragging: childWhenDragging,
+                                  child: card,
+                                );
                         },
                       ),
               ),
