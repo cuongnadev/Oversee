@@ -150,15 +150,18 @@ class ProgressSummaryCards extends StatelessWidget {
     String? badgeText,
     Color? badgeColor,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? AppColors.borderDark : AppColors.borderLight,
+    return Semantics(
+      label: '$title: $value. $subValue',
+      container: true,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.cardDark : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark ? AppColors.borderDark : AppColors.borderLight,
+          ),
         ),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -251,6 +254,7 @@ class ProgressSummaryCards extends StatelessWidget {
           ],
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

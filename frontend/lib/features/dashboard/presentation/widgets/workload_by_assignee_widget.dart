@@ -58,12 +58,14 @@ class WorkloadByAssigneeWidget extends StatelessWidget {
                       child: const Icon(Icons.people_outline_rounded, color: AppColors.secondaryLight, size: 18),
                     ),
                     const SizedBox(width: 10),
-                    Text(
-                      'Workload by Assignee (${workloads.length})',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                    Flexible(
+                      child: Text(
+                        'Workload by Assignee (${workloads.length})',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                        ),
                       ),
                     ),
                   ],
@@ -106,33 +108,34 @@ class WorkloadByAssigneeWidget extends StatelessWidget {
                 final item = workloads[index];
                 final isUnassigned = item.userId == null;
 
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                  child: Row(
-                    children: [
-                      // Avatar
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor: isUnassigned
-                            ? (isDark ? Colors.white12 : Colors.grey.shade300)
-                            : AppColors.primary.withValues(alpha: 0.2),
-                        child: Text(
-                          isUnassigned ? '?' : _getInitials(item.name),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: isUnassigned
-                                ? (isDark ? Colors.white70 : Colors.black54)
-                                : AppColors.primary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
+                return Semantics(
+                  label:
+                      'Workload for ${item.name}: ${item.totalIssues} issues, ${item.totalStoryPoints.toInt()} story points, ${item.completedIssues} of ${item.totalIssues} completed (${item.completionPercentage.toStringAsFixed(0)}%)',
+                  container: true,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isCompact = constraints.maxWidth < 420;
 
-                      // Member Name & Tasks count
-                      Expanded(
-                        flex: 3,
-                        child: Column(
+                        final avatar = CircleAvatar(
+                          radius: 16,
+                          backgroundColor: isUnassigned
+                              ? (isDark ? Colors.white12 : Colors.grey.shade300)
+                              : AppColors.primary.withValues(alpha: 0.2),
+                          child: Text(
+                            isUnassigned ? '?' : _getInitials(item.name),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: isUnassigned
+                                  ? (isDark ? Colors.white70 : Colors.black54)
+                                  : AppColors.primary,
+                            ),
+                          ),
+                        );
+
+                        final nameColumn = Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
@@ -154,14 +157,9 @@ class WorkloadByAssigneeWidget extends StatelessWidget {
                               ),
                             ),
                           ],
-                        ),
-                      ),
-                      const SizedBox(width: 16),
+                        );
 
-                      // Progress Bar & Percentage
-                      Expanded(
-                        flex: 4,
-                        child: Column(
+                        final progressColumn = Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Row(
@@ -199,12 +197,39 @@ class WorkloadByAssigneeWidget extends StatelessWidget {
                               ),
                             ),
                           ],
-                        ),
-                      ),
-                    ],
+                        );
+
+                        if (isCompact) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  avatar,
+                                  const SizedBox(width: 12),
+                                  Expanded(child: nameColumn),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              progressColumn,
+                            ],
+                          );
+                        }
+
+                        return Row(
+                          children: [
+                            avatar,
+                            const SizedBox(width: 12),
+                            Expanded(flex: 3, child: nameColumn),
+                            const SizedBox(width: 16),
+                            Expanded(flex: 4, child: progressColumn),
+                          ],
+                        );
+                      },
+                    ),
                   ),
                 );
-              },
+            },
             ),
         ],
       ),

@@ -5,6 +5,7 @@ export 'app_dialog.dart';
 export 'app_empty_state.dart';
 export 'app_error_state.dart';
 export 'app_feedback.dart';
+export 'app_keyboard_shortcuts.dart';
 export 'app_skeleton.dart';
 export 'app_text_field.dart';
 export 'loading_indicator.dart';

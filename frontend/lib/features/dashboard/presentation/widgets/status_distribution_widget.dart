@@ -97,55 +97,62 @@ class _StatusDistributionWidgetState extends State<StatusDistributionWidget> {
               builder: (context, constraints) {
                 final isNarrow = constraints.maxWidth < 380;
 
-                final chart = SizedBox(
-                  width: 180,
-                  height: 180,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      PieChart(
-                        PieChartData(
-                          pieTouchData: PieTouchData(
-                            touchCallback: (event, pieTouchResponse) {
-                              setState(() {
-                                if (!event.isInterestedForInteractions ||
-                                    pieTouchResponse == null ||
-                                    pieTouchResponse.touchedSection == null) {
-                                  _touchedIndex = -1;
-                                  return;
-                                }
-                                _touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
-                              });
-                            },
-                          ),
-                          borderData: FlBorderData(show: false),
-                          sectionsSpace: 3,
-                          centerSpaceRadius: 44,
-                          sections: _buildSections(statusCounts, totalIssues),
-                        ),
-                      ),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
+                final chart = Semantics(
+                  label:
+                      'Status Distribution donut chart. Total tasks: $totalIssues. Todo: ${statusCounts[IssueStatus.todo] ?? 0}, In Progress: ${statusCounts[IssueStatus.inProgress] ?? 0}, In Review: ${statusCounts[IssueStatus.inReview] ?? 0}, Done: ${statusCounts[IssueStatus.done] ?? 0}',
+                  container: true,
+                  child: SizedBox(
+                    width: 180,
+                    height: 180,
+                    child: RepaintBoundary(
+                      child: Stack(
+                        alignment: Alignment.center,
                         children: [
-                          Text(
-                            '$totalIssues',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                          PieChart(
+                            PieChartData(
+                              pieTouchData: PieTouchData(
+                                touchCallback: (event, pieTouchResponse) {
+                                  setState(() {
+                                    if (!event.isInterestedForInteractions ||
+                                        pieTouchResponse == null ||
+                                        pieTouchResponse.touchedSection == null) {
+                                      _touchedIndex = -1;
+                                      return;
+                                    }
+                                    _touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                                  });
+                                },
+                              ),
+                              borderData: FlBorderData(show: false),
+                              sectionsSpace: 3,
+                              centerSpaceRadius: 44,
+                              sections: _buildSections(statusCounts, totalIssues),
                             ),
                           ),
-                          Text(
-                            'Tasks',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                            ),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '$totalIssues',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                                ),
+                              ),
+                              Text(
+                                'Tasks',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
                 );
 

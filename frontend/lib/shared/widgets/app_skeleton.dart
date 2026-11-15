@@ -81,21 +81,26 @@ class DashboardSkeleton extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Toolbar Skeleton
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          const Wrap(
+            spacing: 12,
+            runSpacing: 10,
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   AppSkeleton.circle(size: 24),
                   SizedBox(width: 10),
-                  AppSkeleton(width: 120, height: 20),
-                  SizedBox(width: 12),
-                  AppSkeleton(width: 160, height: 32),
+                  AppSkeleton(width: 100, height: 20),
+                  SizedBox(width: 8),
+                  AppSkeleton(width: 120, height: 32),
                 ],
               ),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  AppSkeleton(width: 120, height: 36),
+                  AppSkeleton(width: 100, height: 36),
                   SizedBox(width: 10),
                   AppSkeleton.circle(size: 36),
                 ],
@@ -108,6 +113,8 @@ class DashboardSkeleton extends StatelessWidget {
           LayoutBuilder(
             builder: (context, constraints) {
               final isWide = constraints.maxWidth >= 1000;
+              final isTablet = constraints.maxWidth >= 600 && constraints.maxWidth < 1000;
+
               if (isWide) {
                 return Row(
                   children: List.generate(4, (index) {
@@ -120,12 +127,25 @@ class DashboardSkeleton extends StatelessWidget {
                   }),
                 );
               }
-              return Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: List.generate(4, (_) {
-                  return SizedBox(
-                    width: (constraints.maxWidth - 16) / 2,
+
+              if (isTablet) {
+                return Wrap(
+                  spacing: 16,
+                  runSpacing: 16,
+                  children: List.generate(4, (_) {
+                    return SizedBox(
+                      width: (constraints.maxWidth - 16) / 2,
+                      child: _buildMetricCardSkeleton(isDark),
+                    );
+                  }),
+                );
+              }
+
+              // Mobile (< 600px): Stack 1 card per row
+              return Column(
+                children: List.generate(4, (index) {
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: index < 3 ? 12.0 : 0.0),
                     child: _buildMetricCardSkeleton(isDark),
                   );
                 }),
@@ -147,15 +167,17 @@ class DashboardSkeleton extends StatelessWidget {
             child: const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.spaceBetween,
                   children: [
-                    AppSkeleton(width: 180, height: 20),
-                    AppSkeleton(width: 220, height: 16),
+                    AppSkeleton(width: 160, height: 20),
+                    AppSkeleton(width: 140, height: 16),
                   ],
                 ),
                 SizedBox(height: 24),
-                AppSkeleton(width: double.infinity, height: 260),
+                AppSkeleton(width: double.infinity, height: 240),
               ],
             ),
           ),
