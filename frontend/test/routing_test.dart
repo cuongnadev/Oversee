@@ -7,6 +7,7 @@ import 'package:frontend/core/storage/secure_storage_service.dart';
 import 'package:frontend/features/auth/application/auth_provider.dart';
 import 'package:frontend/features/auth/application/auth_state.dart';
 import 'package:frontend/features/issue/presentation/backlog_screen.dart';
+import 'package:frontend/features/sprint/presentation/kanban_board_screen.dart';
 import 'package:frontend/main.dart';
 
 void main() {

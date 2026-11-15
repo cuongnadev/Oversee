@@ -1,10 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/core/enums/app_enums.dart';
 import 'package:frontend/core/errors/app_exception.dart';
+import 'package:frontend/features/auth/application/auth_provider.dart';
 import 'package:frontend/features/issue/application/backlog_state.dart';
 import 'package:frontend/features/issue/data/issue_repository.dart';
+import 'package:frontend/features/issue/domain/issue_filter_state.dart';
 import 'package:frontend/features/issue/domain/issue_model.dart';
 import 'package:frontend/features/project/data/project_repository.dart';
+import 'package:frontend/features/project/domain/project_member_model.dart';
 import 'package:frontend/features/project/domain/project_model.dart';
 
 /// Provider for Product Backlog state parameterized by projectId.
@@ -14,11 +17,13 @@ final AutoDisposeStateNotifierProviderFamily<BacklogNotifier, BacklogState, Stri
         (ref, projectId) {
   final issueRepository = ref.watch(issueRepositoryProvider);
   final projectRepository = ref.watch(projectRepositoryProvider);
+  final authState = ref.watch(authNotifierProvider);
 
   final notifier = BacklogNotifier(
     projectId: projectId,
     issueRepository: issueRepository,
     projectRepository: projectRepository,
+    currentUserId: authState.user?.id,
   );
 
   notifier.loadBacklog();
@@ -29,25 +34,30 @@ class BacklogNotifier extends StateNotifier<BacklogState> {
   final String projectId;
   final IssueRepository _issueRepository;
   final ProjectRepository _projectRepository;
+  final String? _currentUserId;
 
   BacklogNotifier({
     required this.projectId,
     required IssueRepository issueRepository,
     required ProjectRepository projectRepository,
+    String? currentUserId,
     BacklogState? initialState,
   })  : _issueRepository = issueRepository,
         _projectRepository = projectRepository,
-        super(initialState ?? const BacklogState(isLoading: true));
+        _currentUserId = currentUserId,
+        super(initialState ?? BacklogState(isLoading: true, currentUserId: currentUserId));
 
   Future<void> loadBacklog() async {
     state = state.copyWith(isLoading: true, errorMessage: () => null);
     try {
       final projectFuture = _projectRepository.getProject(projectId);
       final backlogFuture = _issueRepository.listBacklogIssues(projectId);
+      final membersFuture = _projectRepository.listProjectMembers(projectId).catchError((_) => <ProjectMemberModel>[]);
 
-      final results = await Future.wait([projectFuture, backlogFuture]);
+      final results = await Future.wait([projectFuture, backlogFuture, membersFuture]);
       final project = results[0] as ProjectModel;
       final page = results[1] as IssuePageModel;
+      final members = results[2] as List<ProjectMemberModel>;
 
       final List<IssueModel> issues = List<IssueModel>.from(page.items);
       // Sort issues by backlogRank ascending, then issueNumber ascending
@@ -60,6 +70,8 @@ class BacklogNotifier extends StateNotifier<BacklogState> {
       state = state.copyWith(
         project: project,
         issues: issues,
+        members: members,
+        currentUserId: _currentUserId,
         isLoading: false,
         errorMessage: () => null,
       );
@@ -69,6 +81,18 @@ class BacklogNotifier extends StateNotifier<BacklogState> {
         isLoading: false,
         errorMessage: () => msg,
       );
+    }
+  }
+
+  void setFilter(IssueFilterState filter) {
+    state = state.copyWith(filter: filter);
+  }
+
+  void initFilterFromParams(Map<String, String> params) {
+    if (params.isEmpty && !state.filter.hasActiveFilters) return;
+    final newFilter = IssueFilterState.fromQueryParams(params);
+    if (newFilter != state.filter) {
+      state = state.copyWith(filter: newFilter);
     }
   }
 
@@ -170,22 +194,30 @@ class BacklogNotifier extends StateNotifier<BacklogState> {
   }
 
   void setSearchQuery(String query) {
-    state = state.copyWith(searchQuery: query.trim());
+    state = state.copyWith(
+      filter: state.filter.copyWith(searchQuery: query.trim()),
+    );
   }
 
   void setTypeFilter(IssueType? type) {
-    state = state.copyWith(selectedType: () => type);
+    state = state.copyWith(
+      filter: state.filter.copyWith(
+        selectedTypes: type != null ? {type} : const {},
+      ),
+    );
   }
 
   void setPriorityFilter(IssuePriority? priority) {
-    state = state.copyWith(selectedPriority: () => priority);
+    state = state.copyWith(
+      filter: state.filter.copyWith(
+        selectedPriorities: priority != null ? {priority} : const {},
+      ),
+    );
   }
 
   void clearFilters() {
     state = state.copyWith(
-      searchQuery: '',
-      selectedType: () => null,
-      selectedPriority: () => null,
+      filter: const IssueFilterState(),
     );
   }
 

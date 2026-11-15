@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:frontend/core/enums/app_enums.dart';
+import 'package:frontend/features/issue/domain/issue_filter_state.dart';
 import 'package:frontend/features/issue/domain/issue_model.dart';
+import 'package:frontend/features/project/domain/project_member_model.dart';
 import 'package:frontend/features/project/domain/project_model.dart';
 
 class BacklogState extends Equatable {
@@ -10,9 +12,12 @@ class BacklogState extends Equatable {
   final bool isCreating;
   final bool isReordering;
   final String? errorMessage;
-  final String searchQuery;
-  final IssueType? selectedType;
-  final IssuePriority? selectedPriority;
+  final IssueFilterState filter;
+  final List<ProjectMemberModel> members;
+  final String? currentUserId;
+  final String? _legacySearchQuery;
+  final IssueType? _legacyType;
+  final IssuePriority? _legacyPriority;
 
   const BacklogState({
     this.issues = const [],
@@ -21,31 +26,47 @@ class BacklogState extends Equatable {
     this.isCreating = false,
     this.isReordering = false,
     this.errorMessage,
-    this.searchQuery = '',
-    this.selectedType,
-    this.selectedPriority,
-  });
+    this.filter = const IssueFilterState(),
+    this.members = const [],
+    this.currentUserId,
+    String? searchQuery,
+    IssueType? selectedType,
+    IssuePriority? selectedPriority,
+  })  : _legacySearchQuery = searchQuery,
+        _legacyType = selectedType,
+        _legacyPriority = selectedPriority;
+
+  IssueFilterState get effectiveFilter {
+    IssueFilterState f = filter;
+    final legacySearch = _legacySearchQuery;
+    if (legacySearch != null && legacySearch.isNotEmpty) {
+      f = f.copyWith(searchQuery: legacySearch);
+    }
+    final legacyType = _legacyType;
+    if (legacyType != null) {
+      f = f.copyWith(selectedTypes: {legacyType});
+    }
+    final legacyPriority = _legacyPriority;
+    if (legacyPriority != null) {
+      f = f.copyWith(selectedPriorities: {legacyPriority});
+    }
+    return f;
+  }
+
+  // Backward-compatible getters
+  String get searchQuery => effectiveFilter.searchQuery;
+  IssueType? get selectedType =>
+      effectiveFilter.selectedTypes.isNotEmpty ? effectiveFilter.selectedTypes.first : null;
+  IssuePriority? get selectedPriority =>
+      effectiveFilter.selectedPriorities.isNotEmpty ? effectiveFilter.selectedPriorities.first : null;
+  bool get hasActiveFilters => effectiveFilter.hasActiveFilters;
 
   List<IssueModel> get filteredIssues {
-    final key = project?.key ?? '';
-    return issues.where((issue) {
-      if (searchQuery.isNotEmpty) {
-        final query = searchQuery.toLowerCase();
-        final matchTitle = issue.title.toLowerCase().contains(query);
-        final matchKey = issue.formattedKey(key).toLowerCase().contains(query);
-        if (!matchTitle && !matchKey) return false;
-      }
-
-      if (selectedType != null && issue.type != selectedType) {
-        return false;
-      }
-
-      if (selectedPriority != null && issue.priority != selectedPriority) {
-        return false;
-      }
-
-      return true;
-    }).toList();
+    return effectiveFilter.apply(
+      issues,
+      projectKey: project?.key ?? 'PROJ',
+      currentUserId: currentUserId,
+    );
   }
 
   double get totalStoryPoints {
@@ -62,10 +83,30 @@ class BacklogState extends Equatable {
     bool? isCreating,
     bool? isReordering,
     String? Function()? errorMessage,
+    IssueFilterState? filter,
+    List<ProjectMemberModel>? members,
+    String? currentUserId,
     String? searchQuery,
     IssueType? Function()? selectedType,
     IssuePriority? Function()? selectedPriority,
   }) {
+    IssueFilterState updatedFilter = filter ?? effectiveFilter;
+    if (searchQuery != null) {
+      updatedFilter = updatedFilter.copyWith(searchQuery: searchQuery);
+    }
+    if (selectedType != null) {
+      final t = selectedType();
+      updatedFilter = updatedFilter.copyWith(
+        selectedTypes: t != null ? {t} : const {},
+      );
+    }
+    if (selectedPriority != null) {
+      final p = selectedPriority();
+      updatedFilter = updatedFilter.copyWith(
+        selectedPriorities: p != null ? {p} : const {},
+      );
+    }
+
     return BacklogState(
       issues: issues ?? this.issues,
       project: project ?? this.project,
@@ -73,9 +114,9 @@ class BacklogState extends Equatable {
       isCreating: isCreating ?? this.isCreating,
       isReordering: isReordering ?? this.isReordering,
       errorMessage: errorMessage != null ? errorMessage() : this.errorMessage,
-      searchQuery: searchQuery ?? this.searchQuery,
-      selectedType: selectedType != null ? selectedType() : this.selectedType,
-      selectedPriority: selectedPriority != null ? selectedPriority() : this.selectedPriority,
+      filter: updatedFilter,
+      members: members ?? this.members,
+      currentUserId: currentUserId ?? this.currentUserId,
     );
   }
 
@@ -87,8 +128,8 @@ class BacklogState extends Equatable {
         isCreating,
         isReordering,
         errorMessage,
-        searchQuery,
-        selectedType,
-        selectedPriority,
+        effectiveFilter,
+        members,
+        currentUserId,
       ];
 }

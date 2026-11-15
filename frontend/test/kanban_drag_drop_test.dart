@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend/core/enums/app_enums.dart';
 import 'package:frontend/core/errors/app_exception.dart';
@@ -8,7 +7,6 @@ import 'package:frontend/features/issue/domain/issue_model.dart';
 import 'package:frontend/features/project/data/project_repository.dart';
 import 'package:frontend/features/project/domain/project_model.dart';
 import 'package:frontend/features/sprint/application/kanban_board_provider.dart';
-import 'package:frontend/features/sprint/application/kanban_board_state.dart';
 import 'package:frontend/features/sprint/data/sprint_repository.dart';
 import 'package:frontend/features/sprint/domain/sprint_model.dart';
 import 'package:frontend/features/sprint/presentation/widgets/kanban_column_widget.dart';
@@ -98,7 +96,7 @@ void main() {
 
   group('Drag and Drop Status Updates & Workflow Validation', () {
     test('blocks transition to DONE when sub-issues are incomplete', () async {
-      final issueWithOpenSubs = const IssueModel(
+      const issueWithOpenSubs = IssueModel(
         id: 'iss-parent',
         projectId: 'proj-1',
         issueNumber: 101,
@@ -135,7 +133,7 @@ void main() {
     });
 
     test('optimistically updates status and commits on backend success', () async {
-      final validIssue = const IssueModel(
+      const validIssue = IssueModel(
         id: 'iss-valid',
         projectId: 'proj-1',
         issueNumber: 102,
@@ -169,7 +167,7 @@ void main() {
     });
 
     test('automatically rolls back card to original status when API rejects', () async {
-      final validIssue = const IssueModel(
+      const validIssue = IssueModel(
         id: 'iss-rollback',
         projectId: 'proj-1',
         issueNumber: 103,
@@ -208,7 +206,7 @@ void main() {
         (tester) async {
       IssueModel? droppedIssue;
 
-      final issueToDrop = const IssueModel(
+      const issueToDrop = IssueModel(
         id: 'iss-drop',
         projectId: 'proj-1',
         issueNumber: 105,

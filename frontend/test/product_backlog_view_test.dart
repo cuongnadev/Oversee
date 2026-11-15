@@ -16,6 +16,7 @@ import 'package:frontend/features/issue/presentation/widgets/backlog_item_card.d
 import 'package:frontend/features/issue/presentation/widgets/issue_detail_dialog.dart';
 import 'package:frontend/features/issue/presentation/widgets/quick_create_issue_bar.dart';
 import 'package:frontend/features/project/data/project_repository.dart';
+import 'package:frontend/features/project/domain/project_member_model.dart';
 import 'package:frontend/features/project/domain/project_model.dart';
 
 class FakeIssueRepository implements IssueRepository {
@@ -177,6 +178,11 @@ class FakeProjectRepository implements ProjectRepository {
   @override
   Future<ProjectModel> getProject(String projectId) async {
     return mockProject;
+  }
+
+  @override
+  Future<List<ProjectMemberModel>> listProjectMembers(String projectId) async {
+    return [];
   }
 }
 
