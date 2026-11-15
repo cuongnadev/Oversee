@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     cors_origins: str = "*"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     secret_key: str = Field(min_length=32)
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = Field(default=15, ge=1)
+    refresh_token_expire_days: int = Field(default=7, ge=1)
     database_url: str = Field(
         default="postgresql+psycopg://oversee:oversee_password@127.0.0.1:5432/oversee",
         description="Database connection URL",

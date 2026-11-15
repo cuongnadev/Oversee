@@ -24,6 +24,7 @@ from app.schemas.sprint import (
     SprintResponse,
     SprintUpdate,
 )
+from app.schemas.token import RefreshTokenRequest, Token, TokenPayload
 from app.schemas.user import UserBase, UserCreate, UserResponse, UserUpdate
 from app.schemas.workspace import (
     WorkspaceBase,
@@ -44,10 +45,13 @@ __all__ = [
     "ProjectMemberUpdate",
     "ProjectResponse",
     "ProjectUpdate",
+    "RefreshTokenRequest",
     "SprintBase",
     "SprintCreate",
     "SprintResponse",
     "SprintUpdate",
+    "Token",
+    "TokenPayload",
     "UserBase",
     "UserCreate",
     "UserResponse",
