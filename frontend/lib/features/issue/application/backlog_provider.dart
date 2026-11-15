@@ -221,6 +221,14 @@ class BacklogNotifier extends StateNotifier<BacklogState> {
     );
   }
 
+  /// Updates an issue directly in local state for instantaneous cross-component reflection.
+  void updateIssueInState(IssueModel updatedIssue) {
+    final updatedList = state.issues.map((issue) {
+      return issue.id == updatedIssue.id ? updatedIssue : issue;
+    }).toList();
+    state = state.copyWith(issues: updatedList);
+  }
+
   Future<void> refresh() async {
     await loadBacklog();
   }

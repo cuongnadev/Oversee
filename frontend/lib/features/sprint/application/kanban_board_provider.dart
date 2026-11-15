@@ -4,6 +4,7 @@ import 'package:frontend/core/errors/app_exception.dart';
 import 'package:frontend/features/auth/application/auth_provider.dart';
 import 'package:frontend/features/issue/data/issue_repository.dart';
 import 'package:frontend/features/issue/domain/issue_filter_state.dart';
+import 'package:frontend/features/issue/domain/issue_model.dart';
 import 'package:frontend/features/project/data/project_repository.dart';
 import 'package:frontend/features/project/domain/project_member_model.dart';
 import 'package:frontend/features/sprint/application/kanban_board_state.dart';
@@ -218,6 +219,14 @@ class KanbanBoardNotifier extends StateNotifier<KanbanBoardState> {
   /// Clears any active error message.
   void clearErrorMessage() {
     state = state.copyWith(clearErrorMessage: true);
+  }
+
+  /// Updates an issue directly in local board state for instantaneous cross-component reflection.
+  void updateIssueInState(IssueModel updatedIssue) {
+    final updatedList = state.allIssues.map((issue) {
+      return issue.id == updatedIssue.id ? updatedIssue : issue;
+    }).toList();
+    state = state.copyWith(allIssues: updatedList);
   }
 
   /// Clears all active filters.
