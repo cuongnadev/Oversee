@@ -51,8 +51,15 @@ class ProjectMemberCreate(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    user_id: uuid.UUID
+    user_id: uuid.UUID | None = None
+    email: EmailStr | None = None
     role: RoleType = RoleType.MEMBER
+
+    @model_validator(mode="after")
+    def validate_identifier(self) -> Self:
+        if self.user_id is None and self.email is None:
+            raise ValueError("Either user_id or email must be provided.")
+        return self
 
 
 class ProjectMemberUpdate(BaseModel):
