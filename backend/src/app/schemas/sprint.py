@@ -14,6 +14,7 @@ class SprintBase(BaseModel):
     goal: str | None = None
     start_date: datetime | None = None
     end_date: datetime | None = None
+    capacity: float | None = Field(default=None, ge=0)
     status: SprintStatus = SprintStatus.PLANNED
 
     @field_validator("name")
@@ -50,6 +51,7 @@ class SprintUpdate(BaseModel):
     goal: str | None = None
     start_date: datetime | None = None
     end_date: datetime | None = None
+    capacity: float | None = Field(default=None, ge=0)
     status: SprintStatus | None = None
 
     model_config = ConfigDict(extra="forbid")
@@ -85,5 +87,81 @@ class SprintResponse(SprintBase):
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SprintAddIssuesRequest(BaseModel):
+    """Schema for adding/moving issues into a sprint."""
+
+    issue_ids: list[uuid.UUID] | None = Field(
+        default=None,
+        description="List of issue IDs to assign to the sprint",
+    )
+    issue_id: uuid.UUID | None = Field(
+        default=None,
+        description="Single issue ID to assign to the sprint",
+    )
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def validate_ids(self) -> Self:
+        if not self.issue_ids and not self.issue_id:
+            raise ValueError("Either 'issue_ids' or 'issue_id' must be provided.")
+        return self
+
+    def get_all_issue_ids(self) -> list[uuid.UUID]:
+        ids: list[uuid.UUID] = []
+        if self.issue_ids:
+            ids.extend(self.issue_ids)
+        if self.issue_id and self.issue_id not in ids:
+            ids.append(self.issue_id)
+        return ids
+
+
+class SprintRemoveIssuesRequest(BaseModel):
+    """Schema for removing issues from a sprint (returning to backlog)."""
+
+    issue_ids: list[uuid.UUID] | None = Field(
+        default=None,
+        description="List of issue IDs to remove from the sprint",
+    )
+    issue_id: uuid.UUID | None = Field(
+        default=None,
+        description="Single issue ID to remove from the sprint",
+    )
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def validate_ids(self) -> Self:
+        if not self.issue_ids and not self.issue_id:
+            raise ValueError("Either 'issue_ids' or 'issue_id' must be provided.")
+        return self
+
+    def get_all_issue_ids(self) -> list[uuid.UUID]:
+        ids: list[uuid.UUID] = []
+        if self.issue_ids:
+            ids.extend(self.issue_ids)
+        if self.issue_id and self.issue_id not in ids:
+            ids.append(self.issue_id)
+        return ids
+
+
+# Forward reference for IssueResponse in SprintPlanningResponse
+from app.schemas.issue import IssueResponse
+
+
+class SprintPlanningResponse(BaseModel):
+    """Schema for sprint planning summary including capacity and estimate metrics."""
+
+    sprint: SprintResponse
+    issues: list[IssueResponse]
+    total_issues: int
+    total_estimate: float
+    capacity: float | None = None
+    is_over_capacity: bool = False
+    warning: str | None = None
 
     model_config = ConfigDict(from_attributes=True)

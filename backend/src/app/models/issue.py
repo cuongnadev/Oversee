@@ -90,6 +90,12 @@ class Issue(BaseEntity):
         index=True,
         default=None,
     )
+    estimate: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+        default=None,
+        comment="Story points or time estimate for sprint planning",
+    )
     backlog_rank: Mapped[float] = mapped_column(
         Float,
         default=0.0,

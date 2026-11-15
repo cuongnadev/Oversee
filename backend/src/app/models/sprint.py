@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, Text
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseEntity
@@ -44,6 +44,12 @@ class Sprint(BaseEntity):
         DateTime(timezone=True),
         nullable=True,
         default=None,
+    )
+    capacity: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+        default=None,
+        comment="Planned capacity limit in story points or hours",
     )
     status: Mapped[SprintStatus] = mapped_column(
         Enum(SprintStatus, native_enum=False, length=50),
