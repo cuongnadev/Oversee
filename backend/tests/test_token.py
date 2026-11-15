@@ -151,6 +151,7 @@ def test_rotate_refresh_token_success():
     """Verify single-use refresh token rotation issuing a new token pair."""
     user_id = str(uuid.uuid4())
     original_refresh = create_refresh_token(subject=user_id)
+    orig_payload = decode_token(original_refresh)
 
     new_access, new_refresh = rotate_refresh_token(original_refresh)
 
@@ -165,9 +166,12 @@ def test_rotate_refresh_token_success():
     assert refresh_payload["sub"] == user_id
 
     # The newly rotated refresh token must have a distinct jti
-    orig_payload = decode_token(original_refresh)
     assert refresh_payload["jti"] != orig_payload["jti"]
     assert new_refresh != original_refresh
+
+    # Original token must now be revoked
+    with pytest.raises(TokenInvalidError, match="Token has been revoked"):
+        decode_token(original_refresh)
 
 
 def test_rotate_refresh_token_fails_on_expired_token():

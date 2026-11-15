@@ -10,6 +10,9 @@ from app.core.config import settings
 TOKEN_TYPE_ACCESS = "access"
 TOKEN_TYPE_REFRESH = "refresh"
 
+# In-memory revocation registry tracking revoked JWT IDs (jti)
+_REVOKED_TOKENS: set[str] = set()
+
 
 class TokenError(Exception):
     """Base exception for all token-related errors."""
@@ -136,15 +139,20 @@ def create_refresh_token(
     return jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_algorithm)
 
 
-def decode_token(token: str, expected_type: str | None = None) -> dict[str, Any]:
+def decode_token(
+    token: str,
+    expected_type: str | None = None,
+    check_revocation: bool = True,
+) -> dict[str, Any]:
     """
     Decode and validate a signed JWT token.
 
     :param token: The encoded JWT token string.
     :param expected_type: Optional expected token type ('access' or 'refresh').
+    :param check_revocation: Whether to check if the token jti has been revoked.
     :return: Decoded payload dictionary.
     :raises TokenExpiredError: If the token expiration time ('exp') is in the past.
-    :raises TokenInvalidError: If the token is malformed, has invalid signature, or wrong type.
+    :raises TokenInvalidError: If the token is malformed, has invalid signature, wrong type, or is revoked.
     """
     try:
         payload = jwt.decode(
@@ -164,24 +172,50 @@ def decode_token(token: str, expected_type: str | None = None) -> dict[str, Any]
                 f"Expected token type '{expected_type}', got '{actual_type}'."
             )
 
+    jti = payload.get("jti")
+    if check_revocation and jti and is_token_revoked(jti):
+        raise TokenInvalidError("Token has been revoked.")
+
     if not payload.get("sub"):
         raise TokenInvalidError("Token payload missing subject ('sub').")
 
     return payload
 
 
+def revoke_token(token: str) -> None:
+    """
+    Revoke a token by adding its jti to the revocation set.
+
+    :param token: The JWT token string to revoke.
+    """
+    payload = decode_token(token, check_revocation=False)
+    jti = payload.get("jti")
+    if jti:
+        _REVOKED_TOKENS.add(jti)
+
+
+def is_token_revoked(jti: str) -> bool:
+    """Check whether a token jti has been marked as revoked."""
+    return jti in _REVOKED_TOKENS
+
+
 def rotate_refresh_token(refresh_token: str) -> tuple[str, str]:
     """
     Validate a refresh token and issue a fresh pair of (access_token, refresh_token).
-    Implements single-use rotation: each refresh results in a newly minted refresh token.
+    Implements single-use rotation: the old refresh token is revoked.
 
     :param refresh_token: The existing refresh token string.
     :return: A tuple of (new_access_token, new_refresh_token).
     :raises TokenExpiredError: If the refresh token has expired.
-    :raises TokenInvalidError: If the refresh token is invalid or not of type 'refresh'.
+    :raises TokenInvalidError: If the refresh token is invalid, wrong type, or already revoked.
     """
-    payload = decode_token(refresh_token, expected_type=TOKEN_TYPE_REFRESH)
+    payload = decode_token(
+        refresh_token, expected_type=TOKEN_TYPE_REFRESH, check_revocation=True
+    )
     subject = payload["sub"]
+
+    # Revoke the used refresh token
+    revoke_token(refresh_token)
 
     new_access_token = create_access_token(subject=subject)
     new_refresh_token = create_refresh_token(subject=subject)

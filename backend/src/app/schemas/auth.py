@@ -41,3 +41,23 @@ class RegisterRequest(BaseModel):
         if not re.search(r"\d", value):
             raise ValueError("Password must contain at least one digit.")
         return value
+
+
+class LoginRequest(BaseModel):
+    """Schema for user login credentials."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr
+    password: str = Field(min_length=1, description="User's plain password")
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        return value.lower().strip()
+
+
+class LogoutResponse(BaseModel):
+    """Schema returned upon successful logout."""
+
+    message: str = "Successfully logged out."
