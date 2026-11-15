@@ -52,10 +52,13 @@ class RiskIssuesWidget extends StatelessWidget {
                 ),
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       riskIssues.isNotEmpty ? Icons.warning_amber_rounded : Icons.verified_user_outlined,

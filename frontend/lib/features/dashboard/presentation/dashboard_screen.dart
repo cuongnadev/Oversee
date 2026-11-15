@@ -5,8 +5,11 @@ import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/features/dashboard/application/dashboard_provider.dart';
 import 'package:frontend/features/dashboard/presentation/widgets/burndown_chart_widget.dart';
+import 'package:frontend/features/dashboard/presentation/widgets/priority_breakdown_widget.dart';
 import 'package:frontend/features/dashboard/presentation/widgets/progress_summary_cards.dart';
 import 'package:frontend/features/dashboard/presentation/widgets/risk_issues_widget.dart';
+import 'package:frontend/features/dashboard/presentation/widgets/status_distribution_widget.dart';
+import 'package:frontend/features/dashboard/presentation/widgets/workload_by_assignee_widget.dart';
 import 'package:frontend/features/project/presentation/widgets/project_navigation_tab_bar.dart';
 import 'package:frontend/features/project/presentation/widgets/project_screen_scaffold.dart';
 import 'package:frontend/shared/widgets/widgets.dart';
@@ -73,19 +76,95 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                   const SizedBox(height: 20),
 
                                   // Interactive Burndown Chart
-                                  if (state.progress != null)
+                                  if (state.progress != null) ...[
                                     BurndownChartWidget(
                                       progress: state.progress!,
                                       isDark: isDark,
                                     ),
-                                  const SizedBox(height: 20),
+                                    const SizedBox(height: 20),
+                                  ],
 
-                                  // Risk Issues & Lingering Tasks
-                                  RiskIssuesWidget(
-                                    state: state,
-                                    workspaceId: widget.workspaceId,
-                                    projectId: widget.projectId,
-                                    isDark: isDark,
+                                  // Responsive 2-Column Statistics & Workload Grid
+                                  LayoutBuilder(
+                                    builder: (context, constraints) {
+                                      final isWide = constraints.maxWidth >= 900;
+
+                                      if (isWide) {
+                                        return Column(
+                                          children: [
+                                            // Row 1: Status Distribution (Donut) + Priority Breakdown (Bar)
+                                            Row(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Expanded(
+                                                  child: StatusDistributionWidget(
+                                                    state: state,
+                                                    isDark: isDark,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 20),
+                                                Expanded(
+                                                  child: PriorityBreakdownWidget(
+                                                    state: state,
+                                                    isDark: isDark,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 20),
+
+                                            // Row 2: Workload by Assignee + Attention Required (Risks)
+                                            Row(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Expanded(
+                                                  child: WorkloadByAssigneeWidget(
+                                                    state: state,
+                                                    isDark: isDark,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 20),
+                                                Expanded(
+                                                  child: RiskIssuesWidget(
+                                                    state: state,
+                                                    workspaceId: widget.workspaceId,
+                                                    projectId: widget.projectId,
+                                                    isDark: isDark,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        );
+                                      }
+
+                                      // Narrow / Mobile Layout
+                                      return Column(
+                                        children: [
+                                          StatusDistributionWidget(
+                                            state: state,
+                                            isDark: isDark,
+                                          ),
+                                          const SizedBox(height: 20),
+                                          PriorityBreakdownWidget(
+                                            state: state,
+                                            isDark: isDark,
+                                          ),
+                                          const SizedBox(height: 20),
+                                          WorkloadByAssigneeWidget(
+                                            state: state,
+                                            isDark: isDark,
+                                          ),
+                                          const SizedBox(height: 20),
+                                          RiskIssuesWidget(
+                                            state: state,
+                                            workspaceId: widget.workspaceId,
+                                            projectId: widget.projectId,
+                                            isDark: isDark,
+                                          ),
+                                        ],
+                                      );
+                                    },
                                   ),
                                   const SizedBox(height: 24),
                                 ],

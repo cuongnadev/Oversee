@@ -9,10 +9,14 @@ import 'package:frontend/features/auth/domain/user_model.dart';
 import 'package:frontend/features/dashboard/application/dashboard_provider.dart';
 import 'package:frontend/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:frontend/features/dashboard/presentation/widgets/burndown_chart_widget.dart';
+import 'package:frontend/features/dashboard/presentation/widgets/priority_breakdown_widget.dart';
 import 'package:frontend/features/dashboard/presentation/widgets/progress_summary_cards.dart';
 import 'package:frontend/features/dashboard/presentation/widgets/risk_issues_widget.dart';
+import 'package:frontend/features/dashboard/presentation/widgets/status_distribution_widget.dart';
+import 'package:frontend/features/dashboard/presentation/widgets/workload_by_assignee_widget.dart';
 import 'package:frontend/features/issue/domain/issue_model.dart';
 import 'package:frontend/features/project/data/project_repository.dart';
+import 'package:frontend/features/project/domain/project_member_model.dart';
 import 'package:frontend/features/project/domain/project_model.dart';
 import 'package:frontend/features/sprint/data/sprint_repository.dart';
 import 'package:frontend/features/sprint/domain/sprint_model.dart';
@@ -79,6 +83,19 @@ class FakeDashboardProjectRepository implements ProjectRepository {
       name: 'Oversee Mobile App',
       key: 'OVS',
     );
+  }
+
+  @override
+  Future<List<ProjectMemberModel>> listProjectMembers(String projectId) async {
+    return [
+      const ProjectMemberModel(
+        id: 'pm-1',
+        projectId: 'proj-1',
+        userId: 'user-1',
+        role: RoleType.owner,
+        user: UserModel(id: 'user-1', email: 'test@oversee.com', fullName: 'Tester Cuong'),
+      ),
+    ];
   }
 }
 
@@ -159,7 +176,10 @@ void main() {
     title: 'Database connection leak',
     status: IssueStatus.inProgress,
     priority: IssuePriority.urgent,
+    estimate: 5.0,
     reporterId: 'user-1',
+    assigneeId: 'user-1',
+    assignee: const UserModel(id: 'user-1', email: 'test@oversee.com', fullName: 'Tester Cuong'),
     createdAt: DateTime.now().subtract(const Duration(days: 4)),
     updatedAt: DateTime.now().subtract(const Duration(days: 4)),
   );
@@ -171,7 +191,10 @@ void main() {
     title: 'Update readme badges',
     status: IssueStatus.done,
     priority: IssuePriority.low,
+    estimate: 3.0,
     reporterId: 'user-1',
+    assigneeId: 'user-1',
+    assignee: UserModel(id: 'user-1', email: 'test@oversee.com', fullName: 'Tester Cuong'),
   );
 
   group('DashboardNotifier & State Logic', () {
@@ -341,6 +364,123 @@ void main() {
     });
   });
 
+  group('StatusDistributionWidget', () {
+    testWidgets('renders status distribution chart, total tasks count, and status legend', (tester) async {
+      final state = DashboardState(
+        issues: [urgentIssue, normalIssue],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: StatusDistributionWidget(state: state, isDark: true),
+          ),
+        ),
+      );
+
+      expect(find.text('Status Distribution'), findsOneWidget);
+      expect(find.text('2'), findsOneWidget);
+      expect(find.text('Tasks'), findsOneWidget);
+      expect(find.text('In Progress'), findsOneWidget);
+      expect(find.text('Done'), findsOneWidget);
+    });
+
+    testWidgets('renders empty placeholder when there are no tasks', (tester) async {
+      const state = DashboardState(issues: []);
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: StatusDistributionWidget(state: state, isDark: false),
+          ),
+        ),
+      );
+
+      expect(find.text('Status Distribution'), findsOneWidget);
+      expect(find.text('No issues recorded in this sprint.'), findsOneWidget);
+    });
+  });
+
+  group('PriorityBreakdownWidget', () {
+    testWidgets('renders priority breakdown title and bar chart', (tester) async {
+      final state = DashboardState(
+        issues: [urgentIssue, normalIssue],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PriorityBreakdownWidget(state: state, isDark: true),
+          ),
+        ),
+      );
+
+      expect(find.text('Priority Breakdown'), findsOneWidget);
+      expect(find.text('Urgent'), findsOneWidget);
+      expect(find.text('Low'), findsOneWidget);
+    });
+
+    testWidgets('renders empty placeholder when no tasks', (tester) async {
+      const state = DashboardState(issues: []);
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: PriorityBreakdownWidget(state: state, isDark: false),
+          ),
+        ),
+      );
+
+      expect(find.text('Priority Breakdown'), findsOneWidget);
+      expect(find.text('No issues recorded in this sprint.'), findsOneWidget);
+    });
+  });
+
+  group('WorkloadByAssigneeWidget', () {
+    testWidgets('renders team workload with member name and task count', (tester) async {
+      final state = DashboardState(
+        members: const [
+          ProjectMemberModel(
+            id: 'pm-1',
+            projectId: 'proj-1',
+            userId: 'user-1',
+            role: RoleType.owner,
+            user: UserModel(id: 'user-1', email: 'test@oversee.com', fullName: 'Tester Cuong'),
+          ),
+        ],
+        issues: [urgentIssue, normalIssue],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: WorkloadByAssigneeWidget(state: state, isDark: true),
+          ),
+        ),
+      );
+
+      expect(find.textContaining('Workload by Assignee'), findsOneWidget);
+      expect(find.text('Tester Cuong'), findsOneWidget);
+      expect(find.textContaining('2 issues'), findsOneWidget);
+      expect(find.textContaining('1 of 2 done'), findsOneWidget);
+    });
+
+    testWidgets('renders empty placeholder when no assignees or tasks', (tester) async {
+      const state = DashboardState(members: [], issues: []);
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: WorkloadByAssigneeWidget(state: state, isDark: false),
+          ),
+        ),
+      );
+
+      expect(find.textContaining('Workload by Assignee'), findsOneWidget);
+      expect(find.text('No workload data available for this sprint.'), findsOneWidget);
+    });
+  });
+
   group('DashboardScreen Full Widget Test', () {
     late FakeDashboardSprintRepository fakeSprintRepo;
     late FakeDashboardProjectRepository fakeProjectRepo;
@@ -399,6 +539,11 @@ void main() {
 
       // Burndown Chart
       expect(find.text('Sprint Burndown Chart'), findsOneWidget);
+
+      // Task Statistics Widgets
+      expect(find.text('Status Distribution'), findsOneWidget);
+      expect(find.text('Priority Breakdown'), findsOneWidget);
+      expect(find.textContaining('Workload by Assignee'), findsOneWidget);
 
       // Risk Issues
       expect(find.text('Attention Required (1)'), findsOneWidget);

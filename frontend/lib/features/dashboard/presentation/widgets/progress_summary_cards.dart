@@ -43,7 +43,9 @@ class ProgressSummaryCards extends StatelessWidget {
             icon: Icons.pie_chart_outline_rounded,
             iconColor: AppColors.primary,
             value: '${completedPoints.toInt()} / ${totalPoints.toInt()} pts',
-            subValue: '${pointsProgressPct.toStringAsFixed(0)}% completed (${remainingPoints.toInt()} pts left)',
+            subValue: state.averageStoryPoints > 0
+                ? '${pointsProgressPct.toStringAsFixed(0)}% done (Avg: ${state.averageStoryPoints.toStringAsFixed(1)} pts/task)'
+                : '${pointsProgressPct.toStringAsFixed(0)}% completed (${remainingPoints.toInt()} pts left)',
             progressRatio: progress?.storyPointProgressRatio ?? 0.0,
             progressColor: AppColors.primary,
           ),
@@ -76,11 +78,19 @@ class ProgressSummaryCards extends StatelessWidget {
           _buildMetricCard(
             title: 'Burn Velocity & Forecast',
             icon: Icons.speed_rounded,
-            iconColor: isOnTrack ? AppColors.success : AppColors.error,
+            iconColor: state.blockerTasks > 0
+                ? AppColors.error
+                : (isOnTrack ? AppColors.success : AppColors.warning),
             value: velocity > 0 ? '${velocity.toStringAsFixed(1)} pts/day' : '0.0 pts/day',
-            subValue: isOnTrack ? 'Pacing ahead of deadline' : 'Behind schedule - risk flagged',
-            badgeText: isOnTrack ? 'ON TRACK' : 'AT RISK',
-            badgeColor: isOnTrack ? AppColors.success : AppColors.error,
+            subValue: state.blockerTasks > 0
+                ? '${state.blockerTasks} blocker task(s) active'
+                : (isOnTrack ? 'Pacing ahead of deadline' : 'Behind schedule - risk flagged'),
+            badgeText: state.blockerTasks > 0
+                ? '${state.blockerTasks} BLOCKER${state.blockerTasks == 1 ? '' : 'S'}'
+                : (isOnTrack ? 'ON TRACK' : 'AT RISK'),
+            badgeColor: state.blockerTasks > 0
+                ? AppColors.error
+                : (isOnTrack ? AppColors.success : AppColors.warning),
           ),
         ];
 
