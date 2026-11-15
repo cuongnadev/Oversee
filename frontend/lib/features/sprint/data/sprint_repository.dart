@@ -4,6 +4,7 @@ import 'package:frontend/core/enums/app_enums.dart';
 import 'package:frontend/core/network/api_client.dart';
 import 'package:frontend/features/issue/domain/issue_model.dart';
 import 'package:frontend/features/sprint/domain/sprint_model.dart';
+import 'package:frontend/features/sprint/domain/sprint_planning_model.dart';
 
 /// Sprint repository handling all HTTP interactions with Oversee Sprint API endpoints.
 class SprintRepository {
@@ -121,6 +122,28 @@ class SprintRepository {
       '${ApiConstants.sprints}/$sprintId/issues',
       data: {'issue_ids': issueIds},
     );
+  }
+
+  /// Assigns a single issue to a sprint (`POST /api/v1/sprints/{sprint_id}/issues/{issue_id}`).
+  Future<void> addIssueToSprint(String sprintId, String issueId) async {
+    await _client.post<dynamic>(
+      '${ApiConstants.sprints}/$sprintId/issues/$issueId',
+    );
+  }
+
+  /// Removes an issue from a sprint and returns it to backlog (`DELETE /api/v1/sprints/{sprint_id}/issues/{issue_id}`).
+  Future<void> removeIssueFromSprint(String sprintId, String issueId) async {
+    await _client.delete<void>(
+      '${ApiConstants.sprints}/$sprintId/issues/$issueId',
+    );
+  }
+
+  /// Retrieves sprint planning metrics, capacity, and warnings (`GET /api/v1/sprints/{sprint_id}/planning`).
+  Future<SprintPlanningModel> getSprintPlanning(String sprintId) async {
+    final response = await _client.get<Map<String, dynamic>>(
+      '${ApiConstants.sprints}/$sprintId/planning',
+    );
+    return SprintPlanningModel.fromJson(response.data!);
   }
 }
 

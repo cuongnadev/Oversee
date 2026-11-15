@@ -128,6 +128,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         },
       ),
       GoRoute(
+        path: AppRoutes.projectSprintPlanning,
+        builder: (context, state) {
+          final workspaceId = state.pathParameters['workspaceId']!;
+          final projectId = state.pathParameters['projectId']!;
+          return SprintPlanningScreen(workspaceId: workspaceId, projectId: projectId);
+        },
+      ),
+      GoRoute(
         path: AppRoutes.projectDashboard,
         builder: (context, state) {
           final workspaceId = state.pathParameters['workspaceId']!;
