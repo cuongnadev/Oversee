@@ -3,7 +3,7 @@ from typing import Any
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.permissions import ROLE_HIERARCHY, role_has_permission
 from app.models.enums import Permission, RoleType, SprintStatus
@@ -12,7 +12,7 @@ from app.models.membership import ProjectMember, WorkspaceMember
 from app.models.project import Project
 from app.models.sprint import Sprint
 from app.models.user import User
-from app.schemas.sprint import SprintCreate, SprintUpdate
+from app.schemas.sprint import SprintCreate, SprintPlanningResponse, SprintUpdate
 
 
 def _resolve_effective_role(
@@ -120,6 +120,7 @@ def create_sprint(
         goal=data.goal,
         start_date=data.start_date,
         end_date=data.end_date,
+        capacity=data.capacity,
         status=data.status,
     )
     db.add(sprint)
@@ -272,3 +273,194 @@ def delete_sprint(
 
     sprint.soft_delete()
     db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Sprint Planning & Issue Assignment (#101)
+# ---------------------------------------------------------------------------
+def add_issues_to_sprint(
+    db: Session,
+    sprint: Sprint,
+    actor: User,
+    issue_ids: list[uuid.UUID],
+) -> list[Issue]:
+    """
+    Assign a list of issues to the specified sprint.
+    Enforces:
+      - Actor has SPRINT_UPDATE permission.
+      - Each issue exists and belongs to the same project as the sprint.
+      - Each issue is assigned to at most one sprint (sprint_id updated).
+    """
+    actor_role = _resolve_effective_role(db, sprint.project_id, actor.id)
+    if not actor_role or not role_has_permission(actor_role, Permission.SPRINT_UPDATE):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to assign issues to this sprint.",
+        )
+
+    assigned: list[Issue] = []
+    for issue_id in issue_ids:
+        issue = db.scalar(
+            select(Issue)
+            .options(
+                selectinload(Issue.parent),
+                selectinload(Issue.sub_issues),
+            )
+            .where(
+                Issue.id == issue_id,
+                Issue.deleted_at.is_(None),
+            )
+        )
+        if issue is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Issue '{issue_id}' not found.",
+            )
+        if issue.project_id != sprint.project_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Issue '{issue_id}' does not belong to the sprint's project.",
+            )
+        issue.sprint_id = sprint.id
+        assigned.append(issue)
+
+    db.commit()
+    for issue in assigned:
+        db.refresh(issue)
+    return assigned
+
+
+def remove_issue_from_sprint(
+    db: Session,
+    sprint: Sprint,
+    actor: User,
+    issue_id: uuid.UUID,
+) -> Issue:
+    """
+    Remove an issue from a sprint, returning it to the product backlog (sprint_id = None).
+    """
+    actor_role = _resolve_effective_role(db, sprint.project_id, actor.id)
+    if not actor_role or not role_has_permission(actor_role, Permission.SPRINT_UPDATE):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to remove issues from this sprint.",
+        )
+
+    issue = db.scalar(
+        select(Issue)
+        .options(
+            selectinload(Issue.parent),
+            selectinload(Issue.sub_issues),
+        )
+        .where(
+            Issue.id == issue_id,
+            Issue.deleted_at.is_(None),
+        )
+    )
+    if issue is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Issue not found.",
+        )
+    if issue.sprint_id != sprint.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Issue is not assigned to this sprint.",
+        )
+
+    issue.sprint_id = None
+    db.commit()
+    db.refresh(issue)
+    return issue
+
+
+def remove_issues_from_sprint(
+    db: Session,
+    sprint: Sprint,
+    actor: User,
+    issue_ids: list[uuid.UUID],
+) -> list[Issue]:
+    """
+    Batch remove issues from a sprint, returning them to the product backlog.
+    """
+    actor_role = _resolve_effective_role(db, sprint.project_id, actor.id)
+    if not actor_role or not role_has_permission(actor_role, Permission.SPRINT_UPDATE):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to remove issues from this sprint.",
+        )
+
+    removed: list[Issue] = []
+    for issue_id in issue_ids:
+        issue = db.scalar(
+            select(Issue)
+            .options(
+                selectinload(Issue.parent),
+                selectinload(Issue.sub_issues),
+            )
+            .where(
+                Issue.id == issue_id,
+                Issue.deleted_at.is_(None),
+            )
+        )
+        if issue is not None and issue.sprint_id == sprint.id:
+            issue.sprint_id = None
+            removed.append(issue)
+
+    db.commit()
+    for issue in removed:
+        db.refresh(issue)
+    return removed
+
+
+def list_sprint_issues(
+    db: Session,
+    sprint: Sprint,
+) -> list[Issue]:
+    """
+    Retrieve all non-deleted issues assigned to this sprint.
+    """
+    return list(
+        db.scalars(
+            select(Issue)
+            .options(
+                selectinload(Issue.parent),
+                selectinload(Issue.sub_issues),
+            )
+            .where(
+                Issue.sprint_id == sprint.id,
+                Issue.deleted_at.is_(None),
+            )
+            .order_by(Issue.issue_number.asc())
+        ).all()
+    )
+
+
+def get_sprint_planning(
+    db: Session,
+    sprint: Sprint,
+) -> SprintPlanningResponse:
+    """
+    Generate sprint planning summary including assigned issues, total estimate,
+    capacity limit, and capacity warning.
+    """
+    issues = list_sprint_issues(db, sprint)
+    total_issues = len(issues)
+    total_estimate = sum(issue.estimate or 0.0 for issue in issues)
+    capacity = sprint.capacity
+    is_over_capacity = capacity is not None and total_estimate > capacity
+    warning = (
+        f"Sprint estimate ({total_estimate}) exceeds planned capacity ({capacity})."
+        if is_over_capacity
+        else None
+    )
+
+    return SprintPlanningResponse(
+        sprint=sprint,
+        issues=issues,
+        total_issues=total_issues,
+        total_estimate=total_estimate,
+        capacity=capacity,
+        is_over_capacity=is_over_capacity,
+        warning=warning,
+    )

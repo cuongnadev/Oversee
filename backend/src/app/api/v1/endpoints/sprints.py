@@ -1,3 +1,4 @@
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -8,10 +9,23 @@ from app.db.session import get_db
 from app.models.enums import Permission
 from app.models.sprint import Sprint
 from app.models.user import User
-from app.schemas.sprint import SprintCreate, SprintResponse, SprintUpdate
+from app.schemas.issue import IssueResponse
+from app.schemas.sprint import (
+    SprintAddIssuesRequest,
+    SprintCreate,
+    SprintPlanningResponse,
+    SprintRemoveIssuesRequest,
+    SprintResponse,
+    SprintUpdate,
+)
 from app.services.sprint import (
+    add_issues_to_sprint,
     create_sprint,
     delete_sprint,
+    get_sprint_planning,
+    list_sprint_issues,
+    remove_issue_from_sprint,
+    remove_issues_from_sprint,
     update_sprint,
 )
 
@@ -104,3 +118,163 @@ def delete_sprint_endpoint(
         actor=current_user,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ---------------------------------------------------------------------------
+# Sprint Planning & Issue Assignment Endpoints (#101)
+# ---------------------------------------------------------------------------
+@router.get(
+    "/{sprint_id}/issues",
+    response_model=list[IssueResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List issues in sprint",
+    description="Retrieve all issues assigned to this sprint. Requires SPRINT_READ permission.",
+)
+def list_sprint_issues_endpoint(
+    sprint: Annotated[
+        Sprint, Depends(require_sprint_permission(Permission.SPRINT_READ))
+    ],
+    db: Annotated[Session, Depends(get_db)],
+) -> list[IssueResponse]:
+    """List all issues currently assigned to the specified sprint."""
+    return list_sprint_issues(db=db, sprint=sprint)
+
+
+@router.post(
+    "/{sprint_id}/issues",
+    response_model=list[IssueResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Assign issues to sprint",
+    description="Assign one or more issues to this sprint. Requires SPRINT_UPDATE permission.",
+)
+def add_issues_to_sprint_endpoint(
+    data: SprintAddIssuesRequest,
+    sprint: Annotated[
+        Sprint, Depends(require_sprint_permission(Permission.SPRINT_UPDATE))
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> list[IssueResponse]:
+    """Assign issues to sprint."""
+    issue_ids = data.get_all_issue_ids()
+    return add_issues_to_sprint(
+        db=db,
+        sprint=sprint,
+        actor=current_user,
+        issue_ids=issue_ids,
+    )
+
+
+@router.post(
+    "/{sprint_id}/issues/{issue_id}",
+    response_model=list[IssueResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Assign single issue to sprint",
+    description="Assign a single issue to this sprint. Requires SPRINT_UPDATE permission.",
+)
+def add_single_issue_to_sprint_endpoint(
+    issue_id: uuid.UUID,
+    sprint: Annotated[
+        Sprint, Depends(require_sprint_permission(Permission.SPRINT_UPDATE))
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> list[IssueResponse]:
+    """Assign single issue to sprint."""
+    return add_issues_to_sprint(
+        db=db,
+        sprint=sprint,
+        actor=current_user,
+        issue_ids=[issue_id],
+    )
+
+
+@router.delete(
+    "/{sprint_id}/issues/{issue_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remove issue from sprint",
+    description="Remove an issue from this sprint and return it to the product backlog. Requires SPRINT_UPDATE permission.",
+)
+def remove_single_issue_from_sprint_endpoint(
+    issue_id: uuid.UUID,
+    sprint: Annotated[
+        Sprint, Depends(require_sprint_permission(Permission.SPRINT_UPDATE))
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> Response:
+    """Remove single issue from sprint, moving it back to backlog."""
+    remove_issue_from_sprint(
+        db=db,
+        sprint=sprint,
+        actor=current_user,
+        issue_id=issue_id,
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.delete(
+    "/{sprint_id}/issues",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Batch remove issues from sprint",
+    description="Remove multiple issues from this sprint and return them to the product backlog. Requires SPRINT_UPDATE permission.",
+)
+def remove_issues_from_sprint_endpoint(
+    data: SprintRemoveIssuesRequest,
+    sprint: Annotated[
+        Sprint, Depends(require_sprint_permission(Permission.SPRINT_UPDATE))
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> Response:
+    """Remove multiple issues from sprint."""
+    issue_ids = data.get_all_issue_ids()
+    remove_issues_from_sprint(
+        db=db,
+        sprint=sprint,
+        actor=current_user,
+        issue_ids=issue_ids,
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/{sprint_id}/issues/remove",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Batch remove issues from sprint (POST alias)",
+    description="Remove multiple issues from this sprint and return them to the product backlog.",
+)
+def remove_issues_from_sprint_post_endpoint(
+    data: SprintRemoveIssuesRequest,
+    sprint: Annotated[
+        Sprint, Depends(require_sprint_permission(Permission.SPRINT_UPDATE))
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> Response:
+    """Remove multiple issues from sprint (POST alias)."""
+    issue_ids = data.get_all_issue_ids()
+    remove_issues_from_sprint(
+        db=db,
+        sprint=sprint,
+        actor=current_user,
+        issue_ids=issue_ids,
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/{sprint_id}/planning",
+    response_model=SprintPlanningResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get sprint planning summary",
+    description="Retrieve sprint planning metrics: assigned issues, total estimate, capacity limit, and warnings. Requires SPRINT_READ permission.",
+)
+def get_sprint_planning_endpoint(
+    sprint: Annotated[
+        Sprint, Depends(require_sprint_permission(Permission.SPRINT_READ))
+    ],
+    db: Annotated[Session, Depends(get_db)],
+) -> SprintPlanningResponse:
+    """Get sprint planning summary metrics."""
+    return get_sprint_planning(db=db, sprint=sprint)

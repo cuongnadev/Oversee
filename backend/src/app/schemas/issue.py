@@ -15,6 +15,7 @@ class IssueBase(BaseModel):
     type: IssueType = IssueType.TASK
     status: IssueStatus = IssueStatus.BACKLOG
     priority: IssuePriority = IssuePriority.MEDIUM
+    estimate: float | None = Field(default=None, ge=0)
     backlog_rank: float = 0.0
 
     @field_validator("title")
@@ -48,6 +49,7 @@ class IssueUpdate(BaseModel):
     type: IssueType | None = None
     status: IssueStatus | None = None
     priority: IssuePriority | None = None
+    estimate: float | None = Field(default=None, ge=0)
     assignee_id: uuid.UUID | None = None
     parent_id: uuid.UUID | None = None
     sprint_id: uuid.UUID | None = None

@@ -400,6 +400,7 @@ def create_issue(
         assignee_id=data.assignee_id,
         parent_id=data.parent_id,
         sprint_id=data.sprint_id,
+        estimate=data.estimate,
         backlog_rank=data.backlog_rank if data.backlog_rank is not None else 0.0,
     )
     db.add(new_issue)
@@ -879,6 +880,9 @@ def update_issue(
             issue.sprint_id = data.sprint_id
         else:
             issue.sprint_id = None
+
+    if "estimate" in update_dict:
+        issue.estimate = data.estimate
 
     if "backlog_rank" in update_dict and data.backlog_rank is not None:
         issue.backlog_rank = data.backlog_rank
