@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/core/constants/api_constants.dart';
 import 'package:frontend/core/enums/app_enums.dart';
 import 'package:frontend/core/network/api_client.dart';
+import 'package:frontend/features/issue/domain/issue_activity_model.dart';
 import 'package:frontend/features/issue/domain/issue_model.dart';
 
 final Provider<IssueRepository> issueRepositoryProvider = Provider<IssueRepository>((ref) {
@@ -149,6 +150,69 @@ class IssueRepository {
       data: payload,
     );
     return IssueModel.fromJson(response.data!);
+  }
+
+  /// Updates issue assignee (`PATCH /api/v1/issues/{issue_id}/assignee`).
+  Future<IssueModel> updateIssueAssignee(String issueId, String? assigneeId) async {
+    final response = await _client.patch<Map<String, dynamic>>(
+      '${ApiConstants.issues}/$issueId/assignee',
+      data: {'assignee_id': assigneeId},
+    );
+    return IssueModel.fromJson(response.data!);
+  }
+
+  /// Updates issue priority (`PATCH /api/v1/issues/{issue_id}/priority`).
+  Future<IssueModel> updateIssuePriority(String issueId, IssuePriority priority) async {
+    final response = await _client.patch<Map<String, dynamic>>(
+      '${ApiConstants.issues}/$issueId/priority',
+      data: {'priority': priority.value},
+    );
+    return IssueModel.fromJson(response.data!);
+  }
+
+  /// Lists all sub-issues of a parent issue (`GET /api/v1/issues/{issue_id}/sub-issues`).
+  Future<List<IssueModel>> listSubIssues(String issueId) async {
+    final response = await _client.get<List<dynamic>>(
+      '${ApiConstants.issues}/$issueId/sub-issues',
+    );
+    return (response.data ?? [])
+        .map((item) => IssueModel.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Creates a sub-task for a parent issue (`POST /api/v1/projects/{project_id}/issues`).
+  Future<IssueModel> createSubIssue(
+    String projectId,
+    String parentIssueId, {
+    required String title,
+    IssuePriority priority = IssuePriority.medium,
+    double? estimate,
+    String? assigneeId,
+  }) async {
+    final payload = <String, dynamic>{
+      'title': title.trim(),
+      'type': IssueType.subtask.value,
+      'priority': priority.value,
+      'parent_id': parentIssueId,
+      if (estimate != null) 'estimate': estimate,
+      if (assigneeId != null) 'assignee_id': assigneeId,
+    };
+
+    final response = await _client.post<Map<String, dynamic>>(
+      '${ApiConstants.projects}/$projectId/issues',
+      data: payload,
+    );
+    return IssueModel.fromJson(response.data!);
+  }
+
+  /// Lists activity logs for an issue (`GET /api/v1/issues/{issue_id}/activities`).
+  Future<List<IssueActivityModel>> listIssueActivities(String issueId) async {
+    final response = await _client.get<List<dynamic>>(
+      '${ApiConstants.issues}/$issueId/activities',
+    );
+    return (response.data ?? [])
+        .map((item) => IssueActivityModel.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   /// Soft deletes an issue (`DELETE /api/v1/issues/{issue_id}`).
