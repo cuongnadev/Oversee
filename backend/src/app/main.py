@@ -21,6 +21,10 @@ tags_metadata = [
         "description": "Workspace management and membership endpoints.",
     },
     {
+        "name": "projects",
+        "description": "Project management and configuration endpoints.",
+    },
+    {
         "name": "health",
         "description": "Service health check endpoints.",
     },

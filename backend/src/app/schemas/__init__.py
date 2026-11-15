@@ -16,6 +16,7 @@ from app.schemas.membership import (
 from app.schemas.project import (
     ProjectBase,
     ProjectCreate,
+    ProjectPageResponse,
     ProjectResponse,
     ProjectUpdate,
 )
@@ -52,6 +53,7 @@ __all__ = [
     "ProjectMemberCreate",
     "ProjectMemberResponse",
     "ProjectMemberUpdate",
+    "ProjectPageResponse",
     "ProjectResponse",
     "ProjectUpdate",
     "RefreshTokenRequest",
