@@ -14,20 +14,32 @@ from app.models.enums import RoleType
 from app.models.membership import ProjectMember, WorkspaceMember
 from app.models.project import Project
 from app.models.user import User
+from app.schemas.membership import (
+    ProjectMemberCreate,
+    ProjectMemberResponse,
+    ProjectMemberUpdate,
+)
 from app.schemas.project import (
     ProjectResponse,
     ProjectUpdate,
 )
 from app.services.project import (
+    add_project_member,
     archive_project,
     get_project_by_id,
+    list_project_members,
+    remove_project_member,
     restore_project,
     update_project,
+    update_project_member_role,
 )
 
 router = APIRouter()
 
 
+# ---------------------------------------------------------------------------
+# Project CRUD Endpoints (#90)
+# ---------------------------------------------------------------------------
 @router.get(
     "/{project_id}",
     response_model=ProjectResponse,
@@ -112,3 +124,101 @@ def restore_archived_project(
         )
 
     return restore_project(db=db, project=project)
+
+
+# ---------------------------------------------------------------------------
+# Project Member Management Endpoints (#91)
+# ---------------------------------------------------------------------------
+@router.get(
+    "/{project_id}/members",
+    response_model=list[ProjectMemberResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List project members",
+    description="List all members in the specified project. Requires project VIEWER role or higher.",
+)
+def get_project_members(
+    project_id: uuid.UUID,
+    member: Annotated[ProjectMember, Depends(require_project_role(RoleType.VIEWER))],
+    db: Annotated[Session, Depends(get_db)],
+) -> list[ProjectMemberResponse]:
+    """Retrieve all members of the project."""
+    return list_project_members(db=db, project_id=project_id)
+
+
+@router.post(
+    "/{project_id}/members",
+    response_model=ProjectMemberResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Add member to project",
+    description=(
+        "Add an existing workspace user to the project with the specified role. "
+        "User must already belong to the parent workspace. Requires project ADMIN role or higher."
+    ),
+)
+def add_member_to_project(
+    project_id: uuid.UUID,
+    data: ProjectMemberCreate,
+    current_user: Annotated[User, Depends(get_current_user)],
+    member: Annotated[ProjectMember, Depends(require_project_role(RoleType.ADMIN))],
+    db: Annotated[Session, Depends(get_db)],
+) -> ProjectMemberResponse:
+    """Add a member to the project."""
+    return add_project_member(
+        db=db,
+        actor=current_user,
+        project_id=project_id,
+        data=data,
+    )
+
+
+@router.patch(
+    "/{project_id}/members/{user_id}",
+    response_model=ProjectMemberResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Update project member role",
+    description=(
+        "Update the role of a project member. Requires project ADMIN role or higher. "
+        "ADMIN cannot modify an OWNER role. Cannot demote the last project OWNER."
+    ),
+)
+def update_member_role_in_project(
+    project_id: uuid.UUID,
+    user_id: uuid.UUID,
+    data: ProjectMemberUpdate,
+    current_user: Annotated[User, Depends(get_current_user)],
+    member: Annotated[ProjectMember, Depends(require_project_role(RoleType.ADMIN))],
+    db: Annotated[Session, Depends(get_db)],
+) -> ProjectMemberResponse:
+    """Update role for an existing project member."""
+    return update_project_member_role(
+        db=db,
+        actor=current_user,
+        project_id=project_id,
+        target_user_id=user_id,
+        data=data,
+    )
+
+
+@router.delete(
+    "/{project_id}/members/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remove project member",
+    description=(
+        "Remove a member from the project, or leave the project (self-removal). "
+        "Requires ADMIN role to remove others. Cannot remove the last project OWNER."
+    ),
+)
+def remove_member_from_project(
+    project_id: uuid.UUID,
+    user_id: uuid.UUID,
+    current_user: Annotated[User, Depends(get_current_user)],
+    member: Annotated[ProjectMember, Depends(require_project_role(RoleType.VIEWER))],
+    db: Annotated[Session, Depends(get_db)],
+) -> None:
+    """Remove a member or self-leave from the project."""
+    remove_project_member(
+        db=db,
+        actor=current_user,
+        project_id=project_id,
+        target_user_id=user_id,
+    )
