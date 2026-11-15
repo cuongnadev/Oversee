@@ -4,10 +4,54 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/core/enums/app_enums.dart';
 import 'package:frontend/features/issue/domain/issue_model.dart';
 import 'package:frontend/features/project/data/project_repository.dart';
+import 'package:frontend/features/project/domain/project_member_model.dart';
 import 'package:frontend/features/project/domain/project_model.dart';
 import 'package:frontend/features/sprint/data/sprint_repository.dart';
 import 'package:frontend/features/sprint/domain/sprint_model.dart';
 import 'package:frontend/features/sprint/domain/sprint_progress_model.dart';
+
+/// Represents workload allocation and completion progress for a project member or unassigned bucket.
+class AssigneeWorkloadModel extends Equatable {
+  final String? userId;
+  final String name;
+  final String? email;
+  final String? avatarUrl;
+  final RoleType? role;
+  final int totalIssues;
+  final int completedIssues;
+  final double totalStoryPoints;
+  final double completedStoryPoints;
+
+  const AssigneeWorkloadModel({
+    this.userId,
+    required this.name,
+    this.email,
+    this.avatarUrl,
+    this.role,
+    this.totalIssues = 0,
+    this.completedIssues = 0,
+    this.totalStoryPoints = 0.0,
+    this.completedStoryPoints = 0.0,
+  });
+
+  double get completionRatio =>
+      totalIssues > 0 ? (completedIssues / totalIssues).clamp(0.0, 1.0) : 0.0;
+
+  double get completionPercentage => completionRatio * 100;
+
+  @override
+  List<Object?> get props => [
+        userId,
+        name,
+        email,
+        avatarUrl,
+        role,
+        totalIssues,
+        completedIssues,
+        totalStoryPoints,
+        completedStoryPoints,
+      ];
+}
 
 /// State of the Project Progress Dashboard.
 class DashboardState extends Equatable {
@@ -18,6 +62,7 @@ class DashboardState extends Equatable {
   final SprintModel? selectedSprint;
   final SprintProgressModel? progress;
   final List<IssueModel> issues;
+  final List<ProjectMemberModel> members;
 
   const DashboardState({
     this.isLoading = false,
@@ -27,6 +72,7 @@ class DashboardState extends Equatable {
     this.selectedSprint,
     this.progress,
     this.issues = const [],
+    this.members = const [],
   });
 
   bool get hasActiveSprint =>
@@ -100,6 +146,123 @@ class DashboardState extends Equatable {
     return projected <= daysRemaining;
   }
 
+  /// Total number of tasks in the selected sprint.
+  int get totalTasks => issues.length;
+
+  /// Number of completed tasks in the selected sprint.
+  int get completedTasks => issues.where((i) => i.status == IssueStatus.done).length;
+
+  /// High priority blockers (Urgent / High priority and not Done).
+  int get blockerTasks => blockerIssues.length;
+
+  /// Average story points per estimated task.
+  double get averageStoryPoints {
+    final estimatedIssues = issues.where((i) => i.estimate != null && i.estimate! > 0);
+    if (estimatedIssues.isEmpty) return 0.0;
+    final sum = estimatedIssues.fold(0.0, (acc, i) => acc + i.estimate!);
+    return sum / estimatedIssues.length;
+  }
+
+  /// Breakdown of issues by status.
+  Map<IssueStatus, int> get statusCounts {
+    final Map<IssueStatus, int> map = {
+      IssueStatus.todo: 0,
+      IssueStatus.inProgress: 0,
+      IssueStatus.inReview: 0,
+      IssueStatus.done: 0,
+    };
+    for (final issue in issues) {
+      map[issue.status] = (map[issue.status] ?? 0) + 1;
+    }
+    return map;
+  }
+
+  /// Breakdown of issues by priority.
+  Map<IssuePriority, int> get priorityCounts {
+    final Map<IssuePriority, int> map = {
+      IssuePriority.urgent: 0,
+      IssuePriority.high: 0,
+      IssuePriority.medium: 0,
+      IssuePriority.low: 0,
+      IssuePriority.lowest: 0,
+    };
+    for (final issue in issues) {
+      map[issue.priority] = (map[issue.priority] ?? 0) + 1;
+    }
+    return map;
+  }
+
+  /// Workload grouped by assignee.
+  List<AssigneeWorkloadModel> get assigneeWorkloads {
+    final Map<String?, List<IssueModel>> grouped = {};
+    for (final issue in issues) {
+      grouped.putIfAbsent(issue.assigneeId, () => []).add(issue);
+    }
+
+    final List<AssigneeWorkloadModel> list = [];
+
+    for (final entry in grouped.entries) {
+      final userId = entry.key;
+      final memberIssues = entry.value;
+
+      String name = 'Unassigned';
+      String? email;
+      String? avatar;
+      RoleType? role;
+
+      if (userId != null) {
+        ProjectMemberModel? member;
+        try {
+          member = members.firstWhere((m) => m.userId == userId);
+        } catch (_) {
+          member = null;
+        }
+
+        if (member != null) {
+          name = member.user?.fullName ?? member.user?.email ?? 'Member';
+          email = member.user?.email;
+          avatar = member.user?.avatarUrl;
+          role = member.role;
+        } else if (memberIssues.isNotEmpty && memberIssues.first.assignee != null) {
+          final user = memberIssues.first.assignee!;
+          name = user.fullName.isNotEmpty ? user.fullName : user.email;
+          email = user.email;
+          avatar = user.avatarUrl;
+        } else {
+          name = 'Member ($userId)';
+        }
+      }
+
+      final total = memberIssues.length;
+      final completed = memberIssues.where((i) => i.status == IssueStatus.done).length;
+      final totalPts = memberIssues.fold(0.0, (acc, i) => acc + (i.estimate ?? 0.0));
+      final donePts = memberIssues
+          .where((i) => i.status == IssueStatus.done)
+          .fold(0.0, (acc, i) => acc + (i.estimate ?? 0.0));
+
+      list.add(AssigneeWorkloadModel(
+        userId: userId,
+        name: name,
+        email: email,
+        avatarUrl: avatar,
+        role: role,
+        totalIssues: total,
+        completedIssues: completed,
+        totalStoryPoints: totalPts,
+        completedStoryPoints: donePts,
+      ));
+    }
+
+    // Sort: members with most issues first, Unassigned last
+    list.sort((a, b) {
+      if (a.userId == null) return 1;
+      if (b.userId == null) return -1;
+      return b.totalIssues.compareTo(a.totalIssues);
+    });
+
+    return list;
+  }
+
   DashboardState copyWith({
     bool? isLoading,
     String? errorMessage,
@@ -111,6 +274,7 @@ class DashboardState extends Equatable {
     SprintProgressModel? progress,
     bool clearProgress = false,
     List<IssueModel>? issues,
+    List<ProjectMemberModel>? members,
   }) {
     return DashboardState(
       isLoading: isLoading ?? this.isLoading,
@@ -120,6 +284,7 @@ class DashboardState extends Equatable {
       selectedSprint: clearSelectedSprint ? null : (selectedSprint ?? this.selectedSprint),
       progress: clearProgress ? null : (progress ?? this.progress),
       issues: issues ?? this.issues,
+      members: members ?? this.members,
     );
   }
 
@@ -132,6 +297,7 @@ class DashboardState extends Equatable {
         selectedSprint,
         progress,
         issues,
+        members,
       ];
 }
 
@@ -152,7 +318,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     loadDashboard();
   }
 
-  /// Loads project information, all sprints, selects the active or primary sprint, and fetches its progress & issues.
+  /// Loads project information, all sprints, members, selects the active or primary sprint, and fetches its progress & issues.
   Future<void> loadDashboard({String? targetSprintId}) async {
     state = state.copyWith(isLoading: true, clearError: true);
 
@@ -160,10 +326,14 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
       final results = await Future.wait([
         _projectRepository.getProject(_projectId),
         _sprintRepository.listProjectSprints(_projectId),
+        _projectRepository
+            .listProjectMembers(_projectId)
+            .catchError((_) => <ProjectMemberModel>[]),
       ]);
 
       final project = results[0] as ProjectModel;
       final sprints = results[1] as List<SprintModel>;
+      final members = results[2] as List<ProjectMemberModel>;
 
       SprintModel? selected;
       if (targetSprintId != null) {
@@ -221,6 +391,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
         progress: progress,
         clearProgress: progress == null,
         issues: issues,
+        members: members,
       );
     } catch (e) {
       state = state.copyWith(
