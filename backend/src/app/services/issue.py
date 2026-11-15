@@ -3,8 +3,6 @@ import json
 import logging
 import math
 import uuid
-from dataclasses import dataclass
-from datetime import UTC, datetime
 from typing import Any, Final
 
 from fastapi import HTTPException, status
@@ -12,6 +10,7 @@ from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.permissions import ROLE_HIERARCHY, role_has_permission
+from app.models.activity import Activity
 from app.models.enums import (
     IssuePriority,
     IssueStatus,
@@ -87,50 +86,40 @@ def validate_status_transition(
         )
 
 
-@dataclass
-class ActivityRecord:
-    """In-memory representation of an issue activity log entry."""
-
-    id: uuid.UUID
-    issue_id: uuid.UUID
-    actor_id: uuid.UUID
-    action: str
-    old_value: str | None
-    new_value: str | None
-    created_at: datetime
-
-
-_activity_log: list[ActivityRecord] = []
+_activity_log: list[Activity] = []
 
 
 def log_activity(
     issue_id: uuid.UUID,
     actor_id: uuid.UUID,
     action: str,
-    old_value: Any,
-    new_value: Any,
-) -> ActivityRecord:
+    old_value: Any = None,
+    new_value: Any = None,
+    db: Session | None = None,
+) -> Activity:
     """
     Log an activity event for an issue and persist it in the activity history.
 
     :param issue_id: UUID of the affected issue.
     :param actor_id: UUID of the user making the change.
-    :param action: Action descriptor (e.g. 'assignee_changed', 'priority_changed').
+    :param action: Action descriptor (e.g. 'assignee_changed', 'priority_changed', 'status_changed').
     :param old_value: Previous value before change.
     :param new_value: Updated value after change.
-    :return: The created ActivityRecord.
+    :param db: Optional active database session to persist Activity to database.
+    :return: The created Activity entity.
     """
     old_str = str(old_value) if old_value is not None else None
     new_str = str(new_value) if new_value is not None else None
-    record = ActivityRecord(
-        id=uuid.uuid4(),
+    record = Activity(
         issue_id=issue_id,
         actor_id=actor_id,
         action=action,
         old_value=old_str,
         new_value=new_str,
-        created_at=datetime.now(UTC),
     )
+    if db is not None:
+        db.add(record)
+        db.flush()
     _activity_log.append(record)
     logger.info(
         "Activity [issue=%s]: %s changed from %s to %s by user %s",
@@ -143,9 +132,25 @@ def log_activity(
     return record
 
 
-def get_issue_activities(issue_id: uuid.UUID) -> list[ActivityRecord]:
+def get_issue_activities(
+    issue_id: uuid.UUID,
+    db: Session | None = None,
+) -> list[Activity]:
     """Retrieve all recorded activity log records for a given issue."""
-    return [r for r in _activity_log if r.issue_id == issue_id]
+    target_id = (
+        issue_id if isinstance(issue_id, uuid.UUID) else uuid.UUID(str(issue_id))
+    )
+    if db is not None:
+        db_records = list(
+            db.scalars(
+                select(Activity)
+                .where(Activity.issue_id == target_id)
+                .order_by(Activity.created_at.asc())
+            ).all()
+        )
+        if db_records:
+            return db_records
+    return [r for r in _activity_log if r.issue_id == target_id]
 
 
 def _resolve_effective_role(
@@ -406,6 +411,16 @@ def create_issue(
     db.add(new_issue)
     db.commit()
     db.refresh(new_issue)
+
+    log_activity(
+        issue_id=new_issue.id,
+        actor_id=actor.id,
+        action="issue_created",
+        old_value=None,
+        new_value=new_issue.title,
+        db=db,
+    )
+    db.commit()
 
     return get_issue_by_id(db, new_issue.id)
 
@@ -752,6 +767,9 @@ def update_issue(
     old_assignee = issue.assignee_id
     old_priority = issue.priority
     old_status = issue.status
+    old_title = issue.title
+    old_description = issue.description
+    old_sprint = issue.sprint_id
 
     update_dict = data.model_dump(exclude_unset=True)
 
@@ -890,6 +908,18 @@ def update_issue(
     db.commit()
     db.refresh(issue)
 
+    if old_status != issue.status:
+        log_activity(
+            issue_id=issue.id,
+            actor_id=actor.id,
+            action="status_changed",
+            old_value=old_status.value if hasattr(old_status, "value") else old_status,
+            new_value=issue.status.value
+            if hasattr(issue.status, "value")
+            else issue.status,
+            db=db,
+        )
+
     if old_assignee != issue.assignee_id:
         log_activity(
             issue_id=issue.id,
@@ -897,6 +927,7 @@ def update_issue(
             action="assignee_changed",
             old_value=old_assignee,
             new_value=issue.assignee_id,
+            db=db,
         )
 
     if old_priority != issue.priority:
@@ -910,7 +941,40 @@ def update_issue(
             new_value=issue.priority.value
             if hasattr(issue.priority, "value")
             else issue.priority,
+            db=db,
         )
+
+    if old_title != issue.title:
+        log_activity(
+            issue_id=issue.id,
+            actor_id=actor.id,
+            action="title_changed",
+            old_value=old_title,
+            new_value=issue.title,
+            db=db,
+        )
+
+    if old_description != issue.description:
+        log_activity(
+            issue_id=issue.id,
+            actor_id=actor.id,
+            action="description_changed",
+            old_value=old_description,
+            new_value=issue.description,
+            db=db,
+        )
+
+    if old_sprint != issue.sprint_id:
+        log_activity(
+            issue_id=issue.id,
+            actor_id=actor.id,
+            action="sprint_changed",
+            old_value=old_sprint,
+            new_value=issue.sprint_id,
+            db=db,
+        )
+
+    db.commit()
 
     return get_issue_by_id(db, issue.id)
 
@@ -971,7 +1035,9 @@ def assign_issue(
             action="assignee_changed",
             old_value=old_assignee,
             new_value=issue.assignee_id,
+            db=db,
         )
+        db.commit()
 
     return get_issue_by_id(db, issue.id)
 
@@ -1015,7 +1081,9 @@ def change_issue_priority(
             new_value=issue.priority.value
             if hasattr(issue.priority, "value")
             else issue.priority,
+            db=db,
         )
+        db.commit()
 
     return get_issue_by_id(db, issue.id)
 
@@ -1058,7 +1126,9 @@ def change_issue_status(
             new_value=issue.status.value
             if hasattr(issue.status, "value")
             else issue.status,
+            db=db,
         )
+        db.commit()
 
     return get_issue_by_id(db, issue.id)
 

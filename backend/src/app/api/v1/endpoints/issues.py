@@ -347,9 +347,25 @@ def update_issue_status(
 )
 def get_issue_activity_history(
     issue: Annotated[Issue, Depends(require_issue_permission(Permission.ISSUE_READ))],
+    db: Annotated[Session, Depends(get_db)],
 ) -> list[IssueActivityResponse]:
     """Retrieve activity log entries for the specified issue."""
-    return get_issue_activities(issue_id=issue.id)
+    return get_issue_activities(issue_id=issue.id, db=db)
+
+
+@router.get(
+    "/{issue_id}/activity",
+    response_model=list[IssueActivityResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List issue activity history (singular alias)",
+    include_in_schema=False,
+)
+def get_issue_activity_history_alias(
+    issue: Annotated[Issue, Depends(require_issue_permission(Permission.ISSUE_READ))],
+    db: Annotated[Session, Depends(get_db)],
+) -> list[IssueActivityResponse]:
+    """Retrieve activity log entries for the specified issue (alias)."""
+    return get_issue_activities(issue_id=issue.id, db=db)
 
 
 @router.post(

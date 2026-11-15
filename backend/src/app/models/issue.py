@@ -16,6 +16,7 @@ from app.models.base import BaseEntity
 from app.models.enums import IssuePriority, IssueStatus, IssueType
 
 if TYPE_CHECKING:
+    from app.models.activity import Activity
     from app.models.project import Project
     from app.models.sprint import Sprint
     from app.models.user import User
@@ -143,6 +144,13 @@ class Issue(BaseEntity):
         "Sprint",
         foreign_keys=[sprint_id],
         back_populates="issues",
+    )
+    activities: Mapped[list[Activity]] = relationship(
+        "Activity",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="issue",
+        order_by="Activity.created_at.asc()",
     )
 
     @property
