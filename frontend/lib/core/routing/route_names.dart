@@ -12,6 +12,7 @@ class AppRoutes {
   // Workspace routes
   static const String workspaces = '/workspaces';
   static const String workspaceDetail = '/workspaces/:workspaceId';
+  static const String workspaceProjects = '/workspaces/:workspaceId/projects';
   static const String workspaceSettings = '/workspaces/:workspaceId/settings';
 
   // Project routes under workspace
@@ -25,6 +26,7 @@ class AppRoutes {
 
   // Helper methods to build parameterized URLs
   static String workspaceDetailPath(String workspaceId) => '/workspaces/$workspaceId';
+  static String workspaceProjectsPath(String workspaceId) => '/workspaces/$workspaceId/projects';
   static String workspaceSettingsPath(String workspaceId) => '/workspaces/$workspaceId/settings';
   static String projectOverviewPath(String workspaceId, String projectId) =>
       '/workspaces/$workspaceId/projects/$projectId/overview';
