@@ -79,6 +79,14 @@ class IssuePriorityUpdate(BaseModel):
     priority: IssuePriority
 
 
+class IssueStatusUpdate(BaseModel):
+    """Schema for updating issue status."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: IssueStatus
+
+
 class IssueActivityResponse(BaseModel):
     """Schema representing an activity log entry for an issue."""
 
