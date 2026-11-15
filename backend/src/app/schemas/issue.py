@@ -117,6 +117,44 @@ class BacklogAddIssuesRequest(BaseModel):
         return ids
 
 
+class BacklogReorderRequest(BaseModel):
+    """Schema for moving/reordering an issue within the backlog."""
+
+    issue_id: uuid.UUID = Field(
+        ...,
+        description="ID of the backlog issue to move",
+    )
+    previous_issue_id: uuid.UUID | None = Field(
+        default=None,
+        description="ID of the issue directly before the new position",
+    )
+    next_issue_id: uuid.UUID | None = Field(
+        default=None,
+        description="ID of the issue directly after the new position",
+    )
+    target_rank: float | None = Field(
+        default=None,
+        description="Explicit target rank value (optional)",
+    )
+    position: str | None = Field(
+        default=None,
+        description="Keyword position: 'top' or 'bottom'",
+    )
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class IssueRankUpdate(BaseModel):
+    """Schema for updating issue rank."""
+
+    previous_issue_id: uuid.UUID | None = None
+    next_issue_id: uuid.UUID | None = None
+    target_rank: float | None = None
+    position: str | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class IssueActivityResponse(BaseModel):
     """Schema representing an activity log entry for an issue."""
 

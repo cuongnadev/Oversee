@@ -17,6 +17,7 @@ from app.models.project import Project
 from app.models.user import User
 from app.schemas.issue import (
     BacklogAddIssuesRequest,
+    BacklogReorderRequest,
     IssueCreate,
     IssuePageResponse,
     IssueResponse,
@@ -38,6 +39,7 @@ from app.services.issue import (
     parse_issue_priorities,
     parse_issue_statuses,
     remove_issue_from_backlog,
+    reorder_backlog_issue,
 )
 from app.services.project import (
     add_project_member,
@@ -518,3 +520,61 @@ def remove_from_backlog_endpoint(
         target_sprint_id=target_sprint_id,
     )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.patch(
+    "/{project_id}/backlog/reorder",
+    response_model=IssueResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Reorder issue in product backlog",
+    description="Move an issue before, after, or between other backlog issues. Requires ISSUE_UPDATE permission.",
+)
+def reorder_backlog_endpoint(
+    project_id: uuid.UUID,
+    data: BacklogReorderRequest,
+    member: Annotated[
+        ProjectMember, Depends(require_project_permission(Permission.ISSUE_UPDATE))
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> IssueResponse:
+    """Reorder a backlog issue."""
+    return reorder_backlog_issue(
+        db=db,
+        project_id=project_id,
+        issue_id=data.issue_id,
+        actor=current_user,
+        previous_issue_id=data.previous_issue_id,
+        next_issue_id=data.next_issue_id,
+        target_rank=data.target_rank,
+        position=data.position,
+    )
+
+
+@router.post(
+    "/{project_id}/backlog/reorder",
+    response_model=IssueResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Reorder issue in product backlog (POST alias)",
+    include_in_schema=False,
+)
+def reorder_backlog_post_endpoint(
+    project_id: uuid.UUID,
+    data: BacklogReorderRequest,
+    member: Annotated[
+        ProjectMember, Depends(require_project_permission(Permission.ISSUE_UPDATE))
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> IssueResponse:
+    """Reorder a backlog issue (POST alias)."""
+    return reorder_backlog_issue(
+        db=db,
+        project_id=project_id,
+        issue_id=data.issue_id,
+        actor=current_user,
+        previous_issue_id=data.previous_issue_id,
+        next_issue_id=data.next_issue_id,
+        target_rank=data.target_rank,
+        position=data.position,
+    )
