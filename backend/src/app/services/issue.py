@@ -1346,3 +1346,208 @@ def remove_issue_from_backlog(
     )
     db.commit()
     return None
+
+
+def _rebalance_backlog_ranks(db: Session, project_id: uuid.UUID) -> None:
+    """Rebalance all backlog ranks to spaced intervals (10.0, 20.0, 30.0...) to prevent floating point exhaustion."""
+    backlog_issues = list(
+        db.scalars(
+            select(Issue)
+            .where(
+                Issue.project_id == project_id,
+                Issue.sprint_id.is_(None),
+                Issue.deleted_at.is_(None),
+            )
+            .order_by(
+                Issue.backlog_rank.asc(), Issue.issue_number.asc(), Issue.id.asc()
+            )
+        ).all()
+    )
+    for idx, item in enumerate(backlog_issues):
+        item.backlog_rank = float((idx + 1) * 10)
+    db.flush()
+
+
+def reorder_backlog_issue(
+    db: Session,
+    project_id: uuid.UUID,
+    issue_id: uuid.UUID,
+    actor: User,
+    previous_issue_id: uuid.UUID | None = None,
+    next_issue_id: uuid.UUID | None = None,
+    target_rank: float | None = None,
+    position: str | None = None,
+) -> Issue:
+    """
+    Reorder an issue within the product backlog.
+    Computes a fractional rank value between previous_issue and next_issue,
+    or places at top/bottom, guaranteeing deterministic and persistent ordering.
+    Requires ISSUE_UPDATE permission.
+    """
+    actor_role = _resolve_effective_role(db, project_id, actor.id)
+    if not actor_role or not role_has_permission(actor_role, Permission.ISSUE_UPDATE):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to reorder backlog issues.",
+        )
+
+    issue = db.scalar(
+        select(Issue)
+        .options(
+            selectinload(Issue.parent),
+            selectinload(Issue.sub_issues),
+        )
+        .where(
+            Issue.id == issue_id,
+            Issue.project_id == project_id,
+            Issue.deleted_at.is_(None),
+        )
+    )
+    if issue is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Issue {issue_id} not found in this project.",
+        )
+
+    if issue.sprint_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only issues in the product backlog can be reordered.",
+        )
+
+    if previous_issue_id == issue_id or next_issue_id == issue_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot position an issue relative to itself.",
+        )
+
+    prev_issue: Issue | None = None
+    next_issue: Issue | None = None
+
+    if previous_issue_id is not None:
+        prev_issue = db.scalar(
+            select(Issue).where(
+                Issue.id == previous_issue_id,
+                Issue.project_id == project_id,
+                Issue.sprint_id.is_(None),
+                Issue.deleted_at.is_(None),
+            )
+        )
+        if prev_issue is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Previous issue {previous_issue_id} not found in the backlog.",
+            )
+
+    if next_issue_id is not None:
+        next_issue = db.scalar(
+            select(Issue).where(
+                Issue.id == next_issue_id,
+                Issue.project_id == project_id,
+                Issue.sprint_id.is_(None),
+                Issue.deleted_at.is_(None),
+            )
+        )
+        if next_issue is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Next issue {next_issue_id} not found in the backlog.",
+            )
+
+    # Calculate new_rank
+    new_rank: float
+    if target_rank is not None:
+        new_rank = target_rank
+    elif position == "top":
+        min_rank = db.scalar(
+            select(func.min(Issue.backlog_rank)).where(
+                Issue.project_id == project_id,
+                Issue.sprint_id.is_(None),
+                Issue.deleted_at.is_(None),
+                Issue.id != issue_id,
+            )
+        )
+        new_rank = (min_rank - 10.0) if min_rank is not None else 10.0
+    elif position == "bottom":
+        max_rank = db.scalar(
+            select(func.max(Issue.backlog_rank)).where(
+                Issue.project_id == project_id,
+                Issue.sprint_id.is_(None),
+                Issue.deleted_at.is_(None),
+                Issue.id != issue_id,
+            )
+        )
+        new_rank = (max_rank + 10.0) if max_rank is not None else 10.0
+    elif prev_issue is not None and next_issue is not None:
+        if abs(next_issue.backlog_rank - prev_issue.backlog_rank) < 1e-6:
+            _rebalance_backlog_ranks(db, project_id)
+            db.refresh(prev_issue)
+            db.refresh(next_issue)
+        new_rank = (prev_issue.backlog_rank + next_issue.backlog_rank) / 2.0
+    elif prev_issue is not None and next_issue is None:
+        next_after_prev = db.scalar(
+            select(Issue)
+            .where(
+                Issue.project_id == project_id,
+                Issue.sprint_id.is_(None),
+                Issue.deleted_at.is_(None),
+                Issue.id != issue_id,
+                Issue.backlog_rank > prev_issue.backlog_rank,
+            )
+            .order_by(Issue.backlog_rank.asc())
+            .limit(1)
+        )
+        if next_after_prev is not None:
+            if abs(next_after_prev.backlog_rank - prev_issue.backlog_rank) < 1e-6:
+                _rebalance_backlog_ranks(db, project_id)
+                db.refresh(prev_issue)
+                db.refresh(next_after_prev)
+            new_rank = (prev_issue.backlog_rank + next_after_prev.backlog_rank) / 2.0
+        else:
+            new_rank = prev_issue.backlog_rank + 10.0
+    elif next_issue is not None and prev_issue is None:
+        prev_before_next = db.scalar(
+            select(Issue)
+            .where(
+                Issue.project_id == project_id,
+                Issue.sprint_id.is_(None),
+                Issue.deleted_at.is_(None),
+                Issue.id != issue_id,
+                Issue.backlog_rank < next_issue.backlog_rank,
+            )
+            .order_by(Issue.backlog_rank.desc())
+            .limit(1)
+        )
+        if prev_before_next is not None:
+            if abs(next_issue.backlog_rank - prev_before_next.backlog_rank) < 1e-6:
+                _rebalance_backlog_ranks(db, project_id)
+                db.refresh(next_issue)
+                db.refresh(prev_before_next)
+            new_rank = (prev_before_next.backlog_rank + next_issue.backlog_rank) / 2.0
+        else:
+            new_rank = next_issue.backlog_rank - 10.0
+    else:
+        max_rank = db.scalar(
+            select(func.max(Issue.backlog_rank)).where(
+                Issue.project_id == project_id,
+                Issue.sprint_id.is_(None),
+                Issue.deleted_at.is_(None),
+                Issue.id != issue_id,
+            )
+        )
+        new_rank = (max_rank + 10.0) if max_rank is not None else 10.0
+
+    old_rank = issue.backlog_rank
+    issue.backlog_rank = new_rank
+
+    log_activity(
+        issue_id=issue.id,
+        actor_id=actor.id,
+        action="backlog_reordered",
+        old_value=str(old_rank),
+        new_value=str(new_rank),
+    )
+
+    db.commit()
+    db.refresh(issue)
+    return issue

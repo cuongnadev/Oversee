@@ -16,6 +16,7 @@ from app.schemas.issue import (
     IssueCreate,
     IssuePageResponse,
     IssuePriorityUpdate,
+    IssueRankUpdate,
     IssueResponse,
     IssueStatusUpdate,
     IssueUpdate,
@@ -33,6 +34,7 @@ from app.services.issue import (
     move_issue_to_backlog,
     parse_issue_priorities,
     parse_issue_statuses,
+    reorder_backlog_issue,
     restore_issue,
     update_issue,
 )
@@ -364,3 +366,29 @@ def move_issue_to_backlog_endpoint(
 ) -> IssueResponse:
     """Move an issue into the product backlog."""
     return move_issue_to_backlog(db=db, issue=issue, actor=current_user)
+
+
+@router.patch(
+    "/{issue_id}/rank",
+    response_model=IssueResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Update issue backlog rank",
+    description="Update the rank position of an issue within the backlog. Requires ISSUE_UPDATE permission.",
+)
+def update_issue_rank_endpoint(
+    issue: Annotated[Issue, Depends(require_issue_permission(Permission.ISSUE_UPDATE))],
+    data: IssueRankUpdate,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> IssueResponse:
+    """Update issue backlog rank."""
+    return reorder_backlog_issue(
+        db=db,
+        project_id=issue.project_id,
+        issue_id=issue.id,
+        actor=current_user,
+        previous_issue_id=data.previous_issue_id,
+        next_issue_id=data.next_issue_id,
+        target_rank=data.target_rank,
+        position=data.position,
+    )
