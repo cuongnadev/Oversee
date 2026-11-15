@@ -21,6 +21,7 @@ class AppRoutes {
   static const String projectBacklog = '/workspaces/:workspaceId/projects/:projectId/backlog';
   static const String projectBoard = '/workspaces/:workspaceId/projects/:projectId/board';
   static const String projectSprints = '/workspaces/:workspaceId/projects/:projectId/sprints';
+  static const String projectSprintPlanning = '/workspaces/:workspaceId/projects/:projectId/sprints/planning';
   static const String projectDashboard = '/workspaces/:workspaceId/projects/:projectId/dashboard';
   static const String projectSettings = '/workspaces/:workspaceId/projects/:projectId/settings';
 
@@ -36,6 +37,8 @@ class AppRoutes {
       '/workspaces/$workspaceId/projects/$projectId/board';
   static String projectSprintsPath(String workspaceId, String projectId) =>
       '/workspaces/$workspaceId/projects/$projectId/sprints';
+  static String projectSprintPlanningPath(String workspaceId, String projectId) =>
+      '/workspaces/$workspaceId/projects/$projectId/sprints/planning';
   static String projectDashboardPath(String workspaceId, String projectId) =>
       '/workspaces/$workspaceId/projects/$projectId/dashboard';
   static String projectSettingsPath(String workspaceId, String projectId) =>
