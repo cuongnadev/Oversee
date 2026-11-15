@@ -66,6 +66,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const WorkspaceListScreen(),
       ),
       GoRoute(
+        path: AppRoutes.workspaceDetail,
+        redirect: (context, state) {
+          final workspaceId = state.pathParameters['workspaceId']!;
+          return AppRoutes.workspaceSettingsPath(workspaceId);
+        },
+      ),
+      GoRoute(
         path: AppRoutes.workspaceSettings,
         builder: (context, state) {
           final workspaceId = state.pathParameters['workspaceId'] ?? 'default';

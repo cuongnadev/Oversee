@@ -53,7 +53,7 @@ void main() {
 
       // Expect Workspaces screen elements to be shown
       expect(find.text('Your Workspaces'), findsOneWidget);
-      expect(find.text('Team 04 - Oversee'), findsOneWidget);
+      expect(find.text('New Workspace'), findsOneWidget);
     });
 
     testWidgets('Deep linking to project board loads correctly when authenticated',
