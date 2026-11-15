@@ -17,6 +17,10 @@ tags_metadata = [
         "description": "User profile and account management endpoints.",
     },
     {
+        "name": "workspaces",
+        "description": "Workspace management and membership endpoints.",
+    },
+    {
         "name": "health",
         "description": "Service health check endpoints.",
     },
