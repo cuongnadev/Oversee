@@ -10,6 +10,11 @@ import 'package:frontend/features/project/presentation/widgets/project_navigatio
 import 'package:frontend/features/project/presentation/widgets/project_screen_scaffold.dart';
 import 'package:frontend/features/sprint/application/kanban_board_provider.dart';
 import 'package:frontend/features/sprint/application/kanban_board_state.dart';
+import 'package:frontend/features/sprint/data/sprint_repository.dart';
+import 'package:frontend/features/sprint/domain/sprint_complete_model.dart';
+import 'package:frontend/features/sprint/domain/sprint_model.dart';
+import 'package:frontend/features/sprint/domain/sprint_progress_model.dart';
+import 'package:frontend/features/sprint/presentation/widgets/complete_sprint_dialog.dart';
 import 'package:frontend/features/sprint/presentation/widgets/kanban_column_widget.dart';
 import 'package:frontend/shared/widgets/widgets.dart';
 
@@ -296,6 +301,20 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
               ),
               const SizedBox(width: 6),
 
+              // Complete Sprint Button
+              ElevatedButton.icon(
+                icon: const Icon(Icons.check_circle_outline, size: 16),
+                label: const Text('Complete Sprint'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.success,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+                onPressed: () => _openCompleteSprintDialog(context, sprint, state, notifier),
+              ),
+              const SizedBox(width: 4),
+
               // Refresh Button
               IconButton(
                 icon: const Icon(Icons.refresh, size: 20),
@@ -353,5 +372,69 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
         );
       },
     );
+  }
+
+  Future<void> _openCompleteSprintDialog(
+    BuildContext context,
+    SprintModel sprint,
+    KanbanBoardState state,
+    KanbanBoardNotifier notifier,
+  ) async {
+    final sprintRepo = ref.read(sprintRepositoryProvider);
+    List<SprintModel> plannedSprints = [];
+    SprintProgressModel? progress;
+
+    try {
+      final results = await Future.wait([
+        sprintRepo.listProjectSprints(widget.projectId, status: SprintStatus.planned),
+        sprintRepo.getSprintProgress(sprint.id),
+      ]);
+      plannedSprints = results[0] as List<SprintModel>;
+      progress = results[1] as SprintProgressModel;
+    } catch (_) {
+      // Fallback: derive simple counts from board state
+      final completed = state.issuesForStatus(IssueStatus.done).length;
+      final total = state.totalIssues;
+      progress = SprintProgressModel(
+        sprintId: sprint.id,
+        sprintName: sprint.name,
+        status: sprint.status,
+        totalIssues: total,
+        completedIssues: completed,
+        remainingIssues: total - completed,
+        issueProgressPercentage: total > 0 ? (completed / total * 100) : 0,
+        totalStoryPoints: state.totalStoryPoints,
+        completedStoryPoints: state.storyPointsForStatus(IssueStatus.done),
+        remainingStoryPoints: state.totalStoryPoints - state.storyPointsForStatus(IssueStatus.done),
+        storyPointProgressPercentage: 0,
+      );
+    }
+
+    if (!context.mounted) return;
+
+    final result = await showDialog<SprintCompleteModel>(
+      context: context,
+      builder: (ctx) => CompleteSprintDialog(
+        sprint: sprint,
+        progress: progress,
+        plannedSprints: plannedSprints,
+        onComplete: ({targetSprintId}) async {
+          return await sprintRepo.completeSprint(
+            sprint.id,
+            targetSprintId: targetSprintId,
+          );
+        },
+      ),
+    );
+
+    if (result != null && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sprint "${sprint.name}" completed successfully!'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      await notifier.refresh();
+    }
   }
 }

@@ -12,6 +12,7 @@ import 'package:frontend/features/project/presentation/project_list_screen.dart'
 import 'package:frontend/features/project/presentation/project_overview_screen.dart';
 import 'package:frontend/features/project/presentation/project_settings_screen.dart';
 import 'package:frontend/features/sprint/presentation/kanban_board_screen.dart';
+import 'package:frontend/features/sprint/presentation/sprint_overview_screen.dart';
 import 'package:frontend/features/sprint/presentation/sprint_planning_screen.dart';
 import 'package:frontend/features/workspace/presentation/workspace_list_screen.dart';
 import 'package:frontend/features/workspace/presentation/workspace_settings_screen.dart';
@@ -124,7 +125,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final workspaceId = state.pathParameters['workspaceId']!;
           final projectId = state.pathParameters['projectId']!;
-          return SprintPlanningScreen(workspaceId: workspaceId, projectId: projectId);
+          return SprintOverviewScreen(workspaceId: workspaceId, projectId: projectId);
         },
       ),
       GoRoute(
