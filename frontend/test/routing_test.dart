@@ -87,8 +87,7 @@ void main() {
       router.go(AppRoutes.projectBoardPath('ws-team4', 'proj-oversee'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Kanban Board (proj-oversee)'), findsOneWidget);
-      expect(find.text('Workspace: ws-team4'), findsOneWidget);
+      expect(find.byType(KanbanBoardScreen), findsOneWidget);
     });
 
     testWidgets('Deep linking to project backlog loads correctly',

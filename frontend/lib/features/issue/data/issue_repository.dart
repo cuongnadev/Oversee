@@ -134,6 +134,23 @@ class IssueRepository {
     return IssueModel.fromJson(response.data!);
   }
 
+  /// Updates issue workflow status (`PATCH /api/v1/issues/{issue_id}/status`).
+  Future<IssueModel> updateIssueStatus(
+    String issueId, {
+    required IssueStatus status,
+    bool? allowOpenSubissues,
+  }) async {
+    final payload = <String, dynamic>{
+      'status': status.value,
+      if (allowOpenSubissues != null) 'allow_open_subissues': allowOpenSubissues,
+    };
+    final response = await _client.patch<Map<String, dynamic>>(
+      '${ApiConstants.issues}/$issueId/status',
+      data: payload,
+    );
+    return IssueModel.fromJson(response.data!);
+  }
+
   /// Soft deletes an issue (`DELETE /api/v1/issues/{issue_id}`).
   Future<void> deleteIssue(String issueId) async {
     await _client.delete<void>('${ApiConstants.issues}/$issueId');
