@@ -26,7 +26,13 @@ from app.schemas.sprint import (
     SprintUpdate,
 )
 from app.schemas.token import RefreshTokenRequest, Token, TokenPayload
-from app.schemas.user import UserBase, UserCreate, UserResponse, UserUpdate
+from app.schemas.user import (
+    UserBase,
+    UserCreate,
+    UserProfileUpdate,
+    UserResponse,
+    UserUpdate,
+)
 from app.schemas.workspace import (
     WorkspaceBase,
     WorkspaceCreate,
@@ -58,6 +64,7 @@ __all__ = [
     "TokenPayload",
     "UserBase",
     "UserCreate",
+    "UserProfileUpdate",
     "UserResponse",
     "UserUpdate",
     "WorkspaceBase",
