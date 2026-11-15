@@ -1,4 +1,4 @@
-from app.schemas.auth import RegisterRequest
+from app.schemas.auth import LoginRequest, LogoutResponse, RegisterRequest
 from app.schemas.issue import (
     IssueBase,
     IssueCreate,
@@ -39,6 +39,8 @@ __all__ = [
     "IssueCreate",
     "IssueResponse",
     "IssueUpdate",
+    "LoginRequest",
+    "LogoutResponse",
     "ProjectBase",
     "ProjectCreate",
     "ProjectMemberCreate",
