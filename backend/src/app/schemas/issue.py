@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.enums import IssuePriority, IssueStatus, IssueType
 
@@ -16,12 +16,22 @@ class IssueBase(BaseModel):
     priority: IssuePriority = IssuePriority.MEDIUM
     backlog_rank: float = 0.0
 
+    @field_validator("title")
+    @classmethod
+    def clean_title(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Issue title cannot be blank or contain only whitespace.")
+        return cleaned
+
 
 class IssueCreate(IssueBase):
     """Schema for creating a new issue."""
 
-    project_id: uuid.UUID
-    issue_number: int = Field(ge=1)
+    model_config = ConfigDict(extra="forbid")
+
+    project_id: uuid.UUID | None = None
+    issue_number: int | None = Field(default=None, ge=1)
     assignee_id: uuid.UUID | None = None
     parent_id: uuid.UUID | None = None
     sprint_id: uuid.UUID | None = None
@@ -29,6 +39,8 @@ class IssueCreate(IssueBase):
 
 class IssueUpdate(BaseModel):
     """Schema for updating an existing issue."""
+
+    model_config = ConfigDict(extra="forbid")
 
     title: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
@@ -39,6 +51,31 @@ class IssueUpdate(BaseModel):
     parent_id: uuid.UUID | None = None
     sprint_id: uuid.UUID | None = None
     backlog_rank: float | None = None
+
+    @field_validator("title")
+    @classmethod
+    def clean_update_title(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Issue title cannot be blank or contain only whitespace.")
+        return cleaned
+
+
+class IssueHierarchySummary(BaseModel):
+    """Compact representation of an issue in parent-child relationships."""
+
+    id: uuid.UUID
+    project_id: uuid.UUID
+    issue_number: int
+    title: str
+    type: IssueType
+    status: IssueStatus
+    priority: IssuePriority
+    assignee_id: uuid.UUID | None = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class IssueResponse(IssueBase):
@@ -55,5 +92,17 @@ class IssueResponse(IssueBase):
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None = None
+    parent: IssueHierarchySummary | None = None
+    sub_issues: list[IssueHierarchySummary] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class IssuePageResponse(BaseModel):
+    """Paginated list of issues."""
+
+    items: list[IssueResponse]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int

@@ -1,19 +1,25 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import (
     get_current_user,
+    require_project_permission,
     require_project_role,
 )
 from app.db.session import get_db
-from app.models.enums import RoleType
+from app.models.enums import Permission, RoleType
 from app.models.membership import ProjectMember, WorkspaceMember
 from app.models.project import Project
 from app.models.user import User
+from app.schemas.issue import (
+    IssueCreate,
+    IssuePageResponse,
+    IssueResponse,
+)
 from app.schemas.membership import (
     ProjectMemberCreate,
     ProjectMemberResponse,
@@ -22,6 +28,10 @@ from app.schemas.membership import (
 from app.schemas.project import (
     ProjectResponse,
     ProjectUpdate,
+)
+from app.services.issue import (
+    create_issue,
+    list_project_issues,
 )
 from app.services.project import (
     add_project_member,
@@ -221,4 +231,59 @@ def remove_member_from_project(
         actor=current_user,
         project_id=project_id,
         target_user_id=user_id,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Project Issue Endpoints (#94)
+# ---------------------------------------------------------------------------
+@router.post(
+    "/{project_id}/issues",
+    response_model=IssueResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create issue in project",
+    description="Create a new issue/task in the project. Requires ISSUE_CREATE permission (MEMBER or higher).",
+)
+def create_project_issue(
+    project_id: uuid.UUID,
+    data: IssueCreate,
+    current_user: Annotated[User, Depends(get_current_user)],
+    member: Annotated[
+        ProjectMember, Depends(require_project_permission(Permission.ISSUE_CREATE))
+    ],
+    db: Annotated[Session, Depends(get_db)],
+) -> IssueResponse:
+    """Create a new issue in the project."""
+    return create_issue(
+        db=db,
+        actor=current_user,
+        project_id=project_id,
+        data=data,
+    )
+
+
+@router.get(
+    "/{project_id}/issues",
+    response_model=IssuePageResponse,
+    status_code=status.HTTP_200_OK,
+    summary="List project issues",
+    description="List all non-deleted issues in the project. Requires ISSUE_READ permission (VIEWER or higher).",
+)
+def list_project_issues_endpoint(
+    project_id: uuid.UUID,
+    member: Annotated[
+        ProjectMember, Depends(require_project_permission(Permission.ISSUE_READ))
+    ],
+    db: Annotated[Session, Depends(get_db)],
+    page: int = Query(1, ge=1, description="Page number starting from 1"),
+    page_size: int = Query(
+        20, ge=1, le=100, description="Number of items per page (max 100)"
+    ),
+) -> IssuePageResponse:
+    """List issues in the project with pagination."""
+    return list_project_issues(
+        db=db,
+        project_id=project_id,
+        page=page,
+        page_size=page_size,
     )
