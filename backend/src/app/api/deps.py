@@ -23,6 +23,7 @@ from app.models.enums import Permission, RoleType
 from app.models.issue import Issue
 from app.models.membership import ProjectMember, WorkspaceMember
 from app.models.project import Project
+from app.models.sprint import Sprint
 from app.models.user import User
 from app.models.workspace import Workspace
 
@@ -541,5 +542,103 @@ def require_issue_permission(
             )
 
         return issue
+
+    return dependency
+
+
+def require_sprint_permission(
+    permission: Permission | str,
+) -> Callable[..., Sprint]:
+    """
+    FastAPI dependency factory enforcing a specific Permission within a Sprint's Project.
+
+    Extracts `sprint_id` or `id` from route path parameters.
+    - Returns 404 if sprint does not exist or is soft-deleted, or user lacks access.
+    - Returns 403 if user lacks required permission.
+    - Returns active Sprint on success.
+    """
+    perm_enum = (
+        permission if isinstance(permission, Permission) else Permission(permission)
+    )
+
+    def dependency(
+        request: Request,
+        current_user: Annotated[User, Depends(get_current_user)],
+        db: Annotated[Session, Depends(get_db)],
+    ) -> Sprint:
+        raw_id = request.path_params.get("sprint_id") or request.path_params.get("id")
+        if not raw_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Sprint not found.",
+            )
+
+        try:
+            sprint_id = uuid.UUID(str(raw_id))
+        except ValueError, AttributeError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Sprint not found.",
+            )
+
+        sprint = db.scalar(
+            select(Sprint).where(
+                Sprint.id == sprint_id,
+                Sprint.deleted_at.is_(None),
+            )
+        )
+        if sprint is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Sprint not found.",
+            )
+
+        # Check project membership
+        member = db.scalar(
+            select(ProjectMember).where(
+                ProjectMember.project_id == sprint.project_id,
+                ProjectMember.user_id == current_user.id,
+            )
+        )
+        effective_role: RoleType | None = member.role if member else None
+
+        # Check workspace membership for workspace Owner / Admin inheritance
+        project = db.scalar(
+            select(Project).where(
+                Project.id == sprint.project_id,
+                Project.deleted_at.is_(None),
+            )
+        )
+        if project:
+            ws_member = db.scalar(
+                select(WorkspaceMember).where(
+                    WorkspaceMember.workspace_id == project.workspace_id,
+                    WorkspaceMember.user_id == current_user.id,
+                )
+            )
+            if (
+                ws_member
+                and ws_member.role in (RoleType.OWNER, RoleType.ADMIN)
+                and (
+                    effective_role is None
+                    or ROLE_HIERARCHY.get(ws_member.role, 0)
+                    > ROLE_HIERARCHY.get(effective_role, 0)
+                )
+            ):
+                effective_role = ws_member.role
+
+        if effective_role is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Sprint not found.",
+            )
+
+        if not role_has_permission(effective_role, perm_enum):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions for this sprint.",
+            )
+
+        return sprint
 
     return dependency
