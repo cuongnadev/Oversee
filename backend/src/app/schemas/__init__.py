@@ -1,3 +1,4 @@
+from app.schemas.auth import RegisterRequest
 from app.schemas.issue import (
     IssueBase,
     IssueCreate,
@@ -46,6 +47,7 @@ __all__ = [
     "ProjectResponse",
     "ProjectUpdate",
     "RefreshTokenRequest",
+    "RegisterRequest",
     "SprintBase",
     "SprintCreate",
     "SprintResponse",
