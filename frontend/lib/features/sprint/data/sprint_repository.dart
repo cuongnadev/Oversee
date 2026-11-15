@@ -3,8 +3,10 @@ import 'package:frontend/core/constants/api_constants.dart';
 import 'package:frontend/core/enums/app_enums.dart';
 import 'package:frontend/core/network/api_client.dart';
 import 'package:frontend/features/issue/domain/issue_model.dart';
+import 'package:frontend/features/sprint/domain/sprint_complete_model.dart';
 import 'package:frontend/features/sprint/domain/sprint_model.dart';
 import 'package:frontend/features/sprint/domain/sprint_planning_model.dart';
+import 'package:frontend/features/sprint/domain/sprint_progress_model.dart';
 
 /// Sprint repository handling all HTTP interactions with Oversee Sprint API endpoints.
 class SprintRepository {
@@ -99,7 +101,7 @@ class SprintRepository {
   }
 
   /// Completes an active sprint (`POST /api/v1/sprints/{sprint_id}/complete`).
-  Future<void> completeSprint(
+  Future<SprintCompleteModel> completeSprint(
     String sprintId, {
     String? targetSprintId,
   }) async {
@@ -107,10 +109,19 @@ class SprintRepository {
       if (targetSprintId != null) 'target_sprint_id': targetSprintId,
     };
 
-    await _client.post<dynamic>(
+    final response = await _client.post<Map<String, dynamic>>(
       '${ApiConstants.sprints}/$sprintId/complete',
       data: payload.isNotEmpty ? payload : null,
     );
+    return SprintCompleteModel.fromJson(response.data!);
+  }
+
+  /// Retrieves sprint progress metrics and burndown series (`GET /api/v1/sprints/{sprint_id}/progress`).
+  Future<SprintProgressModel> getSprintProgress(String sprintId) async {
+    final response = await _client.get<Map<String, dynamic>>(
+      '${ApiConstants.sprints}/$sprintId/progress',
+    );
+    return SprintProgressModel.fromJson(response.data!);
   }
 
   /// Adds issues to a sprint (`POST /api/v1/sprints/{sprint_id}/issues`).

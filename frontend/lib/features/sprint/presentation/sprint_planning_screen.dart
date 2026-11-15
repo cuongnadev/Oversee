@@ -7,9 +7,11 @@ import 'package:frontend/features/issue/domain/issue_model.dart';
 import 'package:frontend/features/issue/presentation/widgets/issue_detail_panel.dart';
 import 'package:frontend/features/project/presentation/widgets/project_screen_scaffold.dart';
 import 'package:frontend/features/sprint/application/sprint_planning_provider.dart';
+import 'package:frontend/features/sprint/data/sprint_repository.dart';
 import 'package:frontend/features/sprint/domain/sprint_model.dart';
 import 'package:frontend/features/sprint/domain/sprint_planning_model.dart';
 import 'package:frontend/features/sprint/presentation/widgets/create_sprint_dialog.dart';
+import 'package:frontend/features/sprint/presentation/widgets/start_sprint_dialog.dart';
 import 'package:frontend/shared/widgets/widgets.dart';
 
 /// Sprint Planning screen supporting:
@@ -63,6 +65,43 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
         }
         return false;
       },
+    );
+  }
+
+  void _openStartSprintDialog(
+    BuildContext context,
+    SprintModel sprint,
+    SprintPlanningState state,
+    SprintPlanningNotifier notifier,
+  ) {
+    final hasActiveSprint = state.sprints.any((s) => s.status == SprintStatus.active);
+    final sprintRepo = ref.read(sprintRepositoryProvider);
+
+    showDialog<bool>(
+      context: context,
+      builder: (ctx) => StartSprintDialog(
+        sprint: sprint,
+        hasOtherActiveSprint: hasActiveSprint,
+        onStart: ({startDate, endDate}) async {
+          try {
+            await sprintRepo.startSprint(
+              sprint.id,
+              startDate: startDate,
+              endDate: endDate,
+            );
+            await notifier.refresh();
+            if (context.mounted) {
+              AppFeedback.showSuccess(context, 'Sprint "${sprint.name}" started successfully.');
+            }
+            return true;
+          } catch (e) {
+            if (context.mounted) {
+              AppFeedback.showError(context, 'Failed to start sprint: ${e.toString().replaceAll('Exception: ', '')}');
+            }
+            return false;
+          }
+        },
+      ),
     );
   }
 
@@ -567,6 +606,22 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
                           sprint.dateRangeText,
                           style: const TextStyle(color: AppColors.textSecondaryDark, fontSize: 12),
                         ),
+                        if (sprint.status == SprintStatus.planned) ...[
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.play_arrow_rounded, size: 14),
+                            label: const Text('Start'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            onPressed: () => _openStartSprintDialog(context, sprint, state, notifier),
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 10),
