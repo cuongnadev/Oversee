@@ -61,11 +61,32 @@ class NotFoundException extends AppException {
   });
 }
 
-/// Thrown on network connection issues.
+/// Thrown when entity conflicts with existing state, e.g. duplicate key (HTTP 409).
+class ConflictException extends AppException {
+  const ConflictException({
+    required super.message,
+    super.code = 'CONFLICT',
+    super.details,
+    super.statusCode = 409,
+  });
+}
+
+/// Thrown on server internal errors (HTTP 500+).
+class ServerException extends AppException {
+  const ServerException({
+    required super.message,
+    super.code = 'INTERNAL_SERVER_ERROR',
+    super.details,
+    super.statusCode = 500,
+  });
+}
+
+/// Thrown on network connection issues and timeouts.
 class NetworkException extends AppException {
   const NetworkException({
     required super.message,
     super.code = 'NETWORK_ERROR',
     super.details,
+    super.statusCode,
   });
 }
