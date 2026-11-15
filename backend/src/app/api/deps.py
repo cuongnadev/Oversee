@@ -1,11 +1,17 @@
 import uuid
+from collections.abc import Callable
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.permissions import (
+    ROLE_HIERARCHY,
+    has_required_role,
+    role_has_permission,
+)
 from app.core.security import (
     TOKEN_TYPE_ACCESS,
     TokenExpiredError,
@@ -13,7 +19,11 @@ from app.core.security import (
     decode_token,
 )
 from app.db.session import get_db
+from app.models.enums import Permission, RoleType
+from app.models.membership import ProjectMember, WorkspaceMember
+from app.models.project import Project
 from app.models.user import User
+from app.models.workspace import Workspace
 
 oauth2_scheme = OAuth2PasswordBearer(
     tokenUrl="/api/v1/auth/login",
@@ -92,3 +102,340 @@ def get_current_active_user(
 ) -> User:
     """Convenience dependency returning the active authenticated user."""
     return current_user
+
+
+def require_workspace_role(
+    min_role: RoleType | str,
+) -> Callable[..., WorkspaceMember]:
+    """
+    FastAPI dependency factory enforcing a minimum RoleType within a Workspace.
+
+    Extracts `workspace_id` or `id` from route path parameters.
+    - Returns 404 if workspace does not exist or user is not a member.
+    - Returns 403 if user is a member but role level is below `min_role`.
+    - Returns WorkspaceMember on success.
+    """
+    min_role_enum = min_role if isinstance(min_role, RoleType) else RoleType(min_role)
+
+    def dependency(
+        request: Request,
+        current_user: Annotated[User, Depends(get_current_user)],
+        db: Annotated[Session, Depends(get_db)],
+    ) -> WorkspaceMember:
+        raw_id = request.path_params.get("workspace_id") or request.path_params.get(
+            "id"
+        )
+        if not raw_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Workspace not found.",
+            )
+
+        try:
+            workspace_id = uuid.UUID(str(raw_id))
+        except ValueError, AttributeError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Workspace not found.",
+            )
+
+        workspace = db.scalar(
+            select(Workspace).where(
+                Workspace.id == workspace_id,
+                Workspace.deleted_at.is_(None),
+            )
+        )
+        if workspace is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Workspace not found.",
+            )
+
+        member = db.scalar(
+            select(WorkspaceMember).where(
+                WorkspaceMember.workspace_id == workspace_id,
+                WorkspaceMember.user_id == current_user.id,
+            )
+        )
+        if member is None:
+            # Users outside the workspace receive 404 to avoid leaking existence
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Workspace not found.",
+            )
+
+        if not has_required_role(member.role, min_role_enum):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions for this workspace.",
+            )
+
+        return member
+
+    return dependency
+
+
+def require_workspace_permission(
+    permission: Permission | str,
+) -> Callable[..., WorkspaceMember]:
+    """
+    FastAPI dependency factory enforcing a specific Permission within a Workspace.
+
+    - Returns 404 if workspace does not exist or user is not a member.
+    - Returns 403 if user role lacks the required permission.
+    - Returns WorkspaceMember on success.
+    """
+    perm_enum = (
+        permission if isinstance(permission, Permission) else Permission(permission)
+    )
+
+    def dependency(
+        request: Request,
+        current_user: Annotated[User, Depends(get_current_user)],
+        db: Annotated[Session, Depends(get_db)],
+    ) -> WorkspaceMember:
+        raw_id = request.path_params.get("workspace_id") or request.path_params.get(
+            "id"
+        )
+        if not raw_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Workspace not found.",
+            )
+
+        try:
+            workspace_id = uuid.UUID(str(raw_id))
+        except ValueError, AttributeError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Workspace not found.",
+            )
+
+        workspace = db.scalar(
+            select(Workspace).where(
+                Workspace.id == workspace_id,
+                Workspace.deleted_at.is_(None),
+            )
+        )
+        if workspace is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Workspace not found.",
+            )
+
+        member = db.scalar(
+            select(WorkspaceMember).where(
+                WorkspaceMember.workspace_id == workspace_id,
+                WorkspaceMember.user_id == current_user.id,
+            )
+        )
+        if member is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Workspace not found.",
+            )
+
+        if not role_has_permission(member.role, perm_enum):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions for this workspace.",
+            )
+
+        return member
+
+    return dependency
+
+
+def require_project_role(
+    min_role: RoleType | str,
+) -> Callable[..., ProjectMember]:
+    """
+    FastAPI dependency factory enforcing a minimum RoleType within a Project.
+
+    Extracts `project_id` or `id` from route path parameters.
+    - Returns 404 if project does not exist or user is not a project/workspace member.
+    - Returns 403 if user has insufficient role.
+    - Grants workspace Owner/Admin access to projects in their workspace.
+    - Returns ProjectMember on success.
+    """
+    min_role_enum = min_role if isinstance(min_role, RoleType) else RoleType(min_role)
+
+    def dependency(
+        request: Request,
+        current_user: Annotated[User, Depends(get_current_user)],
+        db: Annotated[Session, Depends(get_db)],
+    ) -> ProjectMember:
+        raw_id = request.path_params.get("project_id") or request.path_params.get("id")
+        if not raw_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found.",
+            )
+
+        try:
+            project_id = uuid.UUID(str(raw_id))
+        except ValueError, AttributeError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found.",
+            )
+
+        project = db.scalar(
+            select(Project).where(
+                Project.id == project_id,
+                Project.deleted_at.is_(None),
+            )
+        )
+        if project is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found.",
+            )
+
+        member = db.scalar(
+            select(ProjectMember).where(
+                ProjectMember.project_id == project_id,
+                ProjectMember.user_id == current_user.id,
+            )
+        )
+
+        effective_role: RoleType | None = member.role if member else None
+
+        # Check workspace membership for workspace Owner / Admin inheritance
+        ws_member = db.scalar(
+            select(WorkspaceMember).where(
+                WorkspaceMember.workspace_id == project.workspace_id,
+                WorkspaceMember.user_id == current_user.id,
+            )
+        )
+
+        if (
+            ws_member
+            and ws_member.role in (RoleType.OWNER, RoleType.ADMIN)
+            and (
+                effective_role is None
+                or ROLE_HIERARCHY.get(ws_member.role, 0)
+                > ROLE_HIERARCHY.get(effective_role, 0)
+            )
+        ):
+            effective_role = ws_member.role
+
+        if effective_role is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found.",
+            )
+
+        if not has_required_role(effective_role, min_role_enum):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions for this project.",
+            )
+
+        if member is not None:
+            return member
+
+        return ProjectMember(
+            project_id=project.id,
+            user_id=current_user.id,
+            role=effective_role,
+        )
+
+    return dependency
+
+
+def require_project_permission(
+    permission: Permission | str,
+) -> Callable[..., ProjectMember]:
+    """
+    FastAPI dependency factory enforcing a specific Permission within a Project.
+
+    - Returns 404 if project does not exist or user lacks access.
+    - Returns 403 if user role lacks the required permission.
+    - Returns ProjectMember on success.
+    """
+    perm_enum = (
+        permission if isinstance(permission, Permission) else Permission(permission)
+    )
+
+    def dependency(
+        request: Request,
+        current_user: Annotated[User, Depends(get_current_user)],
+        db: Annotated[Session, Depends(get_db)],
+    ) -> ProjectMember:
+        raw_id = request.path_params.get("project_id") or request.path_params.get("id")
+        if not raw_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found.",
+            )
+
+        try:
+            project_id = uuid.UUID(str(raw_id))
+        except ValueError, AttributeError:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found.",
+            )
+
+        project = db.scalar(
+            select(Project).where(
+                Project.id == project_id,
+                Project.deleted_at.is_(None),
+            )
+        )
+        if project is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found.",
+            )
+
+        member = db.scalar(
+            select(ProjectMember).where(
+                ProjectMember.project_id == project_id,
+                ProjectMember.user_id == current_user.id,
+            )
+        )
+
+        effective_role: RoleType | None = member.role if member else None
+
+        ws_member = db.scalar(
+            select(WorkspaceMember).where(
+                WorkspaceMember.workspace_id == project.workspace_id,
+                WorkspaceMember.user_id == current_user.id,
+            )
+        )
+
+        if (
+            ws_member
+            and ws_member.role in (RoleType.OWNER, RoleType.ADMIN)
+            and (
+                effective_role is None
+                or ROLE_HIERARCHY.get(ws_member.role, 0)
+                > ROLE_HIERARCHY.get(effective_role, 0)
+            )
+        ):
+            effective_role = ws_member.role
+
+        if effective_role is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Project not found.",
+            )
+
+        if not role_has_permission(effective_role, perm_enum):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions for this project.",
+            )
+
+        if member is not None:
+            return member
+
+        return ProjectMember(
+            project_id=project.id,
+            user_id=current_user.id,
+            role=effective_role,
+        )
+
+    return dependency
