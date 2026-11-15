@@ -11,7 +11,7 @@ from app.api.deps import (
     require_project_role,
 )
 from app.db.session import get_db
-from app.models.enums import Permission, RoleType
+from app.models.enums import IssueType, Permission, RoleType
 from app.models.membership import ProjectMember, WorkspaceMember
 from app.models.project import Project
 from app.models.user import User
@@ -32,6 +32,8 @@ from app.schemas.project import (
 from app.services.issue import (
     create_issue,
     list_project_issues,
+    parse_issue_priorities,
+    parse_issue_statuses,
 )
 from app.services.project import (
     add_project_member,
@@ -267,7 +269,7 @@ def create_project_issue(
     response_model=IssuePageResponse,
     status_code=status.HTTP_200_OK,
     summary="List project issues",
-    description="List all non-deleted issues in the project. Requires ISSUE_READ permission (VIEWER or higher).",
+    description="List all non-deleted issues in the project with filtering, sorting, and pagination. Requires ISSUE_READ permission (VIEWER or higher).",
 )
 def list_project_issues_endpoint(
     project_id: uuid.UUID,
@@ -279,11 +281,86 @@ def list_project_issues_endpoint(
     page_size: int = Query(
         20, ge=1, le=100, description="Number of items per page (max 100)"
     ),
+    status_filter: Annotated[
+        list[str] | None,
+        Query(
+            alias="status",
+            description="Filter by issue status (repeatable or comma-separated, e.g. 'todo,in_progress')",
+        ),
+    ] = None,
+    assignee_id: Annotated[
+        uuid.UUID | None,
+        Query(description="Filter by assignee user ID"),
+    ] = None,
+    assignee: Annotated[
+        str | None,
+        Query(description="Filter by assignee ('unassigned' or user UUID string)"),
+    ] = None,
+    priority: Annotated[
+        list[str] | None,
+        Query(
+            description="Filter by priority (repeatable or comma-separated, e.g. 'high,urgent')"
+        ),
+    ] = None,
+    sprint_id: Annotated[
+        uuid.UUID | None,
+        Query(description="Filter by sprint ID"),
+    ] = None,
+    sprint: Annotated[
+        str | None,
+        Query(description="Filter by sprint ('none', 'backlog', or sprint UUID)"),
+    ] = None,
+    type: Annotated[
+        IssueType | None,
+        Query(description="Filter by issue type (e.g. 'task', 'bug', 'story')"),
+    ] = None,
+    parent_id: Annotated[
+        uuid.UUID | None,
+        Query(description="Filter by parent issue ID"),
+    ] = None,
+    search: Annotated[
+        str | None,
+        Query(description="Search keyword in title or description"),
+    ] = None,
+    sort: Annotated[
+        str | None,
+        Query(
+            description="Multi-field sort expression, e.g. 'priority:desc,created_at:asc' or '-priority,created_at'"
+        ),
+    ] = None,
+    sort_by: Annotated[
+        str | None,
+        Query(description="Field name to sort by"),
+    ] = None,
+    order: Annotated[
+        str,
+        Query(description="Sort direction ('asc' or 'desc')"),
+    ] = "asc",
+    cursor: Annotated[
+        str | None,
+        Query(description="Cursor for cursor-based pagination"),
+    ] = None,
 ) -> IssuePageResponse:
-    """List issues in the project with pagination."""
+    """List issues in the project with filtering, multi-field sorting, and pagination."""
+    parsed_statuses = parse_issue_statuses(status_filter)
+    parsed_priorities = parse_issue_priorities(priority)
+
     return list_project_issues(
         db=db,
         project_id=project_id,
         page=page,
         page_size=page_size,
+        statuses=parsed_statuses,
+        assignee_id=assignee_id,
+        assignee=assignee,
+        priorities=parsed_priorities,
+        sprint_id=sprint_id,
+        sprint=sprint,
+        issue_type=type,
+        parent_id=parent_id,
+        search=search,
+        sort=sort,
+        sort_by=sort_by,
+        order=order,
+        cursor=cursor,
     )

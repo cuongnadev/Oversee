@@ -1,3 +1,5 @@
+import base64
+import json
 import logging
 import math
 import uuid
@@ -6,7 +8,7 @@ from datetime import UTC, datetime
 from typing import Any, Final
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.permissions import ROLE_HIERARCHY, role_has_permission
@@ -428,13 +430,173 @@ def get_issue_by_id(db: Session, issue_id: uuid.UUID) -> Issue:
     return issue
 
 
+def parse_issue_statuses(
+    status_param: list[str] | str | None,
+) -> list[IssueStatus] | None:
+    """Parse status query parameter into a validated list of IssueStatus enums."""
+    if not status_param:
+        return None
+    raw_list = status_param if isinstance(status_param, list) else [status_param]
+    result: list[IssueStatus] = []
+    for item in raw_list:
+        for part in item.split(","):
+            part = part.strip()
+            if not part:
+                continue
+            try:
+                result.append(IssueStatus(part))
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                    detail=f"Invalid issue status: '{part}'",
+                )
+    return result if result else None
+
+
+def parse_issue_priorities(
+    priority_param: list[str] | str | None,
+) -> list[IssuePriority] | None:
+    """Parse priority query parameter into a validated list of IssuePriority enums."""
+    if not priority_param:
+        return None
+    raw_list = priority_param if isinstance(priority_param, list) else [priority_param]
+    result: list[IssuePriority] = []
+    for item in raw_list:
+        for part in item.split(","):
+            part = part.strip()
+            if not part:
+                continue
+            try:
+                result.append(IssuePriority(part))
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                    detail=f"Invalid issue priority: '{part}'",
+                )
+    return result if result else None
+
+
+def _build_sort_clauses(
+    sort: str | None = None,
+    sort_by: str | None = None,
+    order: str = "asc",
+) -> list[Any]:
+    """
+    Build SQLAlchemy order_by clauses from sort expressions or sort_by/order.
+    Supports comma-separated multi-field sorting, e.g.:
+      - 'priority:desc,created_at:asc'
+      - '-priority,created_at'
+    """
+    priority_order = case(
+        (Issue.priority == IssuePriority.LOWEST, 1),
+        (Issue.priority == IssuePriority.LOW, 2),
+        (Issue.priority == IssuePriority.MEDIUM, 3),
+        (Issue.priority == IssuePriority.HIGH, 4),
+        (Issue.priority == IssuePriority.URGENT, 5),
+        else_=0,
+    )
+
+    status_order = case(
+        (Issue.status == IssueStatus.BACKLOG, 1),
+        (Issue.status == IssueStatus.TODO, 2),
+        (Issue.status == IssueStatus.IN_PROGRESS, 3),
+        (Issue.status == IssueStatus.IN_REVIEW, 4),
+        (Issue.status == IssueStatus.DONE, 5),
+        (Issue.status == IssueStatus.CANCELED, 6),
+        else_=0,
+    )
+
+    field_map: dict[str, Any] = {
+        "issue_number": Issue.issue_number,
+        "number": Issue.issue_number,
+        "title": Issue.title,
+        "status": status_order,
+        "priority": priority_order,
+        "created_at": Issue.created_at,
+        "updated_at": Issue.updated_at,
+        "backlog_rank": Issue.backlog_rank,
+        "rank": Issue.backlog_rank,
+    }
+
+    clauses: list[Any] = []
+
+    if sort:
+        tokens = [t.strip() for t in sort.split(",") if t.strip()]
+        for token in tokens:
+            direction = "asc"
+            field_name = token
+            if field_name.startswith("-"):
+                direction = "desc"
+                field_name = field_name[1:]
+            elif field_name.startswith("+"):
+                direction = "asc"
+                field_name = field_name[1:]
+            elif ":" in field_name:
+                parts = field_name.split(":", 1)
+                field_name = parts[0].strip()
+                direction = parts[1].strip().lower()
+
+            if direction not in ("asc", "desc"):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                    detail=f"Invalid sort direction '{direction}'. Must be 'asc' or 'desc'.",
+                )
+
+            col = field_map.get(field_name.lower())
+            if col is None:
+                allowed = ", ".join(sorted(field_map.keys()))
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                    detail=f"Invalid sort field: '{field_name}'. Allowed fields: {allowed}",
+                )
+
+            clauses.append(col.desc() if direction == "desc" else col.asc())
+
+    elif sort_by:
+        field_name = sort_by.strip().lower()
+        col = field_map.get(field_name)
+        if col is None:
+            allowed = ", ".join(sorted(field_map.keys()))
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=f"Invalid sort field: '{sort_by}'. Allowed fields: {allowed}",
+            )
+        direction = order.strip().lower()
+        if direction not in ("asc", "desc"):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail=f"Invalid sort direction '{order}'. Must be 'asc' or 'desc'.",
+            )
+        clauses.append(col.desc() if direction == "desc" else col.asc())
+
+    if not clauses:
+        clauses.append(Issue.issue_number.asc())
+    else:
+        clauses.append(Issue.id.asc())
+
+    return clauses
+
+
 def list_project_issues(
     db: Session,
     project_id: uuid.UUID,
     page: int = 1,
     page_size: int = 20,
+    statuses: list[IssueStatus] | None = None,
+    assignee_id: uuid.UUID | None = None,
+    assignee: str | None = None,
+    priorities: list[IssuePriority] | None = None,
+    sprint_id: uuid.UUID | None = None,
+    sprint: str | None = None,
+    issue_type: IssueType | None = None,
+    parent_id: uuid.UUID | None = None,
+    search: str | None = None,
+    sort: str | None = None,
+    sort_by: str | None = None,
+    order: str = "asc",
+    cursor: str | None = None,
 ) -> IssuePageResponse:
-    """List non-deleted issues for a project with pagination."""
+    """List non-deleted issues for a project with filtering, multi-field sorting, and pagination."""
     project = db.scalar(
         select(Project).where(
             Project.id == project_id,
@@ -447,17 +609,97 @@ def list_project_issues(
             detail="Project not found.",
         )
 
-    total = (
-        db.scalar(
-            select(func.count(Issue.id)).where(
-                Issue.project_id == project_id,
-                Issue.deleted_at.is_(None),
+    conditions: list[Any] = [
+        Issue.project_id == project_id,
+        Issue.deleted_at.is_(None),
+    ]
+
+    # Status filter
+    if statuses:
+        conditions.append(Issue.status.in_(statuses))
+
+    # Assignee filter
+    if assignee is not None:
+        if assignee.lower() in ("unassigned", "none", "null"):
+            conditions.append(Issue.assignee_id.is_(None))
+        else:
+            try:
+                parsed_assignee_id = uuid.UUID(assignee)
+                conditions.append(Issue.assignee_id == parsed_assignee_id)
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                    detail=f"Invalid assignee ID: '{assignee}'",
+                )
+    elif assignee_id is not None:
+        conditions.append(Issue.assignee_id == assignee_id)
+
+    # Priority filter
+    if priorities:
+        conditions.append(Issue.priority.in_(priorities))
+
+    # Sprint filter
+    if sprint is not None:
+        if sprint.lower() in ("none", "backlog", "null"):
+            conditions.append(Issue.sprint_id.is_(None))
+        else:
+            try:
+                parsed_sprint_id = uuid.UUID(sprint)
+                conditions.append(Issue.sprint_id == parsed_sprint_id)
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                    detail=f"Invalid sprint ID: '{sprint}'",
+                )
+    elif sprint_id is not None:
+        conditions.append(Issue.sprint_id == sprint_id)
+
+    # Issue type filter
+    if issue_type is not None:
+        conditions.append(Issue.type == issue_type)
+
+    # Parent ID filter
+    if parent_id is not None:
+        conditions.append(Issue.parent_id == parent_id)
+
+    # Search keyword filter
+    if search and search.strip():
+        term = f"%{search.strip()}%"
+        conditions.append(
+            or_(
+                Issue.title.ilike(term),
+                Issue.description.ilike(term),
             )
         )
-        or 0
-    )
 
-    offset = (page - 1) * page_size
+    # Total matching count
+    total = db.scalar(select(func.count(Issue.id)).where(*conditions)) or 0
+
+    # Pagination calculation (cursor vs offset)
+    if cursor:
+        try:
+            raw = base64.urlsafe_b64decode(cursor.encode()).decode()
+            cursor_data = json.loads(raw)
+            offset = int(cursor_data["offset"])
+            if offset < 0:
+                raise ValueError
+        except (
+            ValueError,
+            KeyError,
+            TypeError,
+            json.JSONDecodeError,
+            UnicodeDecodeError,
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="Invalid pagination cursor.",
+            )
+        page = (offset // page_size) + 1
+    else:
+        offset = (page - 1) * page_size
+
+    sort_clauses = _build_sort_clauses(sort=sort, sort_by=sort_by, order=order)
+
     items = list(
         db.scalars(
             select(Issue)
@@ -465,17 +707,21 @@ def list_project_issues(
                 selectinload(Issue.parent),
                 selectinload(Issue.sub_issues),
             )
-            .where(
-                Issue.project_id == project_id,
-                Issue.deleted_at.is_(None),
-            )
-            .order_by(Issue.issue_number.asc())
+            .where(*conditions)
+            .order_by(*sort_clauses)
             .offset(offset)
             .limit(page_size)
         ).all()
     )
 
     total_pages = math.ceil(total / page_size) if total > 0 else 1
+    has_more = (offset + len(items)) < total
+    next_cursor = None
+    if has_more:
+        next_payload = {"offset": offset + len(items)}
+        next_cursor = base64.urlsafe_b64encode(
+            json.dumps(next_payload).encode()
+        ).decode()
 
     return IssuePageResponse(
         items=items,
@@ -483,6 +729,8 @@ def list_project_issues(
         page=page,
         page_size=page_size,
         total_pages=total_pages,
+        next_cursor=next_cursor,
+        has_more=has_more,
     )
 
 
