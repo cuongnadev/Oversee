@@ -11,6 +11,7 @@ class AppConstants {
   static const String userProfileKey = 'oversee_user_profile';
   static const String lastWorkspaceIdKey = 'oversee_last_workspace_id';
   static const String themeModeKey = 'oversee_theme_mode';
+  static const String sidebarExpandedKey = 'oversee_sidebar_expanded';
 
   // Pagination defaults
   static const int defaultPage = 1;
