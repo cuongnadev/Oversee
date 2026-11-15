@@ -165,3 +165,45 @@ class SprintPlanningResponse(BaseModel):
     warning: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class SprintStartRequest(BaseModel):
+    """Schema for starting a planned sprint."""
+
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def validate_dates(self) -> Self:
+        if (
+            self.start_date is not None
+            and self.end_date is not None
+            and self.start_date >= self.end_date
+        ):
+            raise ValueError("Sprint start_date must be strictly before end_date.")
+        return self
+
+
+class SprintCompleteRequest(BaseModel):
+    """Schema for completing an active sprint."""
+
+    target_sprint_id: uuid.UUID | None = Field(
+        default=None,
+        description="Optional target sprint ID to move incomplete issues into. If omitted, incomplete issues return to the product backlog.",
+    )
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class SprintCompleteResponse(BaseModel):
+    """Response returned upon completing a sprint."""
+
+    sprint: SprintResponse
+    completed_issues_count: int
+    incomplete_issues_count: int
+    moved_to_sprint_id: uuid.UUID | None = None
+    moved_to_backlog: bool = False
+
+    model_config = ConfigDict(from_attributes=True)
