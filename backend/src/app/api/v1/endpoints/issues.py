@@ -30,6 +30,7 @@ from app.services.issue import (
     get_issue_activities,
     list_project_issues,
     list_sub_issues,
+    move_issue_to_backlog,
     parse_issue_priorities,
     parse_issue_statuses,
     restore_issue,
@@ -347,3 +348,19 @@ def get_issue_activity_history(
 ) -> list[IssueActivityResponse]:
     """Retrieve activity log entries for the specified issue."""
     return get_issue_activities(issue_id=issue.id)
+
+
+@router.post(
+    "/{issue_id}/backlog",
+    response_model=IssueResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Move issue to backlog",
+    description="Move this issue to the product backlog by unsetting its sprint. Requires ISSUE_UPDATE permission.",
+)
+def move_issue_to_backlog_endpoint(
+    issue: Annotated[Issue, Depends(require_issue_permission(Permission.ISSUE_UPDATE))],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> IssueResponse:
+    """Move an issue into the product backlog."""
+    return move_issue_to_backlog(db=db, issue=issue, actor=current_user)

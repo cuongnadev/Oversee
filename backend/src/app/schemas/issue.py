@@ -1,7 +1,8 @@
 import uuid
 from datetime import datetime
+from typing import Self
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.models.enums import IssuePriority, IssueStatus, IssueType
 
@@ -85,6 +86,35 @@ class IssueStatusUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     status: IssueStatus
+
+
+class BacklogAddIssuesRequest(BaseModel):
+    """Schema for adding/moving existing issues into the product backlog."""
+
+    issue_ids: list[uuid.UUID] | None = Field(
+        default=None,
+        description="List of issue IDs to move into the product backlog",
+    )
+    issue_id: uuid.UUID | None = Field(
+        default=None,
+        description="Single issue ID to move into the product backlog",
+    )
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def validate_ids(self) -> Self:
+        if not self.issue_ids and not self.issue_id:
+            raise ValueError("Either 'issue_ids' or 'issue_id' must be provided.")
+        return self
+
+    def get_all_issue_ids(self) -> list[uuid.UUID]:
+        ids: list[uuid.UUID] = []
+        if self.issue_ids:
+            ids.extend(self.issue_ids)
+        if self.issue_id and self.issue_id not in ids:
+            ids.append(self.issue_id)
+        return ids
 
 
 class IssueActivityResponse(BaseModel):

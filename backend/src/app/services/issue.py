@@ -1116,3 +1116,233 @@ def list_sub_issues(db: Session, issue_id: uuid.UUID) -> list[Issue]:
             .order_by(Issue.issue_number.asc())
         ).all()
     )
+
+
+# ---------------------------------------------------------------------------
+# Product Backlog Management (#98)
+# ---------------------------------------------------------------------------
+def list_backlog_issues(
+    db: Session,
+    project_id: uuid.UUID,
+    page: int = 1,
+    page_size: int = 20,
+    statuses: list[IssueStatus] | None = None,
+    assignee_id: uuid.UUID | None = None,
+    assignee: str | None = None,
+    priorities: list[IssuePriority] | None = None,
+    issue_type: IssueType | None = None,
+    parent_id: uuid.UUID | None = None,
+    search: str | None = None,
+    sort: str | None = None,
+    sort_by: str | None = None,
+    order: str = "asc",
+    cursor: str | None = None,
+) -> IssuePageResponse:
+    """
+    List all active issues belonging to the product backlog (sprint_id is None).
+    Defaults ordering to backlog_rank:asc, issue_number:asc.
+    """
+    effective_sort = sort
+    if not effective_sort and not sort_by:
+        effective_sort = "backlog_rank:asc,issue_number:asc"
+
+    return list_project_issues(
+        db=db,
+        project_id=project_id,
+        page=page,
+        page_size=page_size,
+        statuses=statuses,
+        assignee_id=assignee_id,
+        assignee=assignee,
+        priorities=priorities,
+        sprint="backlog",
+        issue_type=issue_type,
+        parent_id=parent_id,
+        search=search,
+        sort=effective_sort,
+        sort_by=sort_by,
+        order=order,
+        cursor=cursor,
+    )
+
+
+def add_issues_to_backlog(
+    db: Session,
+    project_id: uuid.UUID,
+    actor: User,
+    issue_ids: list[uuid.UUID],
+) -> list[Issue]:
+    """
+    Add/move issues into the product backlog by setting sprint_id = None.
+    Recalculates backlog_rank to place moved issues at the end of the backlog.
+    Requires ISSUE_UPDATE permission.
+    """
+    actor_role = _resolve_effective_role(db, project_id, actor.id)
+    if not actor_role or not role_has_permission(actor_role, Permission.ISSUE_UPDATE):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to update issues in this project.",
+        )
+
+    project = db.scalar(
+        select(Project).where(
+            Project.id == project_id,
+            Project.deleted_at.is_(None),
+        )
+    )
+    if project is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found.",
+        )
+
+    updated_issues: list[Issue] = []
+    for issue_id in issue_ids:
+        issue = db.scalar(
+            select(Issue)
+            .options(
+                selectinload(Issue.parent),
+                selectinload(Issue.sub_issues),
+            )
+            .where(
+                Issue.id == issue_id,
+                Issue.project_id == project_id,
+                Issue.deleted_at.is_(None),
+            )
+        )
+        if issue is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Issue {issue_id} not found in this project.",
+            )
+
+        if issue.sprint_id is not None:
+            old_sprint = str(issue.sprint_id)
+            issue.sprint_id = None
+            max_rank = (
+                db.scalar(
+                    select(func.coalesce(func.max(Issue.backlog_rank), 0.0)).where(
+                        Issue.project_id == project_id,
+                        Issue.sprint_id.is_(None),
+                        Issue.deleted_at.is_(None),
+                    )
+                )
+                or 0.0
+            )
+            issue.backlog_rank = max_rank + 10.0
+            log_activity(
+                issue_id=issue.id,
+                actor_id=actor.id,
+                action="moved_to_backlog",
+                old_value=old_sprint,
+                new_value="backlog",
+            )
+        updated_issues.append(issue)
+
+    db.commit()
+    for issue in updated_issues:
+        db.refresh(issue)
+    return updated_issues
+
+
+def move_issue_to_backlog(
+    db: Session,
+    issue: Issue,
+    actor: User,
+) -> Issue:
+    """Move a single issue into the product backlog."""
+    results = add_issues_to_backlog(
+        db=db,
+        project_id=issue.project_id,
+        actor=actor,
+        issue_ids=[issue.id],
+    )
+    return results[0]
+
+
+def remove_issue_from_backlog(
+    db: Session,
+    project_id: uuid.UUID,
+    issue_id: uuid.UUID,
+    actor: User,
+    target_sprint_id: uuid.UUID | None = None,
+) -> Issue | None:
+    """
+    Remove an issue from the backlog:
+    - If target_sprint_id is provided, moves it to that sprint (requires ISSUE_UPDATE).
+    - If target_sprint_id is None, soft-deletes the issue from backlog (requires ISSUE_DELETE).
+    """
+    issue = db.scalar(
+        select(Issue)
+        .options(
+            selectinload(Issue.parent),
+            selectinload(Issue.sub_issues),
+        )
+        .where(
+            Issue.id == issue_id,
+            Issue.project_id == project_id,
+            Issue.deleted_at.is_(None),
+        )
+    )
+    if issue is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Issue {issue_id} not found in this project.",
+        )
+
+    if issue.sprint_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Issue {issue_id} is not currently in the backlog.",
+        )
+
+    actor_role = _resolve_effective_role(db, project_id, actor.id)
+
+    if target_sprint_id is not None:
+        if not actor_role or not role_has_permission(
+            actor_role, Permission.ISSUE_UPDATE
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions to assign issue to sprint.",
+            )
+        sprint = db.scalar(
+            select(Sprint).where(
+                Sprint.id == target_sprint_id,
+                Sprint.project_id == project_id,
+                Sprint.deleted_at.is_(None),
+            )
+        )
+        if sprint is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Target sprint not found in this project.",
+            )
+        issue.sprint_id = target_sprint_id
+        log_activity(
+            issue_id=issue.id,
+            actor_id=actor.id,
+            action="assigned_to_sprint",
+            old_value="backlog",
+            new_value=str(target_sprint_id),
+        )
+        db.commit()
+        db.refresh(issue)
+        return issue
+
+    if not actor_role or not role_has_permission(actor_role, Permission.ISSUE_DELETE):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to delete issue from backlog.",
+        )
+
+    _soft_delete_issue_recursive(db, issue)
+    log_activity(
+        issue_id=issue.id,
+        actor_id=actor.id,
+        action="deleted_from_backlog",
+        old_value="active",
+        new_value="deleted",
+    )
+    db.commit()
+    return None
