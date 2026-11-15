@@ -1,7 +1,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_workspace_role
@@ -14,10 +14,19 @@ from app.schemas.membership import (
     WorkspaceMemberResponse,
     WorkspaceMemberUpdate,
 )
+from app.schemas.project import (
+    ProjectCreate,
+    ProjectPageResponse,
+    ProjectResponse,
+)
 from app.schemas.workspace import (
     WorkspaceCreate,
     WorkspaceResponse,
     WorkspaceUpdate,
+)
+from app.services.project import (
+    create_project,
+    list_workspace_projects,
 )
 from app.services.workspace import (
     add_workspace_member,
@@ -222,4 +231,73 @@ def remove_member(
         actor=current_user,
         workspace_id=workspace_id,
         target_user_id=user_id,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Workspace Project Endpoints (#90)
+# ---------------------------------------------------------------------------
+@router.post(
+    "/{workspace_id}/projects",
+    response_model=ProjectResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create project in workspace",
+    description=(
+        "Create a new project in the specified workspace. Requires workspace ADMIN role or higher. "
+        "Project key must be unique within the workspace. The creator is automatically assigned Project OWNER."
+    ),
+)
+def create_project_in_workspace(
+    workspace_id: uuid.UUID,
+    data: ProjectCreate,
+    current_user: Annotated[User, Depends(get_current_user)],
+    member: Annotated[WorkspaceMember, Depends(require_workspace_role(RoleType.ADMIN))],
+    db: Annotated[Session, Depends(get_db)],
+) -> ProjectResponse:
+    """Create a new project in the workspace."""
+    return create_project(
+        db=db,
+        user=current_user,
+        workspace_id=workspace_id,
+        data=data,
+    )
+
+
+@router.get(
+    "/{workspace_id}/projects",
+    response_model=ProjectPageResponse,
+    status_code=status.HTTP_200_OK,
+    summary="List projects in workspace",
+    description=(
+        "List all projects belonging to the workspace with pagination. "
+        "Requires workspace VIEWER role or higher."
+    ),
+)
+def list_projects_in_workspace(
+    workspace_id: uuid.UUID,
+    member: Annotated[
+        WorkspaceMember, Depends(require_workspace_role(RoleType.VIEWER))
+    ],
+    db: Annotated[Session, Depends(get_db)],
+    page: int = Query(default=1, ge=1, description="Page number (1-based)"),
+    page_size: int = Query(default=20, ge=1, le=100, description="Items per page"),
+    include_archived: bool = Query(
+        default=False, description="Include archived projects"
+    ),
+) -> ProjectPageResponse:
+    """List projects in workspace with pagination."""
+    items, total = list_workspace_projects(
+        db=db,
+        workspace_id=workspace_id,
+        page=page,
+        page_size=page_size,
+        include_archived=include_archived,
+    )
+    total_pages = (total + page_size - 1) // page_size if total > 0 else 0
+    return ProjectPageResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        total_pages=total_pages,
     )
