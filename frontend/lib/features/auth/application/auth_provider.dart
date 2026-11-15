@@ -131,6 +131,43 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// Registers a new user account via POST /api/v1/auth/register.
+  /// Returns true on success, or false if registration fails.
+  Future<bool> register({
+    required String email,
+    required String password,
+    required String fullName,
+  }) async {
+    state = state.copyWith(status: AuthStatus.authenticating, clearError: true);
+    final repo = _repository;
+    if (repo == null) {
+      state = state.copyWith(status: AuthStatus.unauthenticated);
+      return true;
+    }
+
+    try {
+      await repo.register(
+        email: email,
+        password: password,
+        fullName: fullName,
+      );
+      state = state.copyWith(status: AuthStatus.unauthenticated);
+      return true;
+    } on AppException catch (e) {
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        errorMessage: e.message,
+      );
+      return false;
+    } catch (e) {
+      state = state.copyWith(
+        status: AuthStatus.unauthenticated,
+        errorMessage: 'An unexpected error occurred during registration. Please try again.',
+      );
+      return false;
+    }
+  }
+
   /// Sets authenticated state manually (used for tests or mock sessions).
   Future<void> setAuthenticated({
     required String accessToken,
