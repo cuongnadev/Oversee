@@ -109,7 +109,7 @@ class SprintPlanningNotifier extends StateNotifier<SprintPlanningState> {
 
     try {
       final projectFuture = _projectRepository.getProject(projectId);
-      final backlogFuture = _issueRepository.listBacklogIssues(projectId, pageSize: 150);
+      final backlogFuture = _issueRepository.listBacklogIssues(projectId, pageSize: 100);
       final sprintsFuture = _sprintRepository.listProjectSprints(projectId);
 
       final results = await Future.wait([projectFuture, backlogFuture, sprintsFuture]);

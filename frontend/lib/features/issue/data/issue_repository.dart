@@ -28,7 +28,7 @@ class IssueRepository {
     final queryParams = <String, dynamic>{
       'page': page,
       'page_size': pageSize,
-      'sort_by': 'backlog_rank:asc,issue_number:asc',
+      'sort': 'backlog_rank:asc,issue_number:asc',
       if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
       if (priority != null) 'priority': priority.value,
       if (type != null) 'type': type.value,
