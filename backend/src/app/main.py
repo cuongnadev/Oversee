@@ -1,0 +1,72 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.api.router import api_router
+from app.core.config import settings
+from app.core.exceptions import setup_exception_handlers
+from app.core.logging import RequestLoggingMiddleware, configure_logging
+
+configure_logging(settings.log_level)
+
+tags_metadata = [
+    {
+        "name": "auth",
+        "description": "Authentication and authorization endpoints.",
+    },
+    {
+        "name": "users",
+        "description": "User profile and account management endpoints.",
+    },
+    {
+        "name": "workspaces",
+        "description": "Workspace management and membership endpoints.",
+    },
+    {
+        "name": "projects",
+        "description": "Project management and configuration endpoints.",
+    },
+    {
+        "name": "health",
+        "description": "Service health check endpoints.",
+    },
+    {
+        "name": "root",
+        "description": "Root endpoint.",
+    },
+]
+
+app = FastAPI(
+    title=settings.app_name,
+    version=settings.app_version,
+    description="Backend API for Oversee task management system",
+    openapi_tags=tags_metadata,
+    contact={
+        "name": "Oversee Team",
+        "url": "https://github.com/cuongnadev/Oversee",
+    },
+    license_info={
+        "name": "MIT",
+    },
+)
+
+setup_exception_handlers(app)
+
+app.add_middleware(
+    CORSMiddleware,
+    # Development-only: allow all origins until frontend origin is known.
+    # Restrict allow_origins to the real frontend origin before production.
+    # allow_credentials must stay False while allow_origins contains "*".
+    allow_origins=settings.cors_origins_list,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.add_middleware(RequestLoggingMiddleware)
+
+app.include_router(api_router)
+
+
+@app.get("/", tags=["root"])
+def root():
+    return {"message": "Oversee Backend API"}
