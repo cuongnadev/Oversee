@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/core/constants/api_constants.dart';
+import 'package:frontend/core/enums/app_enums.dart';
 import 'package:frontend/core/network/api_client.dart';
+import 'package:frontend/features/project/domain/project_member_model.dart';
 import 'package:frontend/features/project/domain/project_model.dart';
 
 final Provider<ProjectRepository> projectRepositoryProvider = Provider<ProjectRepository>((ref) {
@@ -77,12 +79,9 @@ class ProjectRepository {
     return ProjectModel.fromJson(response.data!);
   }
 
-  /// Archives a project (`POST /api/v1/projects/{project_id}/archive`).
-  Future<ProjectModel> archiveProject(String projectId) async {
-    final response = await _client.post<Map<String, dynamic>>(
-      '${ApiConstants.projects}/$projectId/archive',
-    );
-    return ProjectModel.fromJson(response.data!);
+  /// Archives / soft-deletes a project (`DELETE /api/v1/projects/{project_id}`).
+  Future<void> archiveProject(String projectId) async {
+    await _client.delete<void>('${ApiConstants.projects}/$projectId');
   }
 
   /// Restores an archived project (`POST /api/v1/projects/{project_id}/restore`).
@@ -96,5 +95,52 @@ class ProjectRepository {
   /// Soft deletes a project (`DELETE /api/v1/projects/{project_id}`).
   Future<void> deleteProject(String projectId) async {
     await _client.delete<void>('${ApiConstants.projects}/$projectId');
+  }
+
+  /// Lists all members of a project (`GET /api/v1/projects/{project_id}/members`).
+  Future<List<ProjectMemberModel>> listProjectMembers(String projectId) async {
+    final response = await _client.get<List<dynamic>>(
+      '${ApiConstants.projects}/$projectId/members',
+    );
+    final data = response.data ?? [];
+    return data.map((json) => ProjectMemberModel.fromJson(json as Map<String, dynamic>)).toList();
+  }
+
+  /// Adds a member to the project (`POST /api/v1/projects/{project_id}/members`).
+  Future<ProjectMemberModel> addProjectMember(
+    String projectId, {
+    String? userId,
+    String? email,
+    required RoleType role,
+  }) async {
+    final payload = <String, dynamic>{
+      'role': role.value,
+      if (userId != null && userId.trim().isNotEmpty) 'user_id': userId.trim(),
+      if (email != null && email.trim().isNotEmpty) 'email': email.trim().toLowerCase(),
+    };
+
+    final response = await _client.post<Map<String, dynamic>>(
+      '${ApiConstants.projects}/$projectId/members',
+      data: payload,
+    );
+    return ProjectMemberModel.fromJson(response.data!);
+  }
+
+  /// Updates a project member's role (`PATCH /api/v1/projects/{project_id}/members/{user_id}`).
+  Future<ProjectMemberModel> updateProjectMemberRole(
+    String projectId,
+    String userId, {
+    required RoleType role,
+  }) async {
+    final response = await _client.patch<Map<String, dynamic>>(
+      '${ApiConstants.projects}/$projectId/members/$userId',
+      data: {'role': role.value},
+    );
+    return ProjectMemberModel.fromJson(response.data!);
+  }
+
+  /// Removes a member or leaves a project (`DELETE /api/v1/projects/{project_id}/members/{user_id}`).
+  Future<void> removeProjectMember(String projectId, String userId) async {
+    await _client.delete<void>('${ApiConstants.projects}/$projectId/members/$userId');
   }
 }
