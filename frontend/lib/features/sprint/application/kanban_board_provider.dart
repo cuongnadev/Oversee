@@ -90,9 +90,10 @@ class KanbanBoardNotifier extends StateNotifier<KanbanBoardState> {
     // Check workflow validation constraint: Sub-issues must be completed before moving to DONE
     if (newStatus == IssueStatus.done && targetIssue.subIssueCount > 0) {
       if (targetIssue.completedSubIssueCount < targetIssue.subIssueCount) {
+        final remaining = targetIssue.subIssueCount - targetIssue.completedSubIssueCount;
         state = state.copyWith(
           errorMessage:
-              'Cannot move to Done: ${targetIssue.subIssueCount - targetIssue.completedSubIssueCount} sub-issues are still open.',
+              'Cannot move to Done: "${targetIssue.title}" has $remaining open sub-issue${remaining > 1 ? 's' : ''}. Complete all sub-issues first.',
         );
         return false;
       }
@@ -172,6 +173,11 @@ class KanbanBoardNotifier extends StateNotifier<KanbanBoardState> {
       selectedAssigneeId: assigneeId,
       clearAssigneeId: assigneeId == null,
     );
+  }
+
+  /// Clears any active error message.
+  void clearErrorMessage() {
+    state = state.copyWith(clearErrorMessage: true);
   }
 
   /// Clears all active filters.
