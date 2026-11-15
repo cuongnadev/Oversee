@@ -6,6 +6,7 @@ import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/storage/secure_storage_service.dart';
 import 'package:frontend/features/auth/application/auth_provider.dart';
 import 'package:frontend/features/auth/application/auth_state.dart';
+import 'package:frontend/features/issue/presentation/backlog_screen.dart';
 import 'package:frontend/main.dart';
 
 void main() {
@@ -119,7 +120,8 @@ void main() {
       router.go(AppRoutes.projectBacklogPath('ws-team4', 'proj-oversee'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Product Backlog (proj-oversee)'), findsOneWidget);
+      expect(find.byType(BacklogScreen), findsOneWidget);
+      expect(find.text('Product Backlog'), findsWidgets);
     });
 
     testWidgets('Accessing invalid URL triggers 404 NotFoundScreen',

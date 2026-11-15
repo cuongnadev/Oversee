@@ -24,11 +24,12 @@ class AppEmptyState extends StatelessWidget {
     final bool isDark = theme.brightness == Brightness.dark;
 
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420.0),
-          child: Column(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420.0),
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -80,6 +81,7 @@ class AppEmptyState extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
