@@ -307,6 +307,12 @@ def add_issues_to_sprint(
             detail="Insufficient permissions to assign issues to this sprint.",
         )
 
+    if sprint.status in (SprintStatus.COMPLETED, SprintStatus.CLOSED):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot add issues to sprint '{sprint.name}' because it is {sprint.status.value}.",
+        )
+
     assigned: list[Issue] = []
     for issue_id in issue_ids:
         issue = db.scalar(

@@ -54,6 +54,7 @@ class IssueUpdate(BaseModel):
     parent_id: uuid.UUID | None = None
     sprint_id: uuid.UUID | None = None
     backlog_rank: float | None = None
+    allow_open_subissues: bool = False
 
     @field_validator("title")
     @classmethod
@@ -88,6 +89,7 @@ class IssueStatusUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     status: IssueStatus
+    allow_open_subissues: bool = False
 
 
 class BacklogAddIssuesRequest(BaseModel):
