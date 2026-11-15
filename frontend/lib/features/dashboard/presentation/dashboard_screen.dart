@@ -37,12 +37,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return ProjectScreenScaffold(
-      workspaceId: widget.workspaceId,
-      projectId: widget.projectId,
-      currentRoute: 'dashboard',
-      title: 'Project Dashboard',
-      body: Column(
+    return AppKeyboardShortcuts(
+      onRefresh: () => notifier.refresh(),
+      child: ProjectScreenScaffold(
+        workspaceId: widget.workspaceId,
+        projectId: widget.projectId,
+        currentRoute: 'dashboard',
+        title: 'Project Dashboard',
+        body: Column(
         children: [
           // Project Sub-Navigation Tab Bar
           ProjectNavigationTabBar(
@@ -181,8 +183,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildTopToolbar(
     BuildContext context,
@@ -251,8 +254,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         );
 
-        final actionButtons = Row(
-          mainAxisSize: MainAxisSize.min,
+        final actionButtons = Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             OutlinedButton.icon(
               icon: const Icon(Icons.timer_outlined, size: 16),
@@ -266,10 +271,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 context.go(AppRoutes.projectSprintsPath(widget.workspaceId, widget.projectId));
               },
             ),
-            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.keyboard_outlined, size: 20),
+              tooltip: 'Keyboard shortcuts (?)',
+              onPressed: () => KeyboardShortcutsDialog.show(context),
+            ),
             IconButton(
               icon: const Icon(Icons.refresh_rounded, size: 20),
-              tooltip: 'Refresh metrics',
+              tooltip: 'Refresh metrics (R)',
               onPressed: () => notifier.refresh(),
             ),
           ],

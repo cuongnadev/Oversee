@@ -17,6 +17,7 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.light,
       primaryColor: AppColors.primary,
+      focusColor: AppColors.primary.withValues(alpha: 0.15),
       scaffoldBackgroundColor: AppColors.bgLight,
       textTheme: textTheme,
       colorScheme: const ColorScheme.light(
@@ -108,6 +109,7 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.dark,
       primaryColor: AppColors.primaryLight,
+      focusColor: AppColors.primaryLight.withValues(alpha: 0.2),
       scaffoldBackgroundColor: AppColors.bgDark,
       textTheme: textTheme,
       colorScheme: const ColorScheme.dark(

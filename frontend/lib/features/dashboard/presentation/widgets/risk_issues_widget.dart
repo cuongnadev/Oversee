@@ -66,12 +66,14 @@ class RiskIssuesWidget extends StatelessWidget {
                       size: 20,
                     ),
                     const SizedBox(width: 10),
-                    Text(
-                      'Attention Required (${riskIssues.length})',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                    Flexible(
+                      child: Text(
+                        'Attention Required (${riskIssues.length})',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                        ),
                       ),
                     ),
                   ],
@@ -124,8 +126,12 @@ class RiskIssuesWidget extends StatelessWidget {
                     (issue.priority == IssuePriority.urgent);
                 final isLingering = issue.status == IssueStatus.inProgress;
 
-                return InkWell(
-                  onTap: () async {
+                return Semantics(
+                  label:
+                      'Risk issue ${issue.formattedKey(projectKey)}: ${issue.title}. ${isOverdue ? "Urgent Blocker." : ""} Status: ${issue.status.label}',
+                  button: true,
+                  child: InkWell(
+                    onTap: () async {
                     await IssueDetailDialog.show(
                       context,
                       projectId: projectId,
@@ -135,10 +141,11 @@ class RiskIssuesWidget extends StatelessWidget {
                   },
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                    child: Row(
-                      children: [
-                        // Issue Type & Key
-                        Container(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isCompact = constraints.maxWidth < 450;
+
+                        final keyBadge = Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: isDark ? AppColors.surfaceDark : Colors.grey.shade100,
@@ -152,67 +159,98 @@ class RiskIssuesWidget extends StatelessWidget {
                               color: isDark ? Colors.white70 : Colors.black87,
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
+                        );
 
-                        // Title
-                        Expanded(
-                          child: Text(
-                            issue.title,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                        final titleWidget = Text(
+                          issue.title,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
                           ),
-                        ),
-                        const SizedBox(width: 12),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        );
 
-                        // Risk Tag Badge
-                        if (isOverdue)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.error.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: AppColors.error.withValues(alpha: 0.4)),
-                            ),
-                            child: const Text(
-                              'URGENT BLOCKER',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.error,
-                              ),
-                            ),
-                          )
-                        else if (isLingering)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.warning.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
-                            ),
-                            child: const Text(
-                              '3+ DAYS IN PROGRESS',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.warning,
-                              ),
-                            ),
-                          ),
-                        const SizedBox(width: 10),
+                        final riskBadge = isOverdue
+                            ? Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.error.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: AppColors.error.withValues(alpha: 0.4)),
+                                ),
+                                child: const Text(
+                                  'URGENT BLOCKER',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.error,
+                                  ),
+                                ),
+                              )
+                            : isLingering
+                                ? Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.warning.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
+                                    ),
+                                    child: const Text(
+                                      '3+ DAYS IN PROGRESS',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.warning,
+                                      ),
+                                    ),
+                                  )
+                                : null;
 
-                        // Status Badge
-                        _buildStatusBadge(issue.status),
-                      ],
+                        if (isCompact) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  keyBadge,
+                                  const SizedBox(width: 8),
+                                  Expanded(child: titleWidget),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 4,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  if (riskBadge != null) riskBadge,
+                                  _buildStatusBadge(issue.status),
+                                ],
+                              ),
+                            ],
+                          );
+                        }
+
+                        return Row(
+                          children: [
+                            keyBadge,
+                            const SizedBox(width: 12),
+                            Expanded(child: titleWidget),
+                            if (riskBadge != null) ...[
+                              const SizedBox(width: 12),
+                              riskBadge,
+                            ],
+                            const SizedBox(width: 10),
+                            _buildStatusBadge(issue.status),
+                          ],
+                        );
+                      },
                     ),
                   ),
-                );
+                ),
+              );
               },
             ),
         ],

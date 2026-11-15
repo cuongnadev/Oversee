@@ -101,10 +101,15 @@ class PriorityBreakdownWidget extends StatelessWidget {
               ),
             )
           else
-            SizedBox(
-              height: 200,
-              child: BarChart(
-                BarChartData(
+            Semantics(
+              label:
+                  'Priority breakdown bar chart. Urgent: ${priorityCounts[IssuePriority.urgent] ?? 0}, High: ${priorityCounts[IssuePriority.high] ?? 0}, Medium: ${priorityCounts[IssuePriority.medium] ?? 0}, Low: ${priorityCounts[IssuePriority.low] ?? 0}, Lowest: ${priorityCounts[IssuePriority.lowest] ?? 0}',
+              container: true,
+              child: SizedBox(
+                height: 200,
+                child: RepaintBoundary(
+                  child: BarChart(
+                    BarChartData(
                   maxY: maxY,
                   minY: 0,
                   gridData: FlGridData(
@@ -208,7 +213,9 @@ class PriorityBreakdownWidget extends StatelessWidget {
                 ),
               ),
             ),
-        ],
+          ),
+        ),
+      ],
       ),
     );
   }

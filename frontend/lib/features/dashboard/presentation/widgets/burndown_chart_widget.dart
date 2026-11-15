@@ -110,26 +110,28 @@ class BurndownChartWidget extends StatelessWidget {
                     child: const Icon(Icons.trending_down_rounded, color: AppColors.primary, size: 20),
                   ),
                   const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Sprint Burndown Chart',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                  Flexible(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Sprint Burndown Chart',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                          ),
                         ),
-                      ),
-                      Text(
-                        'Story points burned over sprint duration',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                        Text(
+                          'Story points burned over sprint duration',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -156,14 +158,19 @@ class BurndownChartWidget extends StatelessWidget {
           const SizedBox(height: 24),
 
           // Chart Area
-          SizedBox(
-            height: 260,
-            child: LineChart(
-              LineChartData(
-                minX: 0,
-                maxX: (burndown.length - 1).toDouble().clamp(1.0, 100.0),
-                minY: 0,
-                maxY: maxY > 0 ? maxY : 10.0,
+          Semantics(
+            label:
+                'Sprint burndown chart showing ideal and actual remaining story points across ${burndown.length} time points',
+            container: true,
+            child: SizedBox(
+              height: 260,
+              child: RepaintBoundary(
+                child: LineChart(
+                  LineChartData(
+                    minX: 0,
+                    maxX: (burndown.length - 1).toDouble().clamp(1.0, 100.0),
+                    minY: 0,
+                    maxY: maxY > 0 ? maxY : 10.0,
                 gridData: FlGridData(
                   show: true,
                   drawVerticalLine: false,
@@ -297,9 +304,11 @@ class BurndownChartWidget extends StatelessWidget {
               ),
             ),
           ),
-        ],
+        ),
       ),
-    );
+    ],
+  ),
+);
   }
 
   Widget _buildLegendItem({
