@@ -12,20 +12,25 @@ from app.models.user import User
 from app.schemas.issue import IssueResponse
 from app.schemas.sprint import (
     SprintAddIssuesRequest,
+    SprintCompleteRequest,
+    SprintCompleteResponse,
     SprintCreate,
     SprintPlanningResponse,
     SprintRemoveIssuesRequest,
     SprintResponse,
+    SprintStartRequest,
     SprintUpdate,
 )
 from app.services.sprint import (
     add_issues_to_sprint,
+    complete_sprint,
     create_sprint,
     delete_sprint,
     get_sprint_planning,
     list_sprint_issues,
     remove_issue_from_sprint,
     remove_issues_from_sprint,
+    start_sprint,
     update_sprint,
 )
 
@@ -278,3 +283,55 @@ def get_sprint_planning_endpoint(
 ) -> SprintPlanningResponse:
     """Get sprint planning summary metrics."""
     return get_sprint_planning(db=db, sprint=sprint)
+
+
+# ---------------------------------------------------------------------------
+# Sprint Start & Completion Endpoints (#102)
+# ---------------------------------------------------------------------------
+@router.post(
+    "/{sprint_id}/start",
+    response_model=SprintResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Start sprint",
+    description="Transition sprint status from PLANNED to ACTIVE. Validates only one active sprint per project. Requires SPRINT_UPDATE permission.",
+)
+def start_sprint_endpoint(
+    sprint: Annotated[
+        Sprint, Depends(require_sprint_permission(Permission.SPRINT_UPDATE))
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    data: SprintStartRequest | None = None,
+) -> SprintResponse:
+    """Start a planned sprint."""
+    return start_sprint(
+        db=db,
+        sprint=sprint,
+        actor=current_user,
+        start_date=data.start_date if data else None,
+        end_date=data.end_date if data else None,
+    )
+
+
+@router.post(
+    "/{sprint_id}/complete",
+    response_model=SprintCompleteResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Complete sprint",
+    description="Transition sprint status from ACTIVE to COMPLETED. Moves incomplete issues to target sprint or backlog. Requires SPRINT_UPDATE permission.",
+)
+def complete_sprint_endpoint(
+    sprint: Annotated[
+        Sprint, Depends(require_sprint_permission(Permission.SPRINT_UPDATE))
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+    data: SprintCompleteRequest | None = None,
+) -> SprintCompleteResponse:
+    """Complete an active sprint."""
+    return complete_sprint(
+        db=db,
+        sprint=sprint,
+        actor=current_user,
+        target_sprint_id=data.target_sprint_id if data else None,
+    )

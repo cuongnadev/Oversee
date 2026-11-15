@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -6,13 +7,19 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.permissions import ROLE_HIERARCHY, role_has_permission
-from app.models.enums import Permission, RoleType, SprintStatus
+from app.models.enums import IssueStatus, Permission, RoleType, SprintStatus
 from app.models.issue import Issue
 from app.models.membership import ProjectMember, WorkspaceMember
 from app.models.project import Project
 from app.models.sprint import Sprint
 from app.models.user import User
-from app.schemas.sprint import SprintCreate, SprintPlanningResponse, SprintUpdate
+from app.schemas.sprint import (
+    SprintCompleteResponse,
+    SprintCreate,
+    SprintPlanningResponse,
+    SprintResponse,
+    SprintUpdate,
+)
 
 
 def _resolve_effective_role(
@@ -463,4 +470,158 @@ def get_sprint_planning(
         capacity=capacity,
         is_over_capacity=is_over_capacity,
         warning=warning,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Sprint Start & Completion (#102)
+# ---------------------------------------------------------------------------
+def start_sprint(
+    db: Session,
+    sprint: Sprint,
+    actor: User,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+) -> Sprint:
+    """
+    Start a planned sprint (transition status from PLANNED to ACTIVE).
+    Enforces:
+      - Actor has SPRINT_UPDATE permission.
+      - Current status is PLANNED.
+      - Exactly one active sprint per project.
+      - start_date < end_date.
+    """
+    actor_role = _resolve_effective_role(db, sprint.project_id, actor.id)
+    if not actor_role or not role_has_permission(actor_role, Permission.SPRINT_UPDATE):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to start this sprint.",
+        )
+
+    if sprint.status != SprintStatus.PLANNED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot start sprint in '{sprint.status.value}' status. Only planned sprints can be started.",
+        )
+
+    # Check for another active sprint in the same project
+    active_sprint = db.scalar(
+        select(Sprint).where(
+            Sprint.project_id == sprint.project_id,
+            Sprint.id != sprint.id,
+            Sprint.status == SprintStatus.ACTIVE,
+            Sprint.deleted_at.is_(None),
+        )
+    )
+    if active_sprint is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"An active sprint already exists in this project ('{active_sprint.name}'). Only one active sprint is allowed at a time.",
+        )
+
+    effective_start = (
+        start_date
+        if start_date is not None
+        else (sprint.start_date or datetime.now(UTC))
+    )
+    effective_end = end_date if end_date is not None else sprint.end_date
+
+    if (
+        effective_start is not None
+        and effective_end is not None
+        and effective_start >= effective_end
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Sprint start_date must be strictly before end_date.",
+        )
+
+    sprint.start_date = effective_start
+    sprint.end_date = effective_end
+    sprint.status = SprintStatus.ACTIVE
+
+    db.commit()
+    db.refresh(sprint)
+    return sprint
+
+
+def complete_sprint(
+    db: Session,
+    sprint: Sprint,
+    actor: User,
+    target_sprint_id: uuid.UUID | None = None,
+) -> SprintCompleteResponse:
+    """
+    Complete an active sprint (transition status from ACTIVE to COMPLETED).
+    Handles incomplete issues:
+      - If target_sprint_id is specified: moves incomplete issues to target sprint.
+      - If target_sprint_id is None: moves incomplete issues back to product backlog (sprint_id = None).
+      - Completed issues (status == IssueStatus.DONE) remain in this sprint.
+    """
+    actor_role = _resolve_effective_role(db, sprint.project_id, actor.id)
+    if not actor_role or not role_has_permission(actor_role, Permission.SPRINT_UPDATE):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to complete this sprint.",
+        )
+
+    if sprint.status != SprintStatus.ACTIVE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot complete sprint in '{sprint.status.value}' status. Only active sprints can be completed.",
+        )
+
+    if target_sprint_id is not None:
+        if target_sprint_id == sprint.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot move incomplete issues to the same sprint being completed.",
+            )
+        target_sprint = db.scalar(
+            select(Sprint).where(
+                Sprint.id == target_sprint_id,
+                Sprint.deleted_at.is_(None),
+            )
+        )
+        if target_sprint is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Target sprint not found.",
+            )
+        if target_sprint.project_id != sprint.project_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Target sprint must belong to the same project.",
+            )
+        if target_sprint.status in (SprintStatus.COMPLETED, SprintStatus.CLOSED):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cannot move incomplete issues to a completed or closed sprint.",
+            )
+
+    issues = list(
+        db.scalars(
+            select(Issue).where(
+                Issue.sprint_id == sprint.id,
+                Issue.deleted_at.is_(None),
+            )
+        ).all()
+    )
+
+    completed_issues = [i for i in issues if i.status == IssueStatus.DONE]
+    incomplete_issues = [i for i in issues if i.status != IssueStatus.DONE]
+
+    for issue in incomplete_issues:
+        issue.sprint_id = target_sprint_id
+
+    sprint.status = SprintStatus.COMPLETED
+    db.commit()
+    db.refresh(sprint)
+
+    return SprintCompleteResponse(
+        sprint=SprintResponse.model_validate(sprint),
+        completed_issues_count=len(completed_issues),
+        incomplete_issues_count=len(incomplete_issues),
+        moved_to_sprint_id=target_sprint_id,
+        moved_to_backlog=(target_sprint_id is None and len(incomplete_issues) > 0),
     )
