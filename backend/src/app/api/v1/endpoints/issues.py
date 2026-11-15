@@ -15,11 +15,13 @@ from app.schemas.issue import (
     IssueCreate,
     IssuePriorityUpdate,
     IssueResponse,
+    IssueStatusUpdate,
     IssueUpdate,
 )
 from app.services.issue import (
     assign_issue,
     change_issue_priority,
+    change_issue_status,
     create_issue,
     delete_issue,
     get_issue_activities,
@@ -185,6 +187,31 @@ def update_issue_priority(
         issue=issue,
         actor=current_user,
         priority=data.priority,
+    )
+
+
+@router.patch(
+    "/{issue_id}/status",
+    response_model=IssueResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Update issue status",
+    description=(
+        "Transition an issue to a new status following valid workflow transition rules. "
+        "Invalid transitions return 422 Unprocessable Content. Requires ISSUE_UPDATE permission."
+    ),
+)
+def update_issue_status(
+    data: IssueStatusUpdate,
+    issue: Annotated[Issue, Depends(require_issue_permission(Permission.ISSUE_UPDATE))],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> IssueResponse:
+    """Change the workflow status of an issue."""
+    return change_issue_status(
+        db=db,
+        issue=issue,
+        actor=current_user,
+        new_status=data.status,
     )
 
 

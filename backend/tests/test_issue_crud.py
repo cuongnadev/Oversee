@@ -457,7 +457,7 @@ def test_update_issue_attributes(client, setup_project_data):
     resp = client.post(
         f"/api/v1/projects/{proj.id}/issues",
         headers=_auth_header(member),
-        json={"title": "Original Title", "priority": "low"},
+        json={"title": "Original Title", "priority": "low", "status": "todo"},
     )
     issue_id = resp.json()["id"]
 

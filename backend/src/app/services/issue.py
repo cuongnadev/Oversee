@@ -3,14 +3,20 @@ import math
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Final
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.permissions import ROLE_HIERARCHY, role_has_permission
-from app.models.enums import IssuePriority, IssueType, Permission, RoleType
+from app.models.enums import (
+    IssuePriority,
+    IssueStatus,
+    IssueType,
+    Permission,
+    RoleType,
+)
 from app.models.issue import Issue
 from app.models.membership import ProjectMember, WorkspaceMember
 from app.models.project import Project
@@ -19,6 +25,64 @@ from app.models.user import User
 from app.schemas.issue import IssueCreate, IssuePageResponse, IssueUpdate
 
 logger = logging.getLogger("oversee.activity")
+
+VALID_STATUS_TRANSITIONS: Final[dict[IssueStatus, set[IssueStatus]]] = {
+    IssueStatus.BACKLOG: {
+        IssueStatus.BACKLOG,
+        IssueStatus.TODO,
+        IssueStatus.CANCELED,
+    },
+    IssueStatus.TODO: {
+        IssueStatus.TODO,
+        IssueStatus.BACKLOG,
+        IssueStatus.IN_PROGRESS,
+        IssueStatus.CANCELED,
+    },
+    IssueStatus.IN_PROGRESS: {
+        IssueStatus.IN_PROGRESS,
+        IssueStatus.TODO,
+        IssueStatus.IN_REVIEW,
+        IssueStatus.CANCELED,
+    },
+    IssueStatus.IN_REVIEW: {
+        IssueStatus.IN_REVIEW,
+        IssueStatus.IN_PROGRESS,
+        IssueStatus.DONE,
+        IssueStatus.CANCELED,
+    },
+    IssueStatus.DONE: {
+        IssueStatus.DONE,
+        IssueStatus.IN_PROGRESS,
+        IssueStatus.TODO,
+        IssueStatus.BACKLOG,
+        IssueStatus.CANCELED,
+    },
+    IssueStatus.CANCELED: {
+        IssueStatus.CANCELED,
+        IssueStatus.BACKLOG,
+        IssueStatus.TODO,
+    },
+}
+
+
+def validate_status_transition(
+    current_status: IssueStatus, target_status: IssueStatus
+) -> None:
+    """
+    Validate that transition from current_status to target_status is permitted.
+
+    :raises HTTPException: 422 Unprocessable Content if transition is invalid.
+    """
+    allowed = VALID_STATUS_TRANSITIONS.get(current_status, set())
+    if target_status not in allowed:
+        allowed_names = sorted(s.value for s in allowed if s != current_status)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=(
+                f"Invalid status transition from '{current_status.value}' to '{target_status.value}'. "
+                f"Allowed transitions: {allowed_names}."
+            ),
+        )
 
 
 @dataclass
@@ -438,6 +502,7 @@ def update_issue(
 
     old_assignee = issue.assignee_id
     old_priority = issue.priority
+    old_status = issue.status
 
     update_dict = data.model_dump(exclude_unset=True)
 
@@ -447,7 +512,12 @@ def update_issue(
     if "description" in update_dict:
         issue.description = data.description
 
-    if "status" in update_dict:
+    if (
+        "status" in update_dict
+        and data.status is not None
+        and old_status != data.status
+    ):
+        validate_status_transition(old_status, data.status)
         issue.status = data.status
 
     if "priority" in update_dict:
@@ -693,6 +763,49 @@ def change_issue_priority(
             new_value=issue.priority.value
             if hasattr(issue.priority, "value")
             else issue.priority,
+        )
+
+    return get_issue_by_id(db, issue.id)
+
+
+def change_issue_status(
+    db: Session,
+    issue: Issue,
+    actor: User,
+    new_status: IssueStatus,
+) -> Issue:
+    """
+    Transition an issue to a new status following valid workflow transition rules.
+
+    :param db: Active database session.
+    :param issue: The target Issue entity.
+    :param actor: Authenticated user initiating status change.
+    :param new_status: Target IssueStatus.
+    :return: Updated Issue entity with relations loaded.
+    :raises HTTPException: 403 on permission denial, 422 on invalid transition rule.
+    """
+    actor_role = _resolve_effective_role(db, issue.project_id, actor.id)
+    if not actor_role or not role_has_permission(actor_role, Permission.ISSUE_UPDATE):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to update issue status.",
+        )
+
+    old_status = issue.status
+    if old_status != new_status:
+        validate_status_transition(old_status, new_status)
+        issue.status = new_status
+        db.commit()
+        db.refresh(issue)
+
+        log_activity(
+            issue_id=issue.id,
+            actor_id=actor.id,
+            action="status_changed",
+            old_value=old_status.value if hasattr(old_status, "value") else old_status,
+            new_value=issue.status.value
+            if hasattr(issue.status, "value")
+            else issue.status,
         )
 
     return get_issue_by_id(db, issue.id)
