@@ -1,4 +1,5 @@
 from app.schemas.auth import LoginRequest, LogoutResponse, RegisterRequest
+from app.schemas.error import ErrorResponse
 from app.schemas.issue import (
     IssueBase,
     IssueCreate,
@@ -42,6 +43,7 @@ from app.schemas.workspace import (
 )
 
 __all__ = [
+    "ErrorResponse",
     "IssueBase",
     "IssueCreate",
     "IssueResponse",

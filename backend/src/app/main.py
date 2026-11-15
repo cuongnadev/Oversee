@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
 from app.core.config import settings
+from app.core.exceptions import setup_exception_handlers
 from app.core.logging import RequestLoggingMiddleware, configure_logging
 
 configure_logging(settings.log_level)
@@ -47,6 +48,8 @@ app = FastAPI(
         "name": "MIT",
     },
 )
+
+setup_exception_handlers(app)
 
 app.add_middleware(
     CORSMiddleware,
