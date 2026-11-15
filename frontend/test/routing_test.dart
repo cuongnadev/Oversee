@@ -31,8 +31,16 @@ void main() {
     testWidgets('Signing in updates auth state and redirects to /workspaces',
         (WidgetTester tester) async {
       await tester.pumpWidget(
-        const ProviderScope(
-          child: OverseeApp(),
+        ProviderScope(
+          overrides: [
+            authNotifierProvider.overrideWith(
+              (ref) => AuthNotifier(
+                SecureStorageService(),
+                initialState: const AuthState(status: AuthStatus.unauthenticated),
+              ),
+            ),
+          ],
+          child: const OverseeApp(),
         ),
       );
       await tester.pumpAndSettle();
