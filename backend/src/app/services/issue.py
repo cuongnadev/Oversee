@@ -1,18 +1,85 @@
+import logging
 import math
 import uuid
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.permissions import ROLE_HIERARCHY, role_has_permission
-from app.models.enums import IssueType, Permission, RoleType
+from app.models.enums import IssuePriority, IssueType, Permission, RoleType
 from app.models.issue import Issue
 from app.models.membership import ProjectMember, WorkspaceMember
 from app.models.project import Project
 from app.models.sprint import Sprint
 from app.models.user import User
 from app.schemas.issue import IssueCreate, IssuePageResponse, IssueUpdate
+
+logger = logging.getLogger("oversee.activity")
+
+
+@dataclass
+class ActivityRecord:
+    """In-memory representation of an issue activity log entry."""
+
+    id: uuid.UUID
+    issue_id: uuid.UUID
+    actor_id: uuid.UUID
+    action: str
+    old_value: str | None
+    new_value: str | None
+    created_at: datetime
+
+
+_activity_log: list[ActivityRecord] = []
+
+
+def log_activity(
+    issue_id: uuid.UUID,
+    actor_id: uuid.UUID,
+    action: str,
+    old_value: Any,
+    new_value: Any,
+) -> ActivityRecord:
+    """
+    Log an activity event for an issue and persist it in the activity history.
+
+    :param issue_id: UUID of the affected issue.
+    :param actor_id: UUID of the user making the change.
+    :param action: Action descriptor (e.g. 'assignee_changed', 'priority_changed').
+    :param old_value: Previous value before change.
+    :param new_value: Updated value after change.
+    :return: The created ActivityRecord.
+    """
+    old_str = str(old_value) if old_value is not None else None
+    new_str = str(new_value) if new_value is not None else None
+    record = ActivityRecord(
+        id=uuid.uuid4(),
+        issue_id=issue_id,
+        actor_id=actor_id,
+        action=action,
+        old_value=old_str,
+        new_value=new_str,
+        created_at=datetime.now(UTC),
+    )
+    _activity_log.append(record)
+    logger.info(
+        "Activity [issue=%s]: %s changed from %s to %s by user %s",
+        issue_id,
+        action,
+        old_str,
+        new_str,
+        actor_id,
+    )
+    return record
+
+
+def get_issue_activities(issue_id: uuid.UUID) -> list[ActivityRecord]:
+    """Retrieve all recorded activity log records for a given issue."""
+    return [r for r in _activity_log if r.issue_id == issue_id]
 
 
 def _resolve_effective_role(
@@ -369,6 +436,9 @@ def update_issue(
             detail="Insufficient permissions to update this issue.",
         )
 
+    old_assignee = issue.assignee_id
+    old_priority = issue.priority
+
     update_dict = data.model_dump(exclude_unset=True)
 
     if "title" in update_dict:
@@ -497,6 +567,134 @@ def update_issue(
 
     db.commit()
     db.refresh(issue)
+
+    if old_assignee != issue.assignee_id:
+        log_activity(
+            issue_id=issue.id,
+            actor_id=actor.id,
+            action="assignee_changed",
+            old_value=old_assignee,
+            new_value=issue.assignee_id,
+        )
+
+    if old_priority != issue.priority:
+        log_activity(
+            issue_id=issue.id,
+            actor_id=actor.id,
+            action="priority_changed",
+            old_value=old_priority.value
+            if hasattr(old_priority, "value")
+            else old_priority,
+            new_value=issue.priority.value
+            if hasattr(issue.priority, "value")
+            else issue.priority,
+        )
+
+    return get_issue_by_id(db, issue.id)
+
+
+def assign_issue(
+    db: Session,
+    issue: Issue,
+    actor: User,
+    assignee_id: uuid.UUID | None,
+) -> Issue:
+    """
+    Assign an issue to a project member or unassign it.
+
+    :param db: Active database session.
+    :param issue: The target Issue.
+    :param actor: Authenticated user initiating assignment.
+    :param assignee_id: Target assignee UUID, or None to unassign.
+    :return: Updated Issue entity with relations loaded.
+    :raises HTTPException: 400 if user not active or not in project, 403 on permission denial.
+    """
+    actor_role = _resolve_effective_role(db, issue.project_id, actor.id)
+    if not actor_role or not role_has_permission(actor_role, Permission.ISSUE_UPDATE):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to assign this issue.",
+        )
+
+    old_assignee = issue.assignee_id
+
+    if assignee_id is not None:
+        assignee = db.scalar(
+            select(User).where(
+                User.id == assignee_id,
+                User.deleted_at.is_(None),
+            )
+        )
+        if assignee is None or not assignee.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Assignee not found or inactive.",
+            )
+        if not _is_user_project_member(db, issue.project_id, assignee_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Assignee must be a member of the project.",
+            )
+        issue.assignee_id = assignee_id
+    else:
+        issue.assignee_id = None
+
+    db.commit()
+    db.refresh(issue)
+
+    if old_assignee != issue.assignee_id:
+        log_activity(
+            issue_id=issue.id,
+            actor_id=actor.id,
+            action="assignee_changed",
+            old_value=old_assignee,
+            new_value=issue.assignee_id,
+        )
+
+    return get_issue_by_id(db, issue.id)
+
+
+def change_issue_priority(
+    db: Session,
+    issue: Issue,
+    actor: User,
+    priority: IssuePriority,
+) -> Issue:
+    """
+    Change the priority of an issue.
+
+    :param db: Active database session.
+    :param issue: The target Issue.
+    :param actor: Authenticated user initiating priority change.
+    :param priority: New IssuePriority enum value.
+    :return: Updated Issue entity with relations loaded.
+    :raises HTTPException: 403 on permission denial.
+    """
+    actor_role = _resolve_effective_role(db, issue.project_id, actor.id)
+    if not actor_role or not role_has_permission(actor_role, Permission.ISSUE_UPDATE):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions to change issue priority.",
+        )
+
+    old_priority = issue.priority
+    issue.priority = priority
+    db.commit()
+    db.refresh(issue)
+
+    if old_priority != issue.priority:
+        log_activity(
+            issue_id=issue.id,
+            actor_id=actor.id,
+            action="priority_changed",
+            old_value=old_priority.value
+            if hasattr(old_priority, "value")
+            else old_priority,
+            new_value=issue.priority.value
+            if hasattr(issue.priority, "value")
+            else issue.priority,
+        )
+
     return get_issue_by_id(db, issue.id)
 
 

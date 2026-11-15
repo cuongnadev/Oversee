@@ -63,6 +63,36 @@ class IssueUpdate(BaseModel):
         return cleaned
 
 
+class IssueAssigneeUpdate(BaseModel):
+    """Schema for updating issue assignee."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    assignee_id: uuid.UUID | None = None
+
+
+class IssuePriorityUpdate(BaseModel):
+    """Schema for updating issue priority."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    priority: IssuePriority
+
+
+class IssueActivityResponse(BaseModel):
+    """Schema representing an activity log entry for an issue."""
+
+    id: uuid.UUID
+    issue_id: uuid.UUID
+    actor_id: uuid.UUID
+    action: str
+    old_value: str | None = None
+    new_value: str | None = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class IssueHierarchySummary(BaseModel):
     """Compact representation of an issue in parent-child relationships."""
 
