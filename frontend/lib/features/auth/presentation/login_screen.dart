@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/features/auth/application/auth_provider.dart';
+import 'package:frontend/shared/widgets/widgets.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -15,7 +16,8 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailController = TextEditingController(text: 'demo@oversee.local');
   final _passwordController = TextEditingController(text: 'Password123!');
-  bool _obscurePassword = true;
+  final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -25,13 +27,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _handleLogin() {
-    final email = _emailController.text.trim();
-    if (email.isNotEmpty) {
-      ref.read(authNotifierProvider.notifier).setAuthenticated(
-            accessToken: 'mock_access_token_${DateTime.now().millisecondsSinceEpoch}',
-            refreshToken: 'mock_refresh_token_${DateTime.now().millisecondsSinceEpoch}',
-            email: email,
-          );
+    if (_formKey.currentState?.validate() ?? true) {
+      final email = _emailController.text.trim();
+      if (email.isNotEmpty) {
+        setState(() => _isLoading = true);
+        ref.read(authNotifierProvider.notifier).setAuthenticated(
+              accessToken: 'mock_access_token_${DateTime.now().millisecondsSinceEpoch}',
+              refreshToken: 'mock_refresh_token_${DateTime.now().millisecondsSinceEpoch}',
+              email: email,
+            );
+      }
     }
   }
 
@@ -46,9 +51,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           padding: const EdgeInsets.all(24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 36),
+            child: AppCard(
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 36),
+              child: Form(
+                key: _formKey,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -75,7 +81,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     Text(
                       'Welcome back',
                       textAlign: TextAlign.center,
-                      style: theme.textTheme.headlineSmall,
+                      style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -86,34 +92,47 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    TextFormField(
+                    AppTextFormField(
                       controller: _emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Email Address',
-                        prefixIcon: Icon(Icons.email_outlined),
-                      ),
+                      label: 'Email Address',
+                      isRequired: true,
+                      hintText: 'name@example.com',
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      prefixIcon: const Icon(Icons.email_outlined, size: 20),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter your email address';
+                        }
+                        if (!value.contains('@')) {
+                          return 'Please enter a valid email';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
+                    AppTextFormField(
                       controller: _passwordController,
-                      obscureText: _obscurePassword,
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
-                        ),
-                      ),
+                      label: 'Password',
+                      isRequired: true,
+                      isPassword: true,
+                      hintText: '••••••••',
+                      textInputAction: TextInputAction.done,
+                      prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                      onFieldSubmitted: (_) => _handleLogin(),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter your password';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 24),
-                    ElevatedButton(
+                    AppPrimaryButton(
+                      label: 'Sign In',
+                      isFullWidth: true,
+                      isLoading: _isLoading,
                       onPressed: _handleLogin,
-                      child: const Text('Sign In'),
                     ),
                     const SizedBox(height: 20),
                     Wrap(

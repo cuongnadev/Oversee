@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/theme/app_colors.dart';
+import 'package:frontend/shared/widgets/widgets.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -14,6 +15,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -21,6 +24,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _handleRegister() {
+    if (_formKey.currentState?.validate() ?? true) {
+      setState(() => _isLoading = true);
+      AppFeedback.showSuccess(context, 'Account created successfully. Please sign in.');
+      context.go(AppRoutes.login);
+    }
   }
 
   @override
@@ -34,9 +45,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
           padding: const EdgeInsets.all(24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 36),
+            child: AppCard(
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 36),
+              child: Form(
+                key: _formKey,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -55,43 +67,62 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    TextFormField(
+                    AppTextFormField(
                       controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Full Name',
-                        prefixIcon: Icon(Icons.person_outline),
-                      ),
+                      label: 'Full Name',
+                      isRequired: true,
+                      hintText: 'John Doe',
+                      textInputAction: TextInputAction.next,
+                      prefixIcon: const Icon(Icons.person_outline, size: 20),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter your name';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
+                    AppTextFormField(
                       controller: _emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Email Address',
-                        prefixIcon: Icon(Icons.email_outlined),
-                      ),
+                      label: 'Email Address',
+                      isRequired: true,
+                      hintText: 'name@example.com',
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                      prefixIcon: const Icon(Icons.email_outlined, size: 20),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter your email';
+                        }
+                        if (!value.contains('@')) {
+                          return 'Please enter a valid email';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 16),
-                    TextFormField(
+                    AppTextFormField(
                       controller: _passwordController,
-                      obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Password',
-                        prefixIcon: Icon(Icons.lock_outline),
-                      ),
+                      label: 'Password',
+                      isRequired: true,
+                      isPassword: true,
+                      hintText: '••••••••',
+                      textInputAction: TextInputAction.done,
+                      prefixIcon: const Icon(Icons.lock_outline, size: 20),
+                      onFieldSubmitted: (_) => _handleRegister(),
+                      validator: (value) {
+                        if (value == null || value.length < 8) {
+                          return 'Password must be at least 8 characters';
+                        }
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: () {
-                        // After successful registration, navigate to login
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Account created successfully. Please sign in.'),
-                            backgroundColor: AppColors.success,
-                          ),
-                        );
-                        context.go(AppRoutes.login);
-                      },
-                      child: const Text('Create Account'),
+                    AppPrimaryButton(
+                      label: 'Create Account',
+                      isFullWidth: true,
+                      isLoading: _isLoading,
+                      onPressed: _handleRegister,
                     ),
                     const SizedBox(height: 20),
                     Wrap(
