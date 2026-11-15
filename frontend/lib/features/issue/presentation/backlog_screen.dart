@@ -108,21 +108,13 @@ class _BacklogScreenState extends ConsumerState<BacklogScreen> {
                       child: Builder(
                         builder: (context) {
                           if (state.isLoading) {
-                            return const Center(child: AppLoadingIndicator(size: 36.0));
+                            return const BacklogSkeleton();
                           }
 
                           if (state.errorMessage != null && state.issues.isEmpty) {
-                            return Center(
-                              child: AppEmptyState(
-                                icon: Icons.error_outline,
-                                title: 'Failed to load backlog',
-                                description: state.errorMessage,
-                                action: AppPrimaryButton(
-                                  label: 'Retry',
-                                  icon: Icons.refresh,
-                                  onPressed: () => notifier.loadBacklog(),
-                                ),
-                              ),
+                            return AppErrorView(
+                              error: state.errorMessage,
+                              onRetry: () => notifier.loadBacklog(),
                             );
                           }
 
