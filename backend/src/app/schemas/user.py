@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class UserBase(BaseModel):
@@ -27,6 +27,29 @@ class UserUpdate(BaseModel):
     avatar_url: str | None = None
     password: str | None = Field(default=None, min_length=8)
     is_active: bool | None = None
+
+
+class UserProfileUpdate(BaseModel):
+    """Schema for updating current user's profile information."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    full_name: str | None = Field(
+        default=None, min_length=1, max_length=255, description="Updated full name"
+    )
+    avatar_url: str | None = Field(
+        default=None, max_length=1024, description="Updated avatar URL"
+    )
+
+    @field_validator("full_name")
+    @classmethod
+    def clean_full_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Full name cannot be blank or contain only whitespace.")
+        return cleaned
 
 
 class UserResponse(UserBase):

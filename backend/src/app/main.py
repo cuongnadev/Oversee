@@ -13,6 +13,10 @@ tags_metadata = [
         "description": "Authentication and authorization endpoints.",
     },
     {
+        "name": "users",
+        "description": "User profile and account management endpoints.",
+    },
+    {
         "name": "health",
         "description": "Service health check endpoints.",
     },
