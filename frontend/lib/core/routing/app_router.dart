@@ -8,9 +8,11 @@ import 'package:frontend/features/auth/presentation/login_screen.dart';
 import 'package:frontend/features/auth/presentation/register_screen.dart';
 import 'package:frontend/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:frontend/features/issue/presentation/backlog_screen.dart';
+import 'package:frontend/features/project/presentation/project_list_screen.dart';
 import 'package:frontend/features/project/presentation/project_overview_screen.dart';
 import 'package:frontend/features/project/presentation/project_settings_screen.dart';
 import 'package:frontend/features/sprint/presentation/kanban_board_screen.dart';
+import 'package:frontend/features/sprint/presentation/sprint_overview_screen.dart';
 import 'package:frontend/features/sprint/presentation/sprint_planning_screen.dart';
 import 'package:frontend/features/workspace/presentation/workspace_list_screen.dart';
 import 'package:frontend/features/workspace/presentation/workspace_settings_screen.dart';
@@ -66,6 +68,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const WorkspaceListScreen(),
       ),
       GoRoute(
+        path: AppRoutes.workspaceDetail,
+        redirect: (context, state) {
+          final workspaceId = state.pathParameters['workspaceId']!;
+          return AppRoutes.workspaceProjectsPath(workspaceId);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.workspaceProjects,
+        builder: (context, state) {
+          final workspaceId = state.pathParameters['workspaceId']!;
+          return ProjectListScreen(workspaceId: workspaceId);
+        },
+      ),
+      GoRoute(
         path: AppRoutes.workspaceSettings,
         builder: (context, state) {
           final workspaceId = state.pathParameters['workspaceId'] ?? 'default';
@@ -106,6 +122,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.projectSprints,
+        builder: (context, state) {
+          final workspaceId = state.pathParameters['workspaceId']!;
+          final projectId = state.pathParameters['projectId']!;
+          return SprintOverviewScreen(workspaceId: workspaceId, projectId: projectId);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.projectSprintPlanning,
         builder: (context, state) {
           final workspaceId = state.pathParameters['workspaceId']!;
           final projectId = state.pathParameters['projectId']!;

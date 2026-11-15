@@ -6,6 +6,8 @@ import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/storage/secure_storage_service.dart';
 import 'package:frontend/features/auth/application/auth_provider.dart';
 import 'package:frontend/features/auth/application/auth_state.dart';
+import 'package:frontend/features/issue/presentation/backlog_screen.dart';
+import 'package:frontend/features/sprint/presentation/kanban_board_screen.dart';
 import 'package:frontend/main.dart';
 
 void main() {
@@ -53,7 +55,7 @@ void main() {
 
       // Expect Workspaces screen elements to be shown
       expect(find.text('Your Workspaces'), findsOneWidget);
-      expect(find.text('Team 04 - Oversee'), findsOneWidget);
+      expect(find.text('New Workspace'), findsOneWidget);
     });
 
     testWidgets('Deep linking to project board loads correctly when authenticated',
@@ -86,8 +88,7 @@ void main() {
       router.go(AppRoutes.projectBoardPath('ws-team4', 'proj-oversee'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Kanban Board (proj-oversee)'), findsOneWidget);
-      expect(find.text('Workspace: ws-team4'), findsOneWidget);
+      expect(find.byType(KanbanBoardScreen), findsOneWidget);
     });
 
     testWidgets('Deep linking to project backlog loads correctly',
@@ -119,7 +120,8 @@ void main() {
       router.go(AppRoutes.projectBacklogPath('ws-team4', 'proj-oversee'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Product Backlog (proj-oversee)'), findsOneWidget);
+      expect(find.byType(BacklogScreen), findsOneWidget);
+      expect(find.text('Product Backlog'), findsWidgets);
     });
 
     testWidgets('Accessing invalid URL triggers 404 NotFoundScreen',

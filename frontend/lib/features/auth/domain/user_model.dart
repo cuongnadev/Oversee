@@ -20,6 +20,16 @@ class UserModel extends Equatable {
     this.updatedAt,
   });
 
+  String get initials {
+    final name = fullName.trim().isNotEmpty ? fullName.trim() : email.trim();
+    if (name.isEmpty) return '?';
+    final parts = name.split(RegExp(r'\s+'));
+    if (parts.length >= 2 && parts[0].isNotEmpty && parts[1].isNotEmpty) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return name[0].toUpperCase();
+  }
+
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: json['id'] as String,
