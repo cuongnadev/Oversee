@@ -64,6 +64,7 @@ class ProjectModel extends Equatable {
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? deletedAt,
+    bool clearDeletedAt = false,
   }) {
     return ProjectModel(
       id: id ?? this.id,
@@ -74,7 +75,7 @@ class ProjectModel extends Equatable {
       memberCount: memberCount ?? this.memberCount,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      deletedAt: deletedAt ?? this.deletedAt,
+      deletedAt: clearDeletedAt ? null : (deletedAt ?? this.deletedAt),
     );
   }
 
