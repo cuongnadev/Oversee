@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/core/enums/app_enums.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/features/issue/domain/issue_model.dart';
 import 'package:frontend/features/issue/presentation/widgets/issue_detail_dialog.dart';

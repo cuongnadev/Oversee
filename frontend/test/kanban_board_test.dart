@@ -10,7 +10,6 @@ import 'package:frontend/features/issue/data/issue_repository.dart';
 import 'package:frontend/features/issue/domain/issue_model.dart';
 import 'package:frontend/features/project/data/project_repository.dart';
 import 'package:frontend/features/project/domain/project_model.dart';
-import 'package:frontend/features/sprint/application/kanban_board_provider.dart';
 import 'package:frontend/features/sprint/application/kanban_board_state.dart';
 import 'package:frontend/features/sprint/data/sprint_repository.dart';
 import 'package:frontend/features/sprint/domain/sprint_model.dart';
@@ -209,15 +208,15 @@ void main() {
         allIssues: testIssues,
         activeSprint: testSprint,
         projectKey: 'OVS',
-        selectedTypes: {IssueType.bug},
+        selectedTypes: const {IssueType.bug},
       );
 
       expect(state.filteredIssues.length, 1);
       expect(state.filteredIssues.first.type, IssueType.bug);
 
       final statePriority = state.copyWith(
-        selectedTypes: {},
-        selectedPriorities: {IssuePriority.urgent},
+        selectedTypes: const {},
+        selectedPriorities: const {IssuePriority.urgent},
       );
       expect(statePriority.filteredIssues.length, 1);
       expect(statePriority.filteredIssues.first.priority, IssuePriority.urgent);
@@ -265,7 +264,7 @@ void main() {
 
       expect(find.text('To Do'), findsOneWidget);
       expect(find.text('1'), findsOneWidget); // card count badge
-      expect(find.text('5 pts'), findsOneWidget); // story points badge
+      expect(find.text('5 pts'), findsNWidgets(2)); // column header + card estimate
       expect(find.text('Build backend API'), findsOneWidget);
     });
 
@@ -283,12 +282,12 @@ void main() {
             secureStorageServiceProvider.overrideWithValue(FakeSecureStorageService()),
             authNotifierProvider.overrideWith(
               (ref) => AuthNotifier(
-                authRepository: null as dynamic,
-                storage: FakeSecureStorageService(),
-              )..state = const AuthState(
+                FakeSecureStorageService(),
+                initialState: const AuthState(
                   status: AuthStatus.authenticated,
                   user: UserModel(id: 'u-1', email: 'test@oversee.local', fullName: 'Tester'),
                 ),
+              ),
             ),
           ],
           child: const MaterialApp(
@@ -309,9 +308,9 @@ void main() {
 
     testWidgets('KanbanBoardScreen renders active sprint toolbar and 4 Kanban columns',
         (tester) async {
-      tester.binding.window.physicalSizeTestValue = const Size(1400, 900);
-      tester.binding.window.devicePixelRatioTestValue = 1.0;
-      addTearDown(() => tester.binding.window.clearPhysicalSizeTestValue());
+      tester.view.physicalSize = const Size(1400, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
 
       final fakeSprintRepo = FakeSprintRepository();
       fakeSprintRepo.mockActiveSprint = testSprint;
@@ -326,12 +325,12 @@ void main() {
             secureStorageServiceProvider.overrideWithValue(FakeSecureStorageService()),
             authNotifierProvider.overrideWith(
               (ref) => AuthNotifier(
-                authRepository: null as dynamic,
-                storage: FakeSecureStorageService(),
-              )..state = const AuthState(
+                FakeSecureStorageService(),
+                initialState: const AuthState(
                   status: AuthStatus.authenticated,
                   user: UserModel(id: 'u-1', email: 'test@oversee.local', fullName: 'Tester'),
                 ),
+              ),
             ),
           ],
           child: const MaterialApp(

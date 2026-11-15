@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:frontend/core/enums/app_enums.dart';
+import 'package:frontend/features/issue/domain/issue_filter_state.dart';
 import 'package:frontend/features/issue/domain/issue_model.dart';
+import 'package:frontend/features/project/domain/project_member_model.dart';
 import 'package:frontend/features/sprint/domain/sprint_model.dart';
 
 /// Represents the UI state of the Kanban Board screen.
@@ -11,10 +13,13 @@ class KanbanBoardState extends Equatable {
   final SprintModel? activeSprint;
   final List<IssueModel> allIssues;
   final String projectKey;
-  final String searchQuery;
-  final Set<IssueType> selectedTypes;
-  final Set<IssuePriority> selectedPriorities;
-  final String? selectedAssigneeId;
+  final IssueFilterState filter;
+  final List<ProjectMemberModel> members;
+  final String? currentUserId;
+  final String? _legacySearchQuery;
+  final Set<IssueType>? _legacyTypes;
+  final Set<IssuePriority>? _legacyPriorities;
+  final String? _legacyAssigneeId;
 
   const KanbanBoardState({
     this.isLoading = false,
@@ -23,39 +28,51 @@ class KanbanBoardState extends Equatable {
     this.activeSprint,
     this.allIssues = const [],
     this.projectKey = 'OVS',
-    this.searchQuery = '',
-    this.selectedTypes = const {},
-    this.selectedPriorities = const {},
-    this.selectedAssigneeId,
-  });
+    this.filter = const IssueFilterState(),
+    this.members = const [],
+    this.currentUserId,
+    String? searchQuery,
+    Set<IssueType>? selectedTypes,
+    Set<IssuePriority>? selectedPriorities,
+    String? selectedAssigneeId,
+  })  : _legacySearchQuery = searchQuery,
+        _legacyTypes = selectedTypes,
+        _legacyPriorities = selectedPriorities,
+        _legacyAssigneeId = selectedAssigneeId;
+
+  IssueFilterState get effectiveFilter {
+    IssueFilterState f = filter;
+    final legacySearch = _legacySearchQuery;
+    if (legacySearch != null && legacySearch.isNotEmpty) {
+      f = f.copyWith(searchQuery: legacySearch);
+    }
+    final legacyTypes = _legacyTypes;
+    if (legacyTypes != null && legacyTypes.isNotEmpty) {
+      f = f.copyWith(selectedTypes: legacyTypes);
+    }
+    final legacyPriorities = _legacyPriorities;
+    if (legacyPriorities != null && legacyPriorities.isNotEmpty) {
+      f = f.copyWith(selectedPriorities: legacyPriorities);
+    }
+    final legacyAssignee = _legacyAssigneeId;
+    if (legacyAssignee != null) {
+      f = f.copyWith(selectedAssigneeId: legacyAssignee);
+    }
+    return f;
+  }
 
   bool get hasActiveSprint => activeSprint != null;
 
-  /// Returns issues filtered by current search query and chip filters.
-  List<IssueModel> get filteredIssues {
-    return allIssues.where((issue) {
-      if (searchQuery.isNotEmpty) {
-        final query = searchQuery.toLowerCase();
-        final matchesTitle = issue.title.toLowerCase().contains(query);
-        final matchesKey = issue.formattedKey(projectKey).toLowerCase().contains(query);
-        if (!matchesTitle && !matchesKey) return false;
-      }
+  // Convenience getters delegating to effectiveFilter
+  String get searchQuery => effectiveFilter.searchQuery;
+  Set<IssueType> get selectedTypes => effectiveFilter.selectedTypes;
+  Set<IssuePriority> get selectedPriorities => effectiveFilter.selectedPriorities;
+  String? get selectedAssigneeId => effectiveFilter.selectedAssigneeId;
+  bool get hasActiveFilters => effectiveFilter.hasActiveFilters;
 
-      if (selectedTypes.isNotEmpty && !selectedTypes.contains(issue.type)) {
-        return false;
-      }
-
-      if (selectedPriorities.isNotEmpty && !selectedPriorities.contains(issue.priority)) {
-        return false;
-      }
-
-      if (selectedAssigneeId != null && issue.assigneeId != selectedAssigneeId) {
-        return false;
-      }
-
-      return true;
-    }).toList();
-  }
+  /// Returns issues filtered and sorted according to the current filter state.
+  List<IssueModel> get filteredIssues =>
+      effectiveFilter.apply(allIssues, projectKey: projectKey, currentUserId: currentUserId);
 
   /// Returns filtered issues belonging to a specific workflow status.
   List<IssueModel> issuesForStatus(IssueStatus status) {
@@ -86,12 +103,6 @@ class KanbanBoardState extends Equatable {
     );
   }
 
-  bool get hasActiveFilters =>
-      searchQuery.isNotEmpty ||
-      selectedTypes.isNotEmpty ||
-      selectedPriorities.isNotEmpty ||
-      selectedAssigneeId != null;
-
   KanbanBoardState copyWith({
     bool? isLoading,
     bool? isUpdating,
@@ -101,12 +112,31 @@ class KanbanBoardState extends Equatable {
     bool clearActiveSprint = false,
     List<IssueModel>? allIssues,
     String? projectKey,
+    IssueFilterState? filter,
+    List<ProjectMemberModel>? members,
+    String? currentUserId,
     String? searchQuery,
     Set<IssueType>? selectedTypes,
     Set<IssuePriority>? selectedPriorities,
     String? selectedAssigneeId,
     bool clearAssigneeId = false,
   }) {
+    IssueFilterState updatedFilter = filter ?? effectiveFilter;
+    if (searchQuery != null) {
+      updatedFilter = updatedFilter.copyWith(searchQuery: searchQuery);
+    }
+    if (selectedTypes != null) {
+      updatedFilter = updatedFilter.copyWith(selectedTypes: selectedTypes);
+    }
+    if (selectedPriorities != null) {
+      updatedFilter = updatedFilter.copyWith(selectedPriorities: selectedPriorities);
+    }
+    if (clearAssigneeId) {
+      updatedFilter = updatedFilter.copyWith(clearAssigneeId: true);
+    } else if (selectedAssigneeId != null) {
+      updatedFilter = updatedFilter.copyWith(selectedAssigneeId: selectedAssigneeId);
+    }
+
     return KanbanBoardState(
       isLoading: isLoading ?? this.isLoading,
       isUpdating: isUpdating ?? this.isUpdating,
@@ -114,11 +144,9 @@ class KanbanBoardState extends Equatable {
       activeSprint: clearActiveSprint ? null : (activeSprint ?? this.activeSprint),
       allIssues: allIssues ?? this.allIssues,
       projectKey: projectKey ?? this.projectKey,
-      searchQuery: searchQuery ?? this.searchQuery,
-      selectedTypes: selectedTypes ?? this.selectedTypes,
-      selectedPriorities: selectedPriorities ?? this.selectedPriorities,
-      selectedAssigneeId:
-          clearAssigneeId ? null : (selectedAssigneeId ?? this.selectedAssigneeId),
+      filter: updatedFilter,
+      members: members ?? this.members,
+      currentUserId: currentUserId ?? this.currentUserId,
     );
   }
 
@@ -130,9 +158,8 @@ class KanbanBoardState extends Equatable {
         activeSprint,
         allIssues,
         projectKey,
-        searchQuery,
-        selectedTypes,
-        selectedPriorities,
-        selectedAssigneeId,
+        effectiveFilter,
+        members,
+        currentUserId,
       ];
 }

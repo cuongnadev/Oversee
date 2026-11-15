@@ -1,8 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/core/enums/app_enums.dart';
 import 'package:frontend/core/errors/app_exception.dart';
+import 'package:frontend/features/auth/application/auth_provider.dart';
 import 'package:frontend/features/issue/data/issue_repository.dart';
+import 'package:frontend/features/issue/domain/issue_filter_state.dart';
 import 'package:frontend/features/project/data/project_repository.dart';
+import 'package:frontend/features/project/domain/project_member_model.dart';
 import 'package:frontend/features/sprint/application/kanban_board_state.dart';
 import 'package:frontend/features/sprint/data/sprint_repository.dart';
 
@@ -12,21 +15,24 @@ class KanbanBoardNotifier extends StateNotifier<KanbanBoardState> {
   final IssueRepository _issueRepository;
   final ProjectRepository _projectRepository;
   final String _projectId;
+  final String? _currentUserId;
 
   KanbanBoardNotifier({
     required SprintRepository sprintRepository,
     required IssueRepository issueRepository,
     required ProjectRepository projectRepository,
     required String projectId,
+    String? currentUserId,
   })  : _sprintRepository = sprintRepository,
         _issueRepository = issueRepository,
         _projectRepository = projectRepository,
         _projectId = projectId,
-        super(const KanbanBoardState(isLoading: true)) {
+        _currentUserId = currentUserId,
+        super(KanbanBoardState(isLoading: true, currentUserId: currentUserId)) {
     loadBoard();
   }
 
-  /// Loads project key, active sprint, and all issues belonging to the active sprint.
+  /// Loads project key, project members, active sprint, and sprint issues.
   Future<void> loadBoard() async {
     state = state.copyWith(isLoading: true, clearErrorMessage: true);
     try {
@@ -39,7 +45,15 @@ class KanbanBoardNotifier extends StateNotifier<KanbanBoardState> {
         // Fallback to existing or default key if project endpoint is unavailable
       }
 
-      // 2. Query for active sprint
+      // 2. Fetch project members for assignee filtering
+      List<ProjectMemberModel> members = [];
+      try {
+        members = await _projectRepository.listProjectMembers(_projectId);
+      } catch (_) {
+        // Fallback if members endpoint fails
+      }
+
+      // 3. Query for active sprint
       final activeSprint = await _sprintRepository.getActiveSprint(_projectId);
 
       if (activeSprint == null) {
@@ -48,11 +62,13 @@ class KanbanBoardNotifier extends StateNotifier<KanbanBoardState> {
           clearActiveSprint: true,
           allIssues: [],
           projectKey: projectKey,
+          members: members,
+          currentUserId: _currentUserId,
         );
         return;
       }
 
-      // 3. Query all issues in the active sprint
+      // 4. Query all issues in the active sprint
       final sprintIssues = await _sprintRepository.getSprintIssues(activeSprint.id);
 
       state = state.copyWith(
@@ -60,6 +76,8 @@ class KanbanBoardNotifier extends StateNotifier<KanbanBoardState> {
         activeSprint: activeSprint,
         allIssues: sprintIssues,
         projectKey: projectKey,
+        members: members,
+        currentUserId: _currentUserId,
       );
     } catch (e) {
       final message = e is AppException ? e.message : e.toString();
@@ -73,6 +91,20 @@ class KanbanBoardNotifier extends StateNotifier<KanbanBoardState> {
   /// Refreshes the board data.
   Future<void> refresh() async {
     await loadBoard();
+  }
+
+  /// Updates the complete filter state.
+  void setFilter(IssueFilterState filter) {
+    state = state.copyWith(filter: filter);
+  }
+
+  /// Initializes or updates the filter state from URL query parameters.
+  void initFilterFromParams(Map<String, String> params) {
+    if (params.isEmpty && !state.filter.hasActiveFilters) return;
+    final newFilter = IssueFilterState.fromQueryParams(params);
+    if (newFilter != state.filter) {
+      state = state.copyWith(filter: newFilter);
+    }
   }
 
   /// Optimistically updates an issue's status, rolling back if the backend rejects it.
@@ -142,36 +174,44 @@ class KanbanBoardNotifier extends StateNotifier<KanbanBoardState> {
 
   /// Sets the search query for filtering issue titles or keys.
   void setSearchQuery(String query) {
-    state = state.copyWith(searchQuery: query.trim());
+    state = state.copyWith(
+      filter: state.filter.copyWith(searchQuery: query.trim()),
+    );
   }
 
   /// Toggles an issue type filter chip.
   void toggleTypeFilter(IssueType type) {
-    final current = Set.of(state.selectedTypes);
+    final current = Set.of(state.filter.selectedTypes);
     if (current.contains(type)) {
       current.remove(type);
     } else {
       current.add(type);
     }
-    state = state.copyWith(selectedTypes: current);
+    state = state.copyWith(
+      filter: state.filter.copyWith(selectedTypes: current),
+    );
   }
 
   /// Toggles an issue priority filter chip.
   void togglePriorityFilter(IssuePriority priority) {
-    final current = Set.of(state.selectedPriorities);
+    final current = Set.of(state.filter.selectedPriorities);
     if (current.contains(priority)) {
       current.remove(priority);
     } else {
       current.add(priority);
     }
-    state = state.copyWith(selectedPriorities: current);
+    state = state.copyWith(
+      filter: state.filter.copyWith(selectedPriorities: current),
+    );
   }
 
   /// Sets or clears the assignee filter.
   void setAssigneeFilter(String? assigneeId) {
     state = state.copyWith(
-      selectedAssigneeId: assigneeId,
-      clearAssigneeId: assigneeId == null,
+      filter: state.filter.copyWith(
+        selectedAssigneeId: assigneeId,
+        clearAssigneeId: assigneeId == null,
+      ),
     );
   }
 
@@ -183,10 +223,7 @@ class KanbanBoardNotifier extends StateNotifier<KanbanBoardState> {
   /// Clears all active filters.
   void clearFilters() {
     state = state.copyWith(
-      searchQuery: '',
-      selectedTypes: {},
-      selectedPriorities: {},
-      clearAssigneeId: true,
+      filter: const IssueFilterState(),
     );
   }
 }
@@ -198,11 +235,13 @@ final kanbanBoardProvider =
     final sprintRepo = ref.watch(sprintRepositoryProvider);
     final issueRepo = ref.watch(issueRepositoryProvider);
     final projectRepo = ref.watch(projectRepositoryProvider);
+    final authState = ref.watch(authNotifierProvider);
     return KanbanBoardNotifier(
       sprintRepository: sprintRepo,
       issueRepository: issueRepo,
       projectRepository: projectRepo,
       projectId: projectId,
+      currentUserId: authState.user?.id,
     );
   },
 );

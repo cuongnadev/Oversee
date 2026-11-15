@@ -10,6 +10,7 @@ import 'package:frontend/features/auth/application/auth_state.dart';
 import 'package:frontend/features/auth/data/auth_repository.dart';
 import 'package:frontend/features/auth/domain/token_model.dart';
 import 'package:frontend/features/auth/domain/user_model.dart';
+import 'package:frontend/features/sprint/presentation/kanban_board_screen.dart';
 import 'package:frontend/main.dart';
 
 class FakeSessionAuthRepository implements AuthRepository {
@@ -251,8 +252,7 @@ void main() {
       router.go(AppRoutes.projectBoardPath('ws-production', 'proj-alpha'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Kanban Board (proj-alpha)'), findsOneWidget);
-      expect(find.text('Workspace: ws-production'), findsOneWidget);
+      expect(find.byType(KanbanBoardScreen), findsOneWidget);
     });
   });
 }
