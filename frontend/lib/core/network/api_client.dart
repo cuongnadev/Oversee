@@ -5,10 +5,12 @@ import 'package:frontend/core/errors/app_exception.dart';
 import 'package:frontend/core/network/auth_interceptor.dart';
 import 'package:frontend/core/network/error_interceptor.dart';
 import 'package:frontend/core/storage/secure_storage_service.dart';
-import 'package:frontend/features/auth/application/auth_provider.dart';
+
+/// Counter incremented whenever token rotation fails and session is expired.
+final StateProvider<int> sessionExpiredTriggerProvider = StateProvider<int>((ref) => 0);
 
 /// Base options provider for Dio HTTP configuration.
-final dioBaseOptionsProvider = Provider<BaseOptions>((ref) {
+final Provider<BaseOptions> dioBaseOptionsProvider = Provider<BaseOptions>((ref) {
   return BaseOptions(
     baseUrl: ApiConstants.baseUrl,
     connectTimeout: ApiConstants.connectTimeout,
@@ -22,13 +24,13 @@ final dioBaseOptionsProvider = Provider<BaseOptions>((ref) {
 });
 
 /// Dedicated Dio instance for token refresh operations to prevent interceptor recursion.
-final refreshDioProvider = Provider<Dio>((ref) {
+final Provider<Dio> refreshDioProvider = Provider<Dio>((ref) {
   final options = ref.watch(dioBaseOptionsProvider);
   return Dio(options);
 });
 
 /// Configured Dio instance with AuthInterceptor and ErrorInterceptor.
-final dioProvider = Provider<Dio>((ref) {
+final Provider<Dio> dioProvider = Provider<Dio>((ref) {
   final options = ref.watch(dioBaseOptionsProvider);
   final storage = ref.watch(secureStorageServiceProvider);
   final refreshDio = ref.watch(refreshDioProvider);
@@ -41,7 +43,7 @@ final dioProvider = Provider<Dio>((ref) {
       dio: dio,
       refreshDio: refreshDio,
       onSessionExpired: () {
-        ref.read(authNotifierProvider.notifier).logout();
+        ref.read(sessionExpiredTriggerProvider.notifier).state++;
       },
     ),
     ErrorInterceptor(),
@@ -51,7 +53,7 @@ final dioProvider = Provider<Dio>((ref) {
 });
 
 /// ApiClient provider for high-level HTTP operations across the application.
-final apiClientProvider = Provider<ApiClient>((ref) {
+final Provider<ApiClient> apiClientProvider = Provider<ApiClient>((ref) {
   final dio = ref.watch(dioProvider);
   return ApiClient(dio);
 });
