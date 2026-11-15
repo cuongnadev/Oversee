@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -14,9 +14,11 @@ from app.models.project import Project
 from app.models.sprint import Sprint
 from app.models.user import User
 from app.schemas.sprint import (
+    BurndownPoint,
     SprintCompleteResponse,
     SprintCreate,
     SprintPlanningResponse,
+    SprintProgressResponse,
     SprintResponse,
     SprintUpdate,
 )
@@ -624,4 +626,98 @@ def complete_sprint(
         incomplete_issues_count=len(incomplete_issues),
         moved_to_sprint_id=target_sprint_id,
         moved_to_backlog=(target_sprint_id is None and len(incomplete_issues) > 0),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Sprint Progress Calculation (#103)
+# ---------------------------------------------------------------------------
+def get_sprint_progress(
+    db: Session,
+    sprint: Sprint,
+) -> SprintProgressResponse:
+    """
+    Calculate progress metrics for a sprint:
+      - % completion by issue count
+      - % completion by story points / estimate
+      - Breakdown by issue status
+      - Basic daily burndown series
+    """
+    issues = list(
+        db.scalars(
+            select(Issue).where(
+                Issue.sprint_id == sprint.id,
+                Issue.deleted_at.is_(None),
+            )
+        ).all()
+    )
+
+    total_issues = len(issues)
+    completed_issues = sum(1 for i in issues if i.status == IssueStatus.DONE)
+    remaining_issues = total_issues - completed_issues
+
+    issue_progress_percentage = (
+        round((completed_issues / total_issues) * 100.0, 2) if total_issues > 0 else 0.0
+    )
+
+    total_story_points = sum(i.estimate or 0.0 for i in issues)
+    completed_story_points = sum(
+        i.estimate or 0.0 for i in issues if i.status == IssueStatus.DONE
+    )
+    remaining_story_points = max(0.0, total_story_points - completed_story_points)
+
+    story_point_progress_percentage = (
+        round((completed_story_points / total_story_points) * 100.0, 2)
+        if total_story_points > 0
+        else 0.0
+    )
+
+    status_breakdown: dict[str, int] = {}
+    for i in issues:
+        st_val = i.status.value if hasattr(i.status, "value") else str(i.status)
+        status_breakdown[st_val] = status_breakdown.get(st_val, 0) + 1
+
+    # Generate burndown points
+    burndown: list[BurndownPoint] = []
+    if sprint.start_date is not None and sprint.end_date is not None:
+        start_d = sprint.start_date.date()
+        end_d = sprint.end_date.date()
+        total_days = (end_d - start_d).days
+        today_d = datetime.now(UTC).date()
+
+        if total_days > 0:
+            for day_offset in range(total_days + 1):
+                current_d = start_d + timedelta(days=day_offset)
+                date_str = current_d.isoformat()
+                ideal = round(total_story_points * (1.0 - (day_offset / total_days)), 2)
+
+                if sprint.status == SprintStatus.COMPLETED:
+                    actual = remaining_story_points if current_d <= end_d else None
+                elif current_d <= today_d:
+                    actual = remaining_story_points
+                else:
+                    actual = None
+
+                burndown.append(
+                    BurndownPoint(
+                        date=date_str,
+                        ideal_remaining=ideal,
+                        actual_remaining=actual,
+                    )
+                )
+
+    return SprintProgressResponse(
+        sprint_id=sprint.id,
+        sprint_name=sprint.name,
+        status=sprint.status,
+        total_issues=total_issues,
+        completed_issues=completed_issues,
+        remaining_issues=remaining_issues,
+        issue_progress_percentage=issue_progress_percentage,
+        total_story_points=total_story_points,
+        completed_story_points=completed_story_points,
+        remaining_story_points=remaining_story_points,
+        story_point_progress_percentage=story_point_progress_percentage,
+        status_breakdown=status_breakdown,
+        burndown=burndown,
     )
