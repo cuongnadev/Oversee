@@ -11,7 +11,7 @@ from app.api.deps import (
     require_project_role,
 )
 from app.db.session import get_db
-from app.models.enums import IssueType, Permission, RoleType
+from app.models.enums import IssueType, Permission, RoleType, SprintStatus
 from app.models.membership import ProjectMember, WorkspaceMember
 from app.models.project import Project
 from app.models.user import User
@@ -30,6 +30,10 @@ from app.schemas.membership import (
 from app.schemas.project import (
     ProjectResponse,
     ProjectUpdate,
+)
+from app.schemas.sprint import (
+    SprintCreate,
+    SprintResponse,
 )
 from app.services.issue import (
     add_issues_to_backlog,
@@ -50,6 +54,10 @@ from app.services.project import (
     restore_project,
     update_project,
     update_project_member_role,
+)
+from app.services.sprint import (
+    create_sprint,
+    list_project_sprints,
 )
 
 router = APIRouter()
@@ -551,30 +559,55 @@ def reorder_backlog_endpoint(
     )
 
 
+# ---------------------------------------------------------------------------
+# Sprint Endpoints (#100)
+# ---------------------------------------------------------------------------
 @router.post(
-    "/{project_id}/backlog/reorder",
-    response_model=IssueResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Reorder issue in product backlog (POST alias)",
-    include_in_schema=False,
+    "/{project_id}/sprints",
+    response_model=SprintResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create sprint for project",
+    description="Create a new sprint under a project. Requires SPRINT_CREATE permission.",
 )
-def reorder_backlog_post_endpoint(
+def create_project_sprint_endpoint(
     project_id: uuid.UUID,
-    data: BacklogReorderRequest,
+    data: SprintCreate,
     member: Annotated[
-        ProjectMember, Depends(require_project_permission(Permission.ISSUE_UPDATE))
+        ProjectMember, Depends(require_project_permission(Permission.SPRINT_CREATE))
     ],
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
-) -> IssueResponse:
-    """Reorder a backlog issue (POST alias)."""
-    return reorder_backlog_issue(
+) -> SprintResponse:
+    """Create a new sprint for a project."""
+    return create_sprint(
         db=db,
         project_id=project_id,
-        issue_id=data.issue_id,
         actor=current_user,
-        previous_issue_id=data.previous_issue_id,
-        next_issue_id=data.next_issue_id,
-        target_rank=data.target_rank,
-        position=data.position,
+        data=data,
+    )
+
+
+@router.get(
+    "/{project_id}/sprints",
+    response_model=list[SprintResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List sprints for project",
+    description="Retrieve all non-deleted sprints for a project. Filterable by status. Requires SPRINT_READ permission.",
+)
+def list_project_sprints_endpoint(
+    project_id: uuid.UUID,
+    member: Annotated[
+        ProjectMember, Depends(require_project_permission(Permission.SPRINT_READ))
+    ],
+    db: Annotated[Session, Depends(get_db)],
+    status_filter: Annotated[
+        SprintStatus | None,
+        Query(alias="status", description="Filter sprints by status"),
+    ] = None,
+) -> list[SprintResponse]:
+    """Retrieve all sprints for a project."""
+    return list_project_sprints(
+        db=db,
+        project_id=project_id,
+        status_filter=status_filter,
     )
