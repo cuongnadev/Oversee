@@ -117,7 +117,7 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
             child: RefreshIndicator(
               onRefresh: () => notifier.refresh(),
               child: state.isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const KanbanBoardSkeleton()
                   : !state.hasActiveSprint
                       ? _buildNoActiveSprintEmptyState(context)
                       : Column(

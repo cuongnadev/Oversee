@@ -56,11 +56,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             child: RefreshIndicator(
               onRefresh: () => notifier.refresh(),
               child: state.isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const DashboardSkeleton()
                   : state.errorMessage != null
-                      ? _buildErrorView(context, state, notifier, isDark)
+                      ? AppErrorView(
+                          error: state.errorMessage,
+                          onRetry: () => notifier.refresh(),
+                        )
                       : state.selectedSprint == null
-                          ? _buildNoSprintView(context, isDark)
+                          ? AppEmptyState.noSprints(
+                              onGoToPlanning: () {
+                                context.go(AppRoutes.projectSprintPlanningPath(widget.workspaceId, widget.projectId));
+                              },
+                            )
                           : SingleChildScrollView(
                               physics: const AlwaysScrollableScrollPhysics(),
                               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -302,70 +309,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ],
         );
       },
-    );
-  }
-
-  Widget _buildNoSprintView(BuildContext context, bool isDark) {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: AppEmptyState(
-          icon: Icons.timer_off_outlined,
-          title: 'No Sprints Available',
-          description:
-              'This project currently has no sprints created. Plan and start a sprint to begin tracking team velocity and burndown progress.',
-          action: AppPrimaryButton(
-            label: 'Go to Sprint Planning',
-            icon: Icons.timer_outlined,
-            onPressed: () {
-              context.go(AppRoutes.projectSprintPlanningPath(widget.workspaceId, widget.projectId));
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildErrorView(
-    BuildContext context,
-    DashboardState state,
-    DashboardNotifier notifier,
-    bool isDark,
-  ) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 48),
-            const SizedBox(height: 12),
-            Text(
-              'Failed to Load Dashboard',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              state.errorMessage ?? 'An unexpected error occurred while loading dashboard metrics.',
-              style: TextStyle(
-                fontSize: 13,
-                color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.refresh_rounded, size: 18),
-              label: const Text('Retry'),
-              onPressed: () => notifier.refresh(),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

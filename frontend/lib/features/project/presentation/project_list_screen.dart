@@ -186,25 +186,21 @@ class _ProjectListScreenState extends ConsumerState<ProjectListScreen> {
 
                 // Content
                 if (projectState.isLoading) ...[
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 60.0),
-                    child: Center(child: AppLoadingIndicator()),
-                  ),
+                  const ProjectGridSkeleton(),
                 ] else if (displayProjects.isEmpty) ...[
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 40.0),
-                    child: AppEmptyState(
-                      icon: Icons.assignment_outlined,
-                      title: projectState.searchQuery.isNotEmpty ? 'No Matching Projects' : 'No Projects Found',
-                      description: projectState.searchQuery.isNotEmpty
-                          ? 'No projects matched "${projectState.searchQuery}". Try a different keyword.'
-                          : 'This workspace doesn\'t have any projects yet. Create your first project to start organizing tasks, backlogs, and sprints.',
-                      action: AppPrimaryButton(
-                        icon: Icons.add_rounded,
-                        label: 'Create First Project',
-                        onPressed: () => CreateProjectDialog.show(context, workspaceId: widget.workspaceId),
-                      ),
-                    ),
+                    child: projectState.searchQuery.isNotEmpty
+                        ? AppEmptyState.noSearchResults(
+                            query: projectState.searchQuery,
+                            onClearFilters: () {
+                              _searchController.clear();
+                              notifier.setSearchQuery('');
+                            },
+                          )
+                        : AppEmptyState.noProjects(
+                            onCreateProject: () => CreateProjectDialog.show(context, workspaceId: widget.workspaceId),
+                          ),
                   ),
                 ] else ...[
                   // Responsive Grid / List
