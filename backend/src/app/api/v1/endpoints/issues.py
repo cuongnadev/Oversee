@@ -208,13 +208,25 @@ def update_issue_endpoint(
     issue: Annotated[Issue, Depends(require_issue_permission(Permission.ISSUE_UPDATE))],
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    allow_open_subissues: Annotated[
+        bool | None,
+        Query(
+            description="Allow transitioning to DONE even if sub-issues are open",
+        ),
+    ] = None,
 ) -> IssueResponse:
     """Update attributes of an existing issue."""
+    effective_allow = (
+        allow_open_subissues
+        if allow_open_subissues is not None
+        else (data.allow_open_subissues or False)
+    )
     return update_issue(
         db=db,
         issue=issue,
         actor=current_user,
         data=data,
+        allow_open_subissues=effective_allow,
     )
 
 
@@ -320,7 +332,9 @@ def update_issue_priority(
     summary="Update issue status",
     description=(
         "Transition an issue to a new status following valid workflow transition rules. "
-        "Invalid transitions return 422 Unprocessable Content. Requires ISSUE_UPDATE permission."
+        "Invalid transitions return 422 Unprocessable Content. "
+        "Transitioning to DONE with open sub-issues returns 400 Bad Request unless allow_open_subissues=True. "
+        "Requires ISSUE_UPDATE permission."
     ),
 )
 def update_issue_status(
@@ -328,13 +342,25 @@ def update_issue_status(
     issue: Annotated[Issue, Depends(require_issue_permission(Permission.ISSUE_UPDATE))],
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)],
+    allow_open_subissues: Annotated[
+        bool | None,
+        Query(
+            description="Allow transitioning to DONE even if sub-issues are open",
+        ),
+    ] = None,
 ) -> IssueResponse:
     """Change the workflow status of an issue."""
+    effective_allow = (
+        allow_open_subissues
+        if allow_open_subissues is not None
+        else data.allow_open_subissues
+    )
     return change_issue_status(
         db=db,
         issue=issue,
         actor=current_user,
         new_status=data.status,
+        allow_open_subissues=effective_allow,
     )
 
 

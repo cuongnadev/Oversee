@@ -17,6 +17,7 @@ from app.models.enums import (
     IssueType,
     Permission,
     RoleType,
+    SprintStatus,
 )
 from app.models.issue import Issue
 from app.models.membership import ProjectMember, WorkspaceMember
@@ -82,6 +83,43 @@ def validate_status_transition(
             detail=(
                 f"Invalid status transition from '{current_status.value}' to '{target_status.value}'. "
                 f"Allowed transitions: {allowed_names}."
+            ),
+        )
+
+
+def check_open_sub_issues(
+    db: Session,
+    issue_id: uuid.UUID,
+    allow_open_subissues: bool = False,
+) -> None:
+    """
+    Validate that an issue has no open sub-issues before transitioning to DONE.
+    An open sub-issue is any active child issue whose status is not DONE or CANCELED.
+
+    :raises HTTPException: 400 Bad Request if open sub-issues exist and allow_open_subissues is False.
+    """
+    if allow_open_subissues:
+        return
+
+    open_sub_issues = list(
+        db.scalars(
+            select(Issue).where(
+                Issue.parent_id == issue_id,
+                Issue.deleted_at.is_(None),
+                Issue.status.not_in([IssueStatus.DONE, IssueStatus.CANCELED]),
+            )
+        ).all()
+    )
+
+    if open_sub_issues:
+        sub_list = [
+            f"#{sub.issue_number} ({sub.status.value})" for sub in open_sub_issues
+        ]
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Cannot mark issue as done while {len(open_sub_issues)} sub-issue(s) remain open: "
+                f"{', '.join(sub_list)}. Resolve all sub-issues first, or configure allow_open_subissues=True."
             ),
         )
 
@@ -391,6 +429,11 @@ def create_issue(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Sprint must belong to the same project.",
+            )
+        if sprint.status in (SprintStatus.COMPLETED, SprintStatus.CLOSED):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot assign issue to sprint '{sprint.name}' because it is {sprint.status.value}.",
             )
 
     new_issue = Issue(
@@ -755,6 +798,7 @@ def update_issue(
     issue: Issue,
     actor: User,
     data: IssueUpdate,
+    allow_open_subissues: bool = False,
 ) -> Issue:
     """Update issue details with integrity and permission checks."""
     actor_role = _resolve_effective_role(db, issue.project_id, actor.id)
@@ -785,6 +829,13 @@ def update_issue(
         and old_status != data.status
     ):
         validate_status_transition(old_status, data.status)
+        effective_allow = (
+            data.allow_open_subissues
+            if getattr(data, "allow_open_subissues", False)
+            else allow_open_subissues
+        )
+        if data.status == IssueStatus.DONE:
+            check_open_sub_issues(db, issue.id, allow_open_subissues=effective_allow)
         issue.status = data.status
 
     if "priority" in update_dict:
@@ -894,6 +945,11 @@ def update_issue(
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Sprint must belong to the same project.",
+                )
+            if sprint.status in (SprintStatus.COMPLETED, SprintStatus.CLOSED):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Cannot assign issue to sprint '{sprint.name}' because it is {sprint.status.value}.",
                 )
             issue.sprint_id = data.sprint_id
         else:
@@ -1093,6 +1149,7 @@ def change_issue_status(
     issue: Issue,
     actor: User,
     new_status: IssueStatus,
+    allow_open_subissues: bool = False,
 ) -> Issue:
     """
     Transition an issue to a new status following valid workflow transition rules.
@@ -1101,8 +1158,9 @@ def change_issue_status(
     :param issue: The target Issue entity.
     :param actor: Authenticated user initiating status change.
     :param new_status: Target IssueStatus.
+    :param allow_open_subissues: Whether to permit transition to DONE despite open sub-issues.
     :return: Updated Issue entity with relations loaded.
-    :raises HTTPException: 403 on permission denial, 422 on invalid transition rule.
+    :raises HTTPException: 400 on open sub-issues, 403 on permission denial, 422 on invalid transition rule.
     """
     actor_role = _resolve_effective_role(db, issue.project_id, actor.id)
     if not actor_role or not role_has_permission(actor_role, Permission.ISSUE_UPDATE):
@@ -1114,6 +1172,10 @@ def change_issue_status(
     old_status = issue.status
     if old_status != new_status:
         validate_status_transition(old_status, new_status)
+        if new_status == IssueStatus.DONE:
+            check_open_sub_issues(
+                db, issue.id, allow_open_subissues=allow_open_subissues
+            )
         issue.status = new_status
         db.commit()
         db.refresh(issue)
@@ -1391,6 +1453,11 @@ def remove_issue_from_backlog(
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Target sprint not found in this project.",
+            )
+        if sprint.status in (SprintStatus.COMPLETED, SprintStatus.CLOSED):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot assign issue to sprint '{sprint.name}' because it is {sprint.status.value}.",
             )
         issue.sprint_id = target_sprint_id
         log_activity(
