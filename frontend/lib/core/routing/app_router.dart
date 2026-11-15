@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:frontend/core/routing/not_found_screen.dart';
 import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/features/auth/application/auth_provider.dart';
+import 'package:frontend/features/auth/application/auth_state.dart';
 import 'package:frontend/features/auth/presentation/login_screen.dart';
 import 'package:frontend/features/auth/presentation/register_screen.dart';
 import 'package:frontend/features/dashboard/presentation/dashboard_screen.dart';
@@ -24,9 +25,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     errorBuilder: (context, state) => NotFoundScreen(uri: state.uri.toString()),
     redirect: (context, state) {
       final authState = ref.read(authNotifierProvider);
-      final isAuthenticated = authState.isAuthenticated;
       final location = state.matchedLocation;
       final isAuthRoute = location == AppRoutes.login || location == AppRoutes.register;
+
+      // Allow initial session restoration to resolve without premature redirection
+      if (authState.status == AuthStatus.initial) {
+        return null;
+      }
+
+      final isAuthenticated = authState.isAuthenticated;
 
       // If user is not authenticated and trying to access protected route
       if (!isAuthenticated) {

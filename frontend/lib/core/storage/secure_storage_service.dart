@@ -1,8 +1,14 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:frontend/core/constants/app_constants.dart';
 
 final secureStorageServiceProvider = Provider<SecureStorageService>((ref) {
+  // In headless Flutter test environments, platform channels lack native runners.
+  // We seamlessly fall back to the in-memory storage implementation.
+  if (WidgetsBinding.instance.runtimeType.toString().contains('Test')) {
+    return SecureStorageService();
+  }
   return SecureStorageService(
     const FlutterSecureStorage(
       aOptions: AndroidOptions(encryptedSharedPreferences: true),

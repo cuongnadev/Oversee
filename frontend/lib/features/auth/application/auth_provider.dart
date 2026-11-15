@@ -43,12 +43,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
     AuthRepository? repository,
     AuthState? initialState,
   })  : _repository = repository,
-        super(initialState ?? const AuthState(status: AuthStatus.unauthenticated)) {
+        super(initialState ?? const AuthState(status: AuthStatus.initial)) {
     if (initialState == null) {
       checkAuthStatus();
     }
   }
 
+  /// Checks if stored token exists on app launch and restores user profile.
   /// Checks if stored token exists on app launch and restores user profile.
   Future<void> checkAuthStatus() async {
     try {
@@ -65,7 +66,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
               email: user.email,
             );
           } catch (_) {
-            state = state.copyWith(status: AuthStatus.authenticated, accessToken: token);
+            // Token is invalid, expired, or user is inactive -> clear session
+            await logout();
           }
         } else {
           state = state.copyWith(status: AuthStatus.authenticated, accessToken: token);
