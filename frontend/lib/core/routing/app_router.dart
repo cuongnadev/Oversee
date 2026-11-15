@@ -8,6 +8,7 @@ import 'package:frontend/features/auth/presentation/login_screen.dart';
 import 'package:frontend/features/auth/presentation/register_screen.dart';
 import 'package:frontend/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:frontend/features/issue/presentation/backlog_screen.dart';
+import 'package:frontend/features/project/presentation/project_list_screen.dart';
 import 'package:frontend/features/project/presentation/project_overview_screen.dart';
 import 'package:frontend/features/project/presentation/project_settings_screen.dart';
 import 'package:frontend/features/sprint/presentation/kanban_board_screen.dart';
@@ -69,7 +70,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.workspaceDetail,
         redirect: (context, state) {
           final workspaceId = state.pathParameters['workspaceId']!;
-          return AppRoutes.workspaceSettingsPath(workspaceId);
+          return AppRoutes.workspaceProjectsPath(workspaceId);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.workspaceProjects,
+        builder: (context, state) {
+          final workspaceId = state.pathParameters['workspaceId']!;
+          return ProjectListScreen(workspaceId: workspaceId);
         },
       ),
       GoRoute(
