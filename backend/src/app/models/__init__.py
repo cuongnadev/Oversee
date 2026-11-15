@@ -11,6 +11,7 @@ from app.models.enums import (
     IssuePriority,
     IssueStatus,
     IssueType,
+    Permission,
     RoleType,
     SprintStatus,
 )
@@ -30,6 +31,7 @@ __all__ = [
     "IssuePriority",
     "IssueStatus",
     "IssueType",
+    "Permission",
     "Project",
     "ProjectMember",
     "RoleType",
