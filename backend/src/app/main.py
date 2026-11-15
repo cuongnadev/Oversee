@@ -9,6 +9,10 @@ configure_logging(settings.log_level)
 
 tags_metadata = [
     {
+        "name": "auth",
+        "description": "Authentication and authorization endpoints.",
+    },
+    {
         "name": "health",
         "description": "Service health check endpoints.",
     },
