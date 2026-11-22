@@ -7,6 +7,7 @@ import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/features/dashboard/application/dashboard_provider.dart';
 import 'package:frontend/features/document/data/document_repository.dart';
 import 'package:frontend/features/issue/application/backlog_provider.dart';
+import 'package:frontend/features/issue/application/project_issues_provider.dart';
 import 'package:frontend/features/issue/data/issue_repository.dart';
 import 'package:frontend/features/project/data/project_repository.dart';
 import 'package:frontend/features/project/domain/project_member_model.dart';
@@ -314,6 +315,7 @@ class _QuickCreateDialogState extends ConsumerState<QuickCreateDialog> {
               );
           ref.invalidate(backlogNotifierProvider(widget.projectId));
           ref.invalidate(kanbanBoardProvider(widget.projectId));
+          ref.invalidate(projectIssuesProvider(widget.projectId));
           ref.invalidate(dashboardProvider(widget.projectId));
           successMessage = 'Issue created successfully';
           break;

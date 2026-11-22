@@ -7,6 +7,7 @@ import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/core/utils/responsive_breakpoints.dart';
 import 'package:frontend/features/issue/application/backlog_provider.dart';
 import 'package:frontend/features/issue/application/issue_detail_provider.dart';
+import 'package:frontend/features/issue/application/project_issues_provider.dart';
 import 'package:frontend/features/issue/domain/issue_activity_model.dart';
 import 'package:frontend/features/issue/domain/issue_model.dart';
 import 'package:frontend/features/sprint/application/kanban_board_provider.dart';
@@ -167,6 +168,12 @@ class _IssueDetailPanelState extends ConsumerState<IssueDetailPanel> {
     try {
       if (ref.exists(kanbanBoardProvider(widget.projectId))) {
         ref.read(kanbanBoardProvider(widget.projectId).notifier).updateIssueInState(updatedIssue);
+      }
+    } catch (_) {}
+
+    try {
+      if (ref.exists(projectIssuesProvider(widget.projectId))) {
+        ref.read(projectIssuesProvider(widget.projectId).notifier).updateIssueInState(updatedIssue);
       }
     } catch (_) {}
 

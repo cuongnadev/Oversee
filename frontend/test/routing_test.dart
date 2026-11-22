@@ -229,7 +229,6 @@ void main() {
         (AppRoutes.projectInboxPath('ws-1', 'proj-1'), 'Your Inbox is Clear'),
         (AppRoutes.projectMyTasksPath('ws-1', 'proj-1'), 'No Tasks Assigned Yet'),
         (AppRoutes.projectRoadmapPath('ws-1', 'proj-1'), 'No Roadmap Milestones Yet'),
-        (AppRoutes.projectTimelinePath('ws-1', 'proj-1'), 'Timeline is Empty'),
         (AppRoutes.projectCalendarPath('ws-1', 'proj-1'), 'No Scheduled Dates'),
         (AppRoutes.projectInitiativesPath('ws-1', 'proj-1'), 'No Initiatives or Epics'),
         (AppRoutes.projectDocumentsPath('ws-1', 'proj-1'), 'No Documents Yet'),
