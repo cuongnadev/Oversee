@@ -544,6 +544,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ],
                 ],
               ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: InkWell(
+                  onTap: () => context.go(AppRoutes.projectBoardPath(widget.workspaceId, widget.projectId)),
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Open Sprint Board',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: accentColor,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(Icons.arrow_forward_rounded, size: 13, color: accentColor),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         );
