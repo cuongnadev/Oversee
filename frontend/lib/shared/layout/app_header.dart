@@ -26,7 +26,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
   });
 
   @override
-  Size get preferredSize => const Size.fromHeight(60.0);
+  Size get preferredSize => const Size.fromHeight(64.0);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -53,7 +53,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
     final Color errorColor = AppColors.errorFor(isDark);
 
     return Container(
-      height: 60.0,
+      height: 64.0,
       padding: EdgeInsets.symmetric(horizontal: isMobile ? 12.0 : 20.0),
       decoration: BoxDecoration(
         color: bgColor,

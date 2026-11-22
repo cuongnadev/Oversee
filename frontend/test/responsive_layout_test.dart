@@ -133,9 +133,10 @@ void main() {
       expect(find.byTooltip('Collapse Sidebar'), findsOneWidget);
 
       // Figma sidebar elements: project selector, quick search, and collapsible nav groups
-      expect(find.text('Quick search...'), findsOneWidget);
+      expect(find.text('Search anything'), findsOneWidget);
       expect(find.text('PLANNING'), findsOneWidget);
       expect(find.text('Board'), findsOneWidget);
+      expect(find.text('Planning'), findsOneWidget);
 
       // Collapse PLANNING group hides its items
       await tester.tap(find.text('PLANNING'));

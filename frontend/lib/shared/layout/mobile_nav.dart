@@ -7,9 +7,10 @@ import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/core/theme/app_typography.dart';
 import 'package:frontend/features/auth/application/auth_provider.dart';
 import 'package:frontend/shared/layout/nav_item.dart';
+import 'package:frontend/shared/layout/sidebar_icons.dart';
 import 'package:frontend/shared/widgets/widgets.dart';
 
-/// Bottom Navigation Bar for Mobile (< 600px) aligned with Figma .bottom-nav.
+/// Bottom Navigation Bar for Mobile (< 600px) aligned with Figma `.bottom-nav`.
 class MobileBottomNav extends StatelessWidget {
   final String workspaceId;
   final String projectId;
@@ -30,28 +31,32 @@ class MobileBottomNav extends StatelessWidget {
 
     const primaryItems = [
       NavItem(
-        keyName: 'overview',
-        label: 'Overview',
-        icon: Icons.grid_view_outlined,
-        selectedIcon: Icons.grid_view_rounded,
+        keyName: 'dashboard',
+        label: 'Dashboard',
+        icon: Icons.space_dashboard_outlined,
+        selectedIcon: Icons.space_dashboard_rounded,
+        figmaIcon: FigmaIconType.layoutDashboard,
       ),
       NavItem(
         keyName: 'board',
         label: 'Board',
         icon: Icons.view_kanban_outlined,
         selectedIcon: Icons.view_kanban_rounded,
+        figmaIcon: FigmaIconType.folderKanban,
       ),
       NavItem(
         keyName: 'backlog',
         label: 'Backlog',
         icon: Icons.layers_outlined,
         selectedIcon: Icons.layers_rounded,
+        figmaIcon: FigmaIconType.layers3,
       ),
       NavItem(
         keyName: 'sprints',
         label: 'Sprints',
         icon: Icons.timer_outlined,
         selectedIcon: Icons.timer_rounded,
+        figmaIcon: FigmaIconType.timer,
       ),
     ];
 
@@ -75,7 +80,7 @@ class MobileBottomNav extends StatelessWidget {
           height: 58.0,
           child: Row(
             children: [
-              for (int i = 0; i < primaryItems.length; i++) ...[
+              for (int i = 0; i < primaryItems.length; i++)
                 Expanded(
                   child: _buildNavItem(
                     context,
@@ -84,8 +89,8 @@ class MobileBottomNav extends StatelessWidget {
                     isDark: isDark,
                     onTap: () {
                       switch (primaryItems[i].keyName) {
-                        case 'overview':
-                          context.go(AppRoutes.projectOverviewPath(workspaceId, projectId));
+                        case 'dashboard':
+                          context.go(AppRoutes.projectDashboardPath(workspaceId, projectId));
                           break;
                         case 'board':
                           context.go(AppRoutes.projectBoardPath(workspaceId, projectId));
@@ -100,16 +105,8 @@ class MobileBottomNav extends StatelessWidget {
                     },
                   ),
                 ),
-              ],
               Expanded(
-                child: _buildNavItem(
-                  context,
-                  item: const NavItem(
-                    keyName: 'more',
-                    label: 'More',
-                    icon: Icons.menu_rounded,
-                    selectedIcon: Icons.menu_rounded,
-                  ),
+                child: _buildMoreItem(
                   isSelected: currentIndex == 4,
                   isDark: isDark,
                   onTap: onOpenMore,
@@ -141,9 +138,9 @@ class MobileBottomNav extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              isSelected ? item.selectedIcon : item.icon,
-              size: 19.0,
+            FigmaSidebarIcon(
+              item.figmaIcon,
+              size: 18.0,
               color: isSelected ? selectedColor : unselectedColor,
             ),
             const SizedBox(height: 3.0),
@@ -162,9 +159,45 @@ class MobileBottomNav extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildMoreItem({
+    required bool isSelected,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    final Color selectedColor = AppColors.accentFor(isDark);
+    final Color unselectedColor = AppColors.textMutedFor(isDark);
+    final Color activeColor = isSelected ? selectedColor : unselectedColor;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.menu_rounded, size: 18.0, color: activeColor),
+            const SizedBox(height: 3.0),
+            Text(
+              'More',
+              style: TextStyle(
+                fontSize: 10.0,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: activeColor,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-/// Navigation Drawer for Mobile (< 600px) aligned with Figma mobile sidebar drawer.
+/// Navigation Drawer for Mobile (< 600px) aligned with Figma `.sidebar.drawer-open`.
 class MobileAppDrawer extends ConsumerWidget {
   final String workspaceId;
   final String projectId;
@@ -178,8 +211,8 @@ class MobileAppDrawer extends ConsumerWidget {
   });
 
   static const _workspaceKeys = {'overview', 'dashboard'};
-  static const _planningKeys = {'board', 'backlog', 'sprints'};
-  static const _configKeys = {'settings'};
+  static const _planningKeys = {'board', 'backlog', 'sprints', 'planning'};
+  static const _configKeys = {'team', 'settings'};
 
   String _buildRoute(String keyName) {
     switch (keyName) {
@@ -191,8 +224,12 @@ class MobileAppDrawer extends ConsumerWidget {
         return AppRoutes.projectBoardPath(workspaceId, projectId);
       case 'sprints':
         return AppRoutes.projectSprintsPath(workspaceId, projectId);
+      case 'planning':
+        return AppRoutes.projectSprintPlanningPath(workspaceId, projectId);
       case 'dashboard':
         return AppRoutes.projectDashboardPath(workspaceId, projectId);
+      case 'team':
+        return AppRoutes.workspaceSettingsPath(workspaceId);
       case 'settings':
         return AppRoutes.projectSettingsPath(workspaceId, projectId);
       default:
@@ -239,13 +276,18 @@ class MobileAppDrawer extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Drawer Brand Header (Figma .sidebar-brand)
+            // Drawer Brand Header (Figma .sidebar-brand: height 64px)
             Container(
-              height: 60.0,
-              padding: const EdgeInsets.symmetric(horizontal: 18.0),
+              height: 64.0,
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Row(
                 children: [
-                  Icon(Icons.layers_rounded, color: accentColor, size: 19.0),
+                  FigmaSidebarIcon(
+                    FigmaIconType.layers3,
+                    size: 19.0,
+                    color: accentColor,
+                    strokeWidth: 1.75,
+                  ),
                   const SizedBox(width: 9.0),
                   Flexible(
                     child: RichText(
@@ -255,9 +297,9 @@ class MobileAppDrawer extends ConsumerWidget {
                         style: TextStyle(
                           fontFamily: AppTypography.fontFamily,
                           fontFamilyFallback: AppTypography.fontFallback,
-                          fontSize: 20.0,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.8,
+                          fontSize: 21.0,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.9,
                           color: textPrimary,
                         ),
                         children: [
@@ -268,7 +310,7 @@ class MobileAppDrawer extends ConsumerWidget {
                   ),
                   const SizedBox(width: 8.0),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 2.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 1.5),
                     decoration: BoxDecoration(
                       color: accentSoftColor,
                       borderRadius: BorderRadius.circular(AppColors.radiusSm),
@@ -277,7 +319,7 @@ class MobileAppDrawer extends ConsumerWidget {
                       'PRO',
                       style: TextStyle(
                         fontSize: 8.0,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                         letterSpacing: 1.0,
                         color: accentColor,
                       ),
@@ -289,7 +331,7 @@ class MobileAppDrawer extends ConsumerWidget {
                     onPressed: () => Navigator.of(context).pop(),
                     tooltip: 'Close Menu',
                     padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                   ),
                 ],
               ),
@@ -297,9 +339,9 @@ class MobileAppDrawer extends ConsumerWidget {
 
             // Project Context Card
             Padding(
-              padding: const EdgeInsets.fromLTRB(12.0, 0.0, 12.0, 12.0),
+              padding: const EdgeInsets.fromLTRB(12.0, 1.0, 12.0, 10.0),
               child: Container(
-                padding: const EdgeInsets.all(10.0),
+                padding: const EdgeInsets.all(9.0),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceFor(isDark),
                   borderRadius: BorderRadius.circular(AppColors.radiusMd),
@@ -308,12 +350,12 @@ class MobileAppDrawer extends ConsumerWidget {
                 child: Row(
                   children: [
                     Container(
-                      width: 28.0,
-                      height: 28.0,
+                      width: 29.0,
+                      height: 29.0,
                       decoration: BoxDecoration(
                         color: accentSoftColor,
                         borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                        border: Border.all(color: accentColor.withValues(alpha: 0.2)),
+                        border: Border.all(color: accentColor.withValues(alpha: 0.18)),
                       ),
                       alignment: Alignment.center,
                       child: Text(
@@ -333,7 +375,7 @@ class MobileAppDrawer extends ConsumerWidget {
                           Text(
                             projectId,
                             style: TextStyle(
-                              fontSize: 12.0,
+                              fontSize: 11.5,
                               fontWeight: FontWeight.w600,
                               color: textPrimary,
                             ),
@@ -341,7 +383,7 @@ class MobileAppDrawer extends ConsumerWidget {
                           ),
                           Text(
                             'Workspace: $workspaceId',
-                            style: TextStyle(fontSize: 10.0, color: textMuted),
+                            style: TextStyle(fontSize: 9.5, color: textMuted),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
@@ -377,7 +419,7 @@ class MobileAppDrawer extends ConsumerWidget {
                         isSelected: currentRoute == item.keyName,
                         isDark: isDark,
                       ),
-                    const SizedBox(height: 6.0),
+                    const SizedBox(height: 8.0),
                   ],
                   Divider(height: 20.0, color: borderSoftColor),
                   ListTile(
@@ -385,14 +427,14 @@ class MobileAppDrawer extends ConsumerWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppColors.radiusMd),
                     ),
-                    leading: Icon(Icons.workspaces_outlined, size: 17.0, color: textMuted),
+                    leading: FigmaSidebarIcon(FigmaIconType.bookOpen, size: 16.0, color: textMuted),
                     title: Text(
-                      'All Workspaces',
-                      style: TextStyle(fontSize: 12.5, color: textSecondary),
+                      'All Projects',
+                      style: TextStyle(fontSize: 12.0, color: textSecondary),
                     ),
                     onTap: () {
                       Navigator.of(context).pop();
-                      context.go(AppRoutes.workspaces);
+                      context.go(AppRoutes.workspaceDetailPath(workspaceId));
                     },
                   ),
                   ListTile(
@@ -400,14 +442,14 @@ class MobileAppDrawer extends ConsumerWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppColors.radiusMd),
                     ),
-                    leading: Icon(Icons.tune_rounded, size: 17.0, color: textMuted),
+                    leading: FigmaSidebarIcon(FigmaIconType.terminal, size: 16.0, color: textMuted),
                     title: Text(
-                      'Workspace Settings',
-                      style: TextStyle(fontSize: 12.5, color: textSecondary),
+                      'All Workspaces',
+                      style: TextStyle(fontSize: 12.0, color: textSecondary),
                     ),
                     onTap: () {
                       Navigator.of(context).pop();
-                      context.go(AppRoutes.workspaceSettingsPath(workspaceId));
+                      context.go(AppRoutes.workspaces);
                     },
                   ),
                 ],
@@ -416,7 +458,7 @@ class MobileAppDrawer extends ConsumerWidget {
 
             // Bottom user info & logout
             Container(
-              padding: const EdgeInsets.all(14.0),
+              padding: const EdgeInsets.all(13.0),
               decoration: BoxDecoration(
                 border: Border(
                   top: BorderSide(color: borderColor, width: 1.0),
@@ -430,7 +472,7 @@ class MobileAppDrawer extends ConsumerWidget {
                     showStatus: true,
                     isOnline: true,
                   ),
-                  const SizedBox(width: 10.0),
+                  const SizedBox(width: 9.0),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -439,15 +481,15 @@ class MobileAppDrawer extends ConsumerWidget {
                         Text(
                           userName,
                           style: TextStyle(
-                            fontSize: 12.0,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
                             color: textPrimary,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
                           userEmail,
-                          style: TextStyle(fontSize: 10.0, color: textMuted),
+                          style: TextStyle(fontSize: 9.5, color: textMuted),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
@@ -482,7 +524,7 @@ class MobileAppDrawer extends ConsumerWidget {
     final Color unselectedColor = AppColors.textSecondaryFor(isDark);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1.5),
+      padding: const EdgeInsets.only(bottom: 2.0),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -508,7 +550,7 @@ class MobileAppDrawer extends ConsumerWidget {
               }
             },
             child: Container(
-              height: 36.0,
+              height: 34.0,
               padding: const EdgeInsets.symmetric(horizontal: 10.0),
               decoration: BoxDecoration(
                 color: isSelected ? selectedBg : Colors.transparent,
@@ -516,18 +558,18 @@ class MobileAppDrawer extends ConsumerWidget {
               ),
               child: Row(
                 children: [
-                  Icon(
-                    isSelected ? item.selectedIcon : item.icon,
+                  FigmaSidebarIcon(
+                    item.figmaIcon,
                     color: isSelected ? accentColor : AppColors.textMutedFor(isDark),
-                    size: 17.0,
+                    size: 16.0,
                   ),
                   const SizedBox(width: 10.0),
                   Expanded(
                     child: Text(
                       item.label,
                       style: TextStyle(
-                        fontSize: 13.0,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w500,
                         color: isSelected ? selectedText : unselectedColor,
                       ),
                     ),

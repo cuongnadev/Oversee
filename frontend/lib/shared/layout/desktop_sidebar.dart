@@ -5,25 +5,33 @@ import 'package:go_router/go_router.dart';
 import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/core/theme/app_typography.dart';
+import 'package:frontend/core/theme/theme_provider.dart';
 import 'package:frontend/features/auth/application/auth_provider.dart';
+import 'package:frontend/features/project/presentation/widgets/create_project_dialog.dart';
 import 'package:frontend/features/workspace/application/workspace_provider.dart';
 import 'package:frontend/shared/layout/nav_item.dart';
+import 'package:frontend/shared/layout/sidebar_icons.dart';
 import 'package:frontend/shared/layout/sidebar_provider.dart';
 import 'package:frontend/shared/widgets/app_dialog.dart';
 import 'package:frontend/shared/widgets/user_avatar.dart';
 
-/// Collapsible desktop and wide web navigation sidebar aligned 1:1 with Figma Sidebar
-/// (`Layout.tsx` & `app.css` `.sidebar` tokens, active/hover/inactive states, collapsible groups).
+/// Collapsible desktop and wide web navigation sidebar matching
+/// `frontend/lib/references/figma-source/src/components/Layout.tsx` & `src/styles/app.css`
+/// pixel-for-pixel (240px/64px width, 64px brand bar, project selector dropdown,
+/// quick search trigger, collapsible nav groups, Lucide 1.6px stroke icons,
+/// exact active/hover/inactive states, bottom utility actions, and user footer).
 class DesktopSidebar extends ConsumerStatefulWidget {
   final String workspaceId;
   final String projectId;
   final String currentRoute;
+  final String? projectName;
 
   const DesktopSidebar({
     super.key,
     required this.workspaceId,
     required this.projectId,
     required this.currentRoute,
+    this.projectName,
   });
 
   @override
@@ -32,8 +40,8 @@ class DesktopSidebar extends ConsumerStatefulWidget {
 
 class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
   static const _workspaceKeys = {'overview', 'dashboard'};
-  static const _planningKeys = {'board', 'backlog', 'sprints'};
-  static const _configKeys = {'settings'};
+  static const _planningKeys = {'board', 'backlog', 'sprints', 'planning'};
+  static const _configKeys = {'team', 'settings'};
 
   final Set<String> _closedGroups = <String>{};
 
@@ -47,8 +55,12 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
         return AppRoutes.projectBoardPath(widget.workspaceId, widget.projectId);
       case 'sprints':
         return AppRoutes.projectSprintsPath(widget.workspaceId, widget.projectId);
+      case 'planning':
+        return AppRoutes.projectSprintPlanningPath(widget.workspaceId, widget.projectId);
       case 'dashboard':
         return AppRoutes.projectDashboardPath(widget.workspaceId, widget.projectId);
+      case 'team':
+        return AppRoutes.workspaceSettingsPath(widget.workspaceId);
       case 'settings':
         return AppRoutes.projectSettingsPath(widget.workspaceId, widget.projectId);
       default:
@@ -66,17 +78,41 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
     });
   }
 
-  void _openQuickSearch(BuildContext context) {
+  void _openProjectSwitcher(
+    BuildContext context, {
+    required String projectLabel,
+    required String workspaceLabel,
+  }) {
     AppAdaptiveDialog.show<void>(
       context,
-      title: 'Quick Navigation',
-      maxWidth: 480.0,
-      child: _SidebarQuickSearchContent(
+      title: 'Your Projects',
+      maxWidth: 420.0,
+      child: _SidebarProjectPickerModal(
         workspaceId: widget.workspaceId,
         projectId: widget.projectId,
-        currentRoute: widget.currentRoute,
-        buildRoute: _buildRoute,
+        projectLabel: projectLabel,
+        workspaceLabel: workspaceLabel,
+        onCreateProject: () {
+          Navigator.of(context).pop();
+          CreateProjectDialog.show(context, workspaceId: widget.workspaceId);
+        },
       ),
+    );
+  }
+
+  void _openCommandPalette(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      barrierColor: const Color(0x9908080C),
+      builder: (dialogContext) {
+        return _SidebarCommandPaletteDialog(
+          workspaceId: widget.workspaceId,
+          projectId: widget.projectId,
+          buildRoute: _buildRoute,
+          onToggleTheme: () => ref.read(themeModeProvider.notifier).toggleTheme(),
+          onCreateProject: () => CreateProjectDialog.show(context, workspaceId: widget.workspaceId),
+        );
+      },
     );
   }
 
@@ -106,7 +142,12 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
             .firstOrNull ??
         workspaceState.selectedWorkspace;
     final String workspaceLabel = activeWorkspace?.name ?? 'Engineering workspace';
-    final String projectLabel = widget.projectId;
+    final String userRoleLabel = activeWorkspace?.userRole.label ?? userEmail;
+
+    final String projectLabel =
+        (widget.projectName != null && widget.projectName!.trim().isNotEmpty)
+            ? widget.projectName!.trim()
+            : widget.projectId;
     final String projectInitial =
         projectLabel.trim().isNotEmpty ? projectLabel.trim()[0].toUpperCase() : 'P';
 
@@ -127,7 +168,7 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
-      curve: Curves.easeOut,
+      curve: Curves.ease,
       clipBehavior: Clip.hardEdge,
       width: isExpanded ? 240.0 : 64.0,
       decoration: BoxDecoration(
@@ -145,14 +186,19 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1. Brand header (Figma .sidebar-brand, height: 60px)
+              // 1. Brand header (Figma .sidebar-brand: height 64px, padding 0 20px, gap 9px)
               Container(
-                height: 60.0,
-                padding: EdgeInsets.symmetric(horizontal: isExpanded ? 18.0 : 0.0),
+                height: 64.0,
+                padding: EdgeInsets.symmetric(horizontal: isExpanded ? 20.0 : 22.0),
                 child: isExpanded
                     ? Row(
                         children: [
-                          Icon(Icons.layers_rounded, color: accentColor, size: 19.0),
+                          FigmaSidebarIcon(
+                            FigmaIconType.layers3,
+                            size: 19.0,
+                            color: accentColor,
+                            strokeWidth: 1.75,
+                          ),
                           const SizedBox(width: 9.0),
                           Expanded(
                             child: RichText(
@@ -162,8 +208,8 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                                 style: TextStyle(
                                   fontFamily: AppTypography.fontFamily,
                                   fontFamilyFallback: AppTypography.fontFallback,
-                                  fontSize: 21.0,
-                                  fontWeight: FontWeight.w700,
+                                  fontSize: 22.0,
+                                  fontWeight: FontWeight.w600,
                                   letterSpacing: -0.9,
                                   color: textPrimary,
                                 ),
@@ -177,7 +223,7 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 2.0),
+                            padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 1.5),
                             decoration: BoxDecoration(
                               color: accentSoftColor,
                               borderRadius: BorderRadius.circular(AppColors.radiusSm),
@@ -186,8 +232,9 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                               'PRO',
                               style: TextStyle(
                                 fontSize: 8.0,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w600,
                                 letterSpacing: 1.0,
+                                height: 1.5,
                                 color: accentColor,
                               ),
                             ),
@@ -195,34 +242,48 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                         ],
                       )
                     : Center(
-                        child: Icon(Icons.layers_rounded, color: accentColor, size: 19.0),
+                        child: FigmaSidebarIcon(
+                          FigmaIconType.layers3,
+                          size: 19.0,
+                          color: accentColor,
+                          strokeWidth: 1.75,
+                        ),
                       ),
               ),
 
-              // 2. Project Selector Card (Figma .project-selector > .project-button)
+              // 2. Project selector (Figma .project-selector: padding 1px 12px 10px)
               Padding(
-                padding: EdgeInsets.fromLTRB(12.0, isExpanded ? 1.0 : 0.0, 12.0, 10.0),
+                padding: EdgeInsets.fromLTRB(
+                  12.0,
+                  isExpanded ? 1.0 : 0.0,
+                  12.0,
+                  isExpanded ? 10.0 : 8.0,
+                ),
                 child: _SidebarProjectButton(
                   projectInitial: projectInitial,
                   projectLabel: projectLabel,
                   workspaceLabel: workspaceLabel,
-                  workspaceId: widget.workspaceId,
                   isExpanded: isExpanded,
                   isDark: isDark,
+                  onTap: () => _openProjectSwitcher(
+                    context,
+                    projectLabel: projectLabel,
+                    workspaceLabel: workspaceLabel,
+                  ),
                 ),
               ),
 
-              // 3. Sidebar Quick-Search Trigger (Figma .sidebar-search)
+              // 3. Quick search trigger (Figma .sidebar-search: margin 0 12px 10px)
               Padding(
                 padding: const EdgeInsets.fromLTRB(12.0, 0.0, 12.0, 10.0),
                 child: _SidebarSearchTrigger(
                   isExpanded: isExpanded,
                   isDark: isDark,
-                  onTap: () => _openQuickSearch(context),
+                  onTap: () => _openCommandPalette(context),
                 ),
               ),
 
-              // 4. Collapsible Grouped Navigation (Figma .sidebar-nav)
+              // 4. Collapsible grouped navigation (Figma .sidebar-nav: padding 0 10px)
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.symmetric(horizontal: 10.0),
@@ -234,11 +295,9 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                           isClosed: _closedGroups.contains(title),
                           isDark: isDark,
                           onTap: () => _toggleGroup(title),
-                        )
-                      else
-                        const SizedBox(height: 8.0),
+                        ),
                       if (!_closedGroups.contains(title) || !isExpanded)
-                        for (final item in items) ...[
+                        for (final item in items)
                           _SidebarNavItem(
                             item: item,
                             isSelected: widget.currentRoute == item.keyName,
@@ -250,15 +309,13 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                               }
                             },
                           ),
-                          const SizedBox(height: 2.0),
-                        ],
-                      SizedBox(height: isExpanded ? 10.0 : 6.0),
+                      SizedBox(height: isExpanded ? 12.0 : 14.0),
                     ],
                   ],
                 ),
               ),
 
-              // 5. Bottom Utility Actions & User Footer (Figma .sidebar-bottom)
+              // 5. Bottom utility section & user footer (Figma .sidebar-bottom)
               Container(
                 padding: const EdgeInsets.fromLTRB(10.0, 8.0, 10.0, 0.0),
                 decoration: BoxDecoration(
@@ -270,18 +327,26 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _SidebarUtilityItem(
-                      icon: Icons.workspaces_outlined,
+                      icon: FigmaIconType.bookOpen,
+                      label: 'All Projects',
+                      tooltip: 'All Projects',
+                      isExpanded: isExpanded,
+                      isDark: isDark,
+                      onTap: () => context.go(AppRoutes.workspaceDetailPath(widget.workspaceId)),
+                    ),
+                    _SidebarUtilityItem(
+                      icon: FigmaIconType.terminal,
                       label: 'All Workspaces',
                       tooltip: 'All Workspaces',
+                      badgeText: 'WS',
                       isExpanded: isExpanded,
                       isDark: isDark,
                       onTap: () => context.go(AppRoutes.workspaces),
                     ),
-                    const SizedBox(height: 2.0),
                     _SidebarUtilityItem(
                       icon: isExpanded
-                          ? Icons.keyboard_double_arrow_left_rounded
-                          : Icons.keyboard_double_arrow_right_rounded,
+                          ? FigmaIconType.panelLeftClose
+                          : FigmaIconType.panelLeftOpen,
                       label: 'Collapse sidebar',
                       tooltip: isExpanded ? 'Collapse Sidebar' : 'Expand Sidebar',
                       shortcut: '[',
@@ -291,13 +356,13 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                         ref.read(sidebarExpandedProvider.notifier).toggleSidebar();
                       },
                     ),
-                    const SizedBox(height: 8.0),
 
-                    // User Footer (Figma .sidebar-user)
+                    // User footer (Figma .sidebar-user: margin-top 8px, padding 13px 5px)
                     Container(
+                      margin: const EdgeInsets.only(top: 8.0),
                       padding: EdgeInsets.symmetric(
                         horizontal: isExpanded ? 5.0 : 0.0,
-                        vertical: 12.0,
+                        vertical: 13.0,
                       ),
                       decoration: BoxDecoration(
                         border: Border(
@@ -323,17 +388,17 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                                       Text(
                                         userName,
                                         style: TextStyle(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w600,
+                                          fontSize: 11.0,
+                                          fontWeight: FontWeight.w500,
                                           color: textPrimary,
                                         ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                       Text(
-                                        userEmail,
+                                        userRoleLabel,
                                         style: TextStyle(
-                                          fontSize: 9.5,
+                                          fontSize: 9.0,
                                           color: textMuted,
                                         ),
                                         maxLines: 1,
@@ -345,16 +410,18 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                                 PopupMenuButton<String>(
                                   tooltip: 'Account Menu',
                                   padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
-                                  icon: Icon(
-                                    Icons.more_horiz_rounded,
+                                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                  icon: FigmaSidebarIcon(
+                                    FigmaIconType.moreHorizontal,
                                     size: 16.0,
                                     color: textMuted,
                                   ),
                                   onSelected: (value) {
                                     switch (value) {
                                       case 'projects':
-                                        context.go(AppRoutes.workspaceDetailPath(widget.workspaceId));
+                                        context.go(
+                                          AppRoutes.workspaceDetailPath(widget.workspaceId),
+                                        );
                                         break;
                                       case 'ws-settings':
                                         context.go(
@@ -367,6 +434,19 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                                     }
                                   },
                                   itemBuilder: (_) => [
+                                    PopupMenuItem<String>(
+                                      enabled: false,
+                                      height: 30.0,
+                                      child: Text(
+                                        userEmail,
+                                        style: TextStyle(
+                                          fontSize: 10.0,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: 0.6,
+                                          color: textMuted,
+                                        ),
+                                      ),
+                                    ),
                                     const PopupMenuItem(
                                       value: 'projects',
                                       child: Text('Workspace Projects'),
@@ -407,22 +487,22 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
   }
 }
 
-/// Figma `.project-button` selector card inside the sidebar.
+/// Figma `.project-button` selector card.
 class _SidebarProjectButton extends StatefulWidget {
   final String projectInitial;
   final String projectLabel;
   final String workspaceLabel;
-  final String workspaceId;
   final bool isExpanded;
   final bool isDark;
+  final VoidCallback onTap;
 
   const _SidebarProjectButton({
     required this.projectInitial,
     required this.projectLabel,
     required this.workspaceLabel,
-    required this.workspaceId,
     required this.isExpanded,
     required this.isDark,
+    required this.onTap,
   });
 
   @override
@@ -446,7 +526,7 @@ class _SidebarProjectButtonState extends State<_SidebarProjectButton> {
       decoration: BoxDecoration(
         color: accentSoft,
         borderRadius: BorderRadius.circular(AppColors.radiusMd),
-        border: Border.all(color: accentColor.withValues(alpha: 0.2)),
+        border: Border.all(color: accentColor.withValues(alpha: 0.18)),
       ),
       alignment: Alignment.center,
       child: Text(
@@ -459,124 +539,79 @@ class _SidebarProjectButtonState extends State<_SidebarProjectButton> {
       ),
     );
 
-    final Widget buttonBody = MouseRegion(
+    final Widget body = MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        padding: EdgeInsets.all(widget.isExpanded ? 9.0 : 4.0),
-        decoration: BoxDecoration(
-          color: _isHovered
-              ? AppColors.hoverFor(widget.isDark)
-              : AppColors.surfaceFor(widget.isDark),
-          borderRadius: BorderRadius.circular(AppColors.radiusMd),
-          border: Border.all(
-            color: _isHovered ? textMuted : borderColor,
-            width: 1.0,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: EdgeInsets.all(widget.isExpanded ? 9.0 : 4.0),
+          decoration: BoxDecoration(
+            color: _isHovered
+                ? AppColors.hoverFor(widget.isDark)
+                : AppColors.surfaceFor(widget.isDark),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+            border: Border.all(
+              color: _isHovered ? textMuted : borderColor,
+              width: 1.0,
+            ),
           ),
-        ),
-        child: widget.isExpanded
-            ? Row(
-                children: [
-                  iconSquare,
-                  const SizedBox(width: 9.0),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          widget.projectLabel,
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600,
-                            color: textPrimary,
+          child: widget.isExpanded
+              ? Row(
+                  children: [
+                    iconSquare,
+                    const SizedBox(width: 9.0),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            widget.projectLabel,
+                            style: TextStyle(
+                              fontSize: 11.0,
+                              fontWeight: FontWeight.w600,
+                              color: textPrimary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 1.0),
-                        Text(
-                          widget.workspaceLabel,
-                          style: TextStyle(
-                            fontSize: 9.5,
-                            color: textMuted,
+                          const SizedBox(height: 1.0),
+                          Text(
+                            widget.workspaceLabel,
+                            style: TextStyle(
+                              fontSize: 9.0,
+                              color: textMuted,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 4.0),
-                  Icon(Icons.unfold_more_rounded, size: 14.0, color: textMuted),
-                ],
-              )
-            : Center(child: iconSquare),
+                    const SizedBox(width: 6.0),
+                    FigmaSidebarIcon(
+                      FigmaIconType.chevronsUpDown,
+                      size: 13.0,
+                      color: textMuted,
+                    ),
+                  ],
+                )
+              : Center(child: iconSquare),
+        ),
       ),
     );
 
-    return PopupMenuButton<String>(
-      tooltip: 'Switch project',
-      offset: const Offset(0, 52),
-      onSelected: (action) {
-        switch (action) {
-          case 'projects':
-            context.go(AppRoutes.workspaceDetailPath(widget.workspaceId));
-            break;
-          case 'ws-settings':
-            context.go(AppRoutes.workspaceSettingsPath(widget.workspaceId));
-            break;
-          case 'workspaces':
-            context.go(AppRoutes.workspaces);
-            break;
-        }
-      },
-      itemBuilder: (_) => [
-        PopupMenuItem<String>(
-          enabled: false,
-          height: 30.0,
-          child: Text('PROJECT WORKSPACE', style: AppTypography.eyebrow(widget.isDark)),
-        ),
-        const PopupMenuItem(
-          value: 'projects',
-          child: Row(
-            children: [
-              Icon(Icons.folder_outlined, size: 15.0),
-              SizedBox(width: 8.0),
-              Text('Switch Project'),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'ws-settings',
-          child: Row(
-            children: [
-              Icon(Icons.tune_rounded, size: 15.0),
-              SizedBox(width: 8.0),
-              Text('Workspace Settings'),
-            ],
-          ),
-        ),
-        const PopupMenuDivider(),
-        const PopupMenuItem(
-          value: 'workspaces',
-          child: Row(
-            children: [
-              Icon(Icons.workspaces_outlined, size: 15.0),
-              SizedBox(width: 8.0),
-              Text('All Workspaces'),
-            ],
-          ),
-        ),
-      ],
-      child: buttonBody,
+    return Tooltip(
+      message: 'Select project',
+      child: body,
     );
   }
 }
 
-/// Figma `.sidebar-search` button with `⌘ K` shortcut badge.
+/// Figma `.sidebar-search` button with `⌘ K` `<kbd>` pill.
 class _SidebarSearchTrigger extends StatefulWidget {
   final bool isExpanded;
   final bool isDark;
@@ -601,14 +636,14 @@ class _SidebarSearchTriggerState extends State<_SidebarSearchTrigger> {
     final textPrimary = AppColors.textPrimaryFor(widget.isDark);
     final borderColor = AppColors.borderFor(widget.isDark);
 
-    final Widget content = MouseRegion(
+    final Widget trigger = MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
+          duration: const Duration(milliseconds: 160),
           height: 30.0,
           padding: EdgeInsets.symmetric(horizontal: widget.isExpanded ? 9.0 : 0.0),
           decoration: BoxDecoration(
@@ -618,15 +653,15 @@ class _SidebarSearchTriggerState extends State<_SidebarSearchTrigger> {
           child: widget.isExpanded
               ? Row(
                   children: [
-                    Icon(
-                      Icons.search_rounded,
+                    FigmaSidebarIcon(
+                      FigmaIconType.search,
                       size: 15.0,
                       color: _isHovered ? textPrimary : textMuted,
                     ),
-                    const SizedBox(width: 8.0),
+                    const SizedBox(width: 7.0),
                     Expanded(
                       child: Text(
-                        'Quick search...',
+                        'Search anything',
                         style: TextStyle(
                           fontSize: 11.0,
                           color: _isHovered ? textPrimary : textMuted,
@@ -636,7 +671,7 @@ class _SidebarSearchTriggerState extends State<_SidebarSearchTrigger> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 1.5),
+                      padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 1.0),
                       decoration: BoxDecoration(
                         color: AppColors.surface2For(widget.isDark),
                         borderRadius: BorderRadius.circular(AppColors.radiusSm),
@@ -654,9 +689,9 @@ class _SidebarSearchTriggerState extends State<_SidebarSearchTrigger> {
                   ],
                 )
               : Center(
-                  child: Icon(
-                    Icons.search_rounded,
-                    size: 15.5,
+                  child: FigmaSidebarIcon(
+                    FigmaIconType.search,
+                    size: 15.0,
                     color: _isHovered ? textPrimary : textMuted,
                   ),
                 ),
@@ -664,14 +699,14 @@ class _SidebarSearchTriggerState extends State<_SidebarSearchTrigger> {
       ),
     );
 
-    if (!widget.isExpanded) {
-      return Tooltip(message: 'Quick search (⌘ K)', child: content);
-    }
-    return content;
+    return Tooltip(
+      message: 'Search · Ctrl K',
+      child: trigger,
+    );
   }
 }
 
-/// Figma `.nav-group-heading` collapsible section header with rotating chevron.
+/// Figma `.nav-group-heading` collapsible section button (`9px`, `1.2px` tracking, rotating chevron).
 class _SidebarGroupHeading extends StatefulWidget {
   final String title;
   final bool isClosed;
@@ -695,7 +730,7 @@ class _SidebarGroupHeadingState extends State<_SidebarGroupHeading> {
   @override
   Widget build(BuildContext context) {
     final textMuted = AppColors.textMutedFor(widget.isDark);
-    final textSecondary = AppColors.textSecondaryFor(widget.isDark);
+    final textPrimary = AppColors.textPrimaryFor(widget.isDark);
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -704,7 +739,7 @@ class _SidebarGroupHeadingState extends State<_SidebarGroupHeading> {
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
+          duration: const Duration(milliseconds: 160),
           height: 25.0,
           margin: const EdgeInsets.only(bottom: 2.0),
           padding: const EdgeInsets.symmetric(horizontal: 10.0),
@@ -721,16 +756,16 @@ class _SidebarGroupHeadingState extends State<_SidebarGroupHeading> {
                   fontSize: 9.0,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 1.2,
-                  color: _isHovered ? textSecondary : textMuted,
+                  color: _isHovered ? textPrimary : textMuted,
                 ),
               ),
               AnimatedRotation(
                 turns: widget.isClosed ? -0.25 : 0.0,
-                duration: const Duration(milliseconds: 150),
-                child: Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  size: 13.0,
-                  color: _isHovered ? textSecondary : textMuted,
+                duration: const Duration(milliseconds: 160),
+                child: FigmaSidebarIcon(
+                  FigmaIconType.chevronDown,
+                  size: 11.0,
+                  color: _isHovered ? textPrimary : textMuted,
                 ),
               ),
             ],
@@ -741,7 +776,7 @@ class _SidebarGroupHeadingState extends State<_SidebarGroupHeading> {
   }
 }
 
-/// Figma `.nav-item` with exact active left-bar, hover surface, icon, and shortcut hint.
+/// Figma `.nav-item` matching exact active/hover/inactive CSS tokens & 2px left accent bar.
 class _SidebarNavItem extends StatefulWidget {
   final NavItem item;
   final bool isSelected;
@@ -773,111 +808,115 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
     final textSecondary = AppColors.textSecondaryFor(widget.isDark);
     final textMuted = AppColors.textMutedFor(widget.isDark);
 
-    final Color bgColor = widget.isSelected
-        ? accentSoft
-        : (_isHovered ? hoverBg : Colors.transparent);
-    final Color iconColor = widget.isSelected
-        ? accentColor
-        : (_isHovered ? textPrimary : textMuted);
-    final Color labelColor = widget.isSelected
-        ? textPrimary
-        : (_isHovered ? textPrimary : textSecondary);
+    final Color bgColor =
+        widget.isSelected ? accentSoft : (_isHovered ? hoverBg : Colors.transparent);
+    final Color iconColor =
+        widget.isSelected ? accentColor : (_isHovered ? textPrimary : textMuted);
+    final Color labelColor =
+        widget.isSelected ? textPrimary : (_isHovered ? textPrimary : textSecondary);
 
-    final Widget rowContent = Stack(
-      clipBehavior: Clip.none,
-      children: [
-        // Figma .nav-item.active::before (2px left accent pill at left: -10px)
-        if (widget.isSelected)
-          Positioned(
-            left: -10.0,
-            top: 8.0,
-            bottom: 8.0,
-            child: Container(
-              width: 2.0,
-              decoration: BoxDecoration(
-                color: accentColor,
-                borderRadius: BorderRadius.circular(99.0),
+    final Widget navRow = Padding(
+      padding: const EdgeInsets.only(bottom: 2.0),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Figma `.nav-item.active::before`
+          if (widget.isSelected)
+            Positioned(
+              left: -10.0,
+              top: 8.0,
+              bottom: 8.0,
+              child: Container(
+                width: 2.0,
+                decoration: BoxDecoration(
+                  color: accentColor,
+                  borderRadius: BorderRadius.circular(99.0),
+                ),
               ),
             ),
-          ),
-        MouseRegion(
-          cursor: SystemMouseCursors.click,
-          onEnter: (_) => setState(() => _isHovered = true),
-          onExit: (_) => setState(() => _isHovered = false),
-          child: GestureDetector(
-            onTap: widget.onTap,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 140),
-              height: widget.isExpanded ? 32.0 : 35.0,
-              padding: EdgeInsets.symmetric(horizontal: widget.isExpanded ? 10.0 : 0.0),
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(AppColors.radiusMd),
-              ),
-              child: widget.isExpanded
-                  ? Row(
-                      children: [
-                        Icon(
-                          widget.isSelected ? widget.item.selectedIcon : widget.item.icon,
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            onEnter: (_) => setState(() => _isHovered = true),
+            onExit: (_) => setState(() => _isHovered = false),
+            child: GestureDetector(
+              onTap: widget.onTap,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                height: widget.isExpanded ? 32.0 : 35.0,
+                padding: EdgeInsets.symmetric(horizontal: widget.isExpanded ? 10.0 : 0.0),
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                ),
+                child: widget.isExpanded
+                    ? Row(
+                        children: [
+                          FigmaSidebarIcon(
+                            widget.item.figmaIcon,
+                            size: 16.0,
+                            color: iconColor,
+                          ),
+                          const SizedBox(width: 10.0),
+                          Expanded(
+                            child: Text(
+                              widget.item.label,
+                              style: TextStyle(
+                                fontSize: 12.0,
+                                fontWeight: FontWeight.w500,
+                                color: labelColor,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (widget.item.shortcut != null)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
+                              child: Text(
+                                widget.item.shortcut!,
+                                style: TextStyle(
+                                  fontSize: 8.0,
+                                  fontWeight: FontWeight.w500,
+                                  color: widget.isSelected
+                                      ? accentColor.withValues(alpha: 0.85)
+                                      : textMuted,
+                                ),
+                              ),
+                            ),
+                        ],
+                      )
+                    : Center(
+                        child: FigmaSidebarIcon(
+                          widget.item.figmaIcon,
                           size: 16.0,
                           color: iconColor,
                         ),
-                        const SizedBox(width: 10.0),
-                        Expanded(
-                          child: Text(
-                            widget.item.label,
-                            style: TextStyle(
-                              fontSize: 12.0,
-                              fontWeight: widget.isSelected ? FontWeight.w600 : FontWeight.w500,
-                              color: labelColor,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (widget.item.shortcut != null)
-                          Text(
-                            widget.item.shortcut!,
-                            style: TextStyle(
-                              fontSize: 8.5,
-                              fontWeight: FontWeight.w500,
-                              color: widget.isSelected
-                                  ? accentColor.withValues(alpha: 0.8)
-                                  : (_isHovered ? textSecondary : textMuted),
-                            ),
-                          ),
-                      ],
-                    )
-                  : Center(
-                      child: Icon(
-                        widget.isSelected ? widget.item.selectedIcon : widget.item.icon,
-                        size: 16.5,
-                        color: iconColor,
                       ),
-                    ),
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
 
     if (!widget.isExpanded) {
       final tip = widget.item.shortcut != null
           ? '${widget.item.label} · ${widget.item.shortcut}'
           : widget.item.label;
-      return Tooltip(message: tip, child: rowContent);
+      return Tooltip(message: tip, child: navRow);
     }
 
-    return rowContent;
+    return navRow;
   }
 }
 
-/// Figma `.sidebar-bottom .nav-item` compact utility action row.
+/// Figma `.sidebar-bottom .nav-item` compact action row (`min-height: 28px`, `font-size: 10px`).
 class _SidebarUtilityItem extends StatefulWidget {
-  final IconData icon;
+  final FigmaIconType icon;
   final String label;
   final String tooltip;
   final String? shortcut;
+  final String? badgeText;
   final bool isExpanded;
   final bool isDark;
   final VoidCallback onTap;
@@ -887,6 +926,7 @@ class _SidebarUtilityItem extends StatefulWidget {
     required this.label,
     required this.tooltip,
     this.shortcut,
+    this.badgeText,
     required this.isExpanded,
     required this.isDark,
     required this.onTap,
@@ -905,61 +945,83 @@ class _SidebarUtilityItemState extends State<_SidebarUtilityItem> {
     final textSecondary = AppColors.textSecondaryFor(widget.isDark);
     final textMuted = AppColors.textMutedFor(widget.isDark);
 
-    return Tooltip(
-      message: widget.tooltip,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        onEnter: (_) => setState(() => _isHovered = true),
-        onExit: (_) => setState(() => _isHovered = false),
-        child: GestureDetector(
-          onTap: widget.onTap,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 140),
-            height: 28.0,
-            padding: EdgeInsets.symmetric(horizontal: widget.isExpanded ? 10.0 : 0.0),
-            decoration: BoxDecoration(
-              color: _isHovered ? AppColors.hoverFor(widget.isDark) : Colors.transparent,
-              borderRadius: BorderRadius.circular(AppColors.radiusMd),
-            ),
-            child: widget.isExpanded
-                ? Row(
-                    children: [
-                      Icon(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2.0),
+      child: Tooltip(
+        message: widget.tooltip,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) => setState(() => _isHovered = true),
+          onExit: (_) => setState(() => _isHovered = false),
+          child: GestureDetector(
+            onTap: widget.onTap,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              height: widget.isExpanded ? 28.0 : 35.0,
+              padding: EdgeInsets.symmetric(horizontal: widget.isExpanded ? 10.0 : 0.0),
+              decoration: BoxDecoration(
+                color: _isHovered ? AppColors.hoverFor(widget.isDark) : Colors.transparent,
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
+              ),
+              child: widget.isExpanded
+                  ? Row(
+                      children: [
+                        FigmaSidebarIcon(
+                          widget.icon,
+                          size: 15.0,
+                          color: _isHovered ? textPrimary : textMuted,
+                        ),
+                        const SizedBox(width: 10.0),
+                        Expanded(
+                          child: Text(
+                            widget.label,
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w500,
+                              color: _isHovered ? textPrimary : textSecondary,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (widget.badgeText != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 1.0),
+                            decoration: BoxDecoration(
+                              color: AppColors.surface3For(widget.isDark),
+                              borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                            ),
+                            child: Text(
+                              widget.badgeText!,
+                              style: TextStyle(
+                                fontSize: 9.0,
+                                fontWeight: FontWeight.w500,
+                                color: textSecondary,
+                              ),
+                            ),
+                          )
+                        else if (widget.shortcut != null)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
+                            child: Text(
+                              widget.shortcut!,
+                              style: TextStyle(
+                                fontSize: 8.0,
+                                fontWeight: FontWeight.w500,
+                                color: textMuted,
+                              ),
+                            ),
+                          ),
+                      ],
+                    )
+                  : Center(
+                      child: FigmaSidebarIcon(
                         widget.icon,
                         size: 15.0,
                         color: _isHovered ? textPrimary : textMuted,
                       ),
-                      const SizedBox(width: 10.0),
-                      Expanded(
-                        child: Text(
-                          widget.label,
-                          style: TextStyle(
-                            fontSize: 11.0,
-                            fontWeight: FontWeight.w500,
-                            color: _isHovered ? textPrimary : textSecondary,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (widget.shortcut != null)
-                        Text(
-                          widget.shortcut!,
-                          style: TextStyle(
-                            fontSize: 8.5,
-                            fontWeight: FontWeight.w500,
-                            color: _isHovered ? textSecondary : textMuted,
-                          ),
-                        ),
-                    ],
-                  )
-                : Center(
-                    child: Icon(
-                      widget.icon,
-                      size: 16.0,
-                      color: _isHovered ? textPrimary : textMuted,
                     ),
-                  ),
+            ),
           ),
         ),
       ),
@@ -967,26 +1029,28 @@ class _SidebarUtilityItemState extends State<_SidebarUtilityItem> {
   }
 }
 
-/// Lightweight command palette dialog launched from `.sidebar-search`.
-class _SidebarQuickSearchContent extends StatefulWidget {
+/// Figma `.project-selector` searchable dropdown modal (`Layout.tsx:157-193`).
+class _SidebarProjectPickerModal extends StatefulWidget {
   final String workspaceId;
   final String projectId;
-  final String currentRoute;
-  final String Function(String keyName) buildRoute;
+  final String projectLabel;
+  final String workspaceLabel;
+  final VoidCallback onCreateProject;
 
-  const _SidebarQuickSearchContent({
+  const _SidebarProjectPickerModal({
     required this.workspaceId,
     required this.projectId,
-    required this.currentRoute,
-    required this.buildRoute,
+    required this.projectLabel,
+    required this.workspaceLabel,
+    required this.onCreateProject,
   });
 
   @override
-  State<_SidebarQuickSearchContent> createState() => _SidebarQuickSearchContentState();
+  State<_SidebarProjectPickerModal> createState() => _SidebarProjectPickerModalState();
 }
 
-class _SidebarQuickSearchContentState extends State<_SidebarQuickSearchContent> {
-  String _query = '';
+class _SidebarProjectPickerModalState extends State<_SidebarProjectPickerModal> {
+  String _search = '';
 
   @override
   Widget build(BuildContext context) {
@@ -995,92 +1059,450 @@ class _SidebarQuickSearchContentState extends State<_SidebarQuickSearchContent> 
     final accentSoft = AppColors.accentSoftFor(isDark);
     final borderColor = AppColors.borderFor(isDark);
     final textPrimary = AppColors.textPrimaryFor(isDark);
+    final textSecondary = AppColors.textSecondaryFor(isDark);
     final textMuted = AppColors.textMutedFor(isDark);
 
-    final destinations = <(String, IconData, String, String?)>[
-      for (final item in NavItem.projectNavItems)
-        (item.label, item.icon, widget.buildRoute(item.keyName), item.shortcut),
-      (
-        'Workspace Projects',
-        Icons.folder_outlined,
-        AppRoutes.workspaceDetailPath(widget.workspaceId),
-        null,
-      ),
-      (
-        'All Workspaces',
-        Icons.workspaces_outlined,
-        AppRoutes.workspaces,
-        null,
-      ),
-    ].where((entry) => entry.$1.toLowerCase().contains(_query.trim().toLowerCase())).toList();
+    final initial = widget.projectLabel.trim().isNotEmpty
+        ? widget.projectLabel.trim()[0].toUpperCase()
+        : 'P';
+
+    final showCurrent =
+        _search.trim().isEmpty || widget.projectLabel.toLowerCase().contains(_search.toLowerCase());
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Text('CURRENT WORKSPACE · ${widget.workspaceLabel.toUpperCase()}',
+            style: AppTypography.eyebrow(isDark)),
+        const SizedBox(height: 10.0),
         TextField(
-          autofocus: true,
-          onChanged: (val) => setState(() => _query = val),
-          style: TextStyle(fontSize: 13.0, color: textPrimary),
+          onChanged: (v) => setState(() => _search = v),
+          style: TextStyle(fontSize: 12.0, color: textPrimary),
           decoration: InputDecoration(
-            hintText: 'Jump to page...',
-            prefixIcon: Icon(Icons.search_rounded, size: 17.0, color: accentColor),
+            hintText: 'Search projects…',
             isDense: true,
+            prefixIcon: Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: FigmaSidebarIcon(FigmaIconType.search, size: 14.0, color: textMuted),
+            ),
           ),
         ),
-        const SizedBox(height: 12.0),
-        if (destinations.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 20.0),
-            child: Center(
-              child: Text(
-                'No matching pages.',
-                style: TextStyle(fontSize: 12.0, color: textMuted),
-              ),
-            ),
-          )
-        else
-          for (final (label, icon, path, shortcut) in destinations)
-            InkWell(
+        const SizedBox(height: 10.0),
+        if (showCurrent)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+            decoration: BoxDecoration(
+              color: accentSoft,
               borderRadius: BorderRadius.circular(AppColors.radiusMd),
-              hoverColor: accentSoft,
-              onTap: () {
-                Navigator.of(context).pop();
-                context.go(path);
-              },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 9.0),
-                child: Row(
-                  children: [
-                    Icon(icon, size: 16.0, color: textMuted),
-                    const SizedBox(width: 10.0),
-                    Expanded(
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w500,
-                          color: textPrimary,
-                        ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 21.0,
+                  height: 21.0,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceFor(isDark),
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                    border: Border.all(color: accentColor.withValues(alpha: 0.2)),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    initial,
+                    style: TextStyle(fontSize: 9.0, fontWeight: FontWeight.w600, color: accentColor),
+                  ),
+                ),
+                const SizedBox(width: 9.0),
+                Expanded(
+                  child: Text(
+                    widget.projectLabel,
+                    style: TextStyle(fontSize: 12.0, fontWeight: FontWeight.w600, color: textPrimary),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceFor(isDark),
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                  ),
+                  child: Text(
+                    'Current',
+                    style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600, color: accentColor),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10.0),
+          child: Divider(height: 1.0, color: borderColor),
+        ),
+        _PickerActionTile(
+          icon: FigmaIconType.folderKanban,
+          label: 'All Workspace Projects',
+          isDark: isDark,
+          onTap: () {
+            Navigator.of(context).pop();
+            context.go(AppRoutes.workspaceDetailPath(widget.workspaceId));
+          },
+        ),
+        _PickerActionTile(
+          icon: FigmaIconType.plus,
+          label: 'Create New Project',
+          isDark: isDark,
+          accentHighlight: true,
+          onTap: widget.onCreateProject,
+        ),
+        _PickerActionTile(
+          icon: FigmaIconType.layers3,
+          label: 'Switch Workspace',
+          isDark: isDark,
+          textColor: textSecondary,
+          onTap: () {
+            Navigator.of(context).pop();
+            context.go(AppRoutes.workspaces);
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _PickerActionTile extends StatelessWidget {
+  final FigmaIconType icon;
+  final String label;
+  final bool isDark;
+  final bool accentHighlight;
+  final Color? textColor;
+  final VoidCallback onTap;
+
+  const _PickerActionTile({
+    required this.icon,
+    required this.label,
+    required this.isDark,
+    this.accentHighlight = false,
+    this.textColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = accentHighlight
+        ? AppColors.accentFor(isDark)
+        : (textColor ?? AppColors.textPrimaryFor(isDark));
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
+      hoverColor: AppColors.hoverFor(isDark),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 9.0),
+        child: Row(
+          children: [
+            FigmaSidebarIcon(icon, size: 15.0, color: color),
+            const SizedBox(width: 9.0),
+            Text(
+              label,
+              style: TextStyle(fontSize: 12.0, fontWeight: FontWeight.w500, color: color),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Figma `.command-modal` quick command palette launched from `.sidebar-search`.
+class _SidebarCommandPaletteDialog extends StatefulWidget {
+  final String workspaceId;
+  final String projectId;
+  final String Function(String keyName) buildRoute;
+  final VoidCallback onToggleTheme;
+  final VoidCallback onCreateProject;
+
+  const _SidebarCommandPaletteDialog({
+    required this.workspaceId,
+    required this.projectId,
+    required this.buildRoute,
+    required this.onToggleTheme,
+    required this.onCreateProject,
+  });
+
+  @override
+  State<_SidebarCommandPaletteDialog> createState() => _SidebarCommandPaletteDialogState();
+}
+
+class _SidebarCommandPaletteDialogState extends State<_SidebarCommandPaletteDialog> {
+  String _query = '';
+  int _activeIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accentColor = AppColors.accentFor(isDark);
+    final accentSoft = AppColors.accentSoftFor(isDark);
+    final borderColor = AppColors.borderFor(isDark);
+    final textPrimary = AppColors.textPrimaryFor(isDark);
+    final textSecondary = AppColors.textSecondaryFor(isDark);
+    final textMuted = AppColors.textMutedFor(isDark);
+
+    final allItems = <(String, String, FigmaIconType, String?, VoidCallback)>[
+      (
+        'Quick Actions',
+        'Create New Project',
+        FigmaIconType.plus,
+        null,
+        () {
+          Navigator.of(context).pop();
+          widget.onCreateProject();
+        },
+      ),
+      (
+        'Quick Actions',
+        'Toggle Light / Dark Theme',
+        FigmaIconType.settings2,
+        null,
+        () {
+          Navigator.of(context).pop();
+          widget.onToggleTheme();
+        },
+      ),
+      for (final item in NavItem.projectNavItems)
+        (
+          'Pages',
+          'Open ${item.label}',
+          item.figmaIcon,
+          item.shortcut,
+          () {
+            Navigator.of(context).pop();
+            context.go(widget.buildRoute(item.keyName));
+          },
+        ),
+      (
+        'Workspaces',
+        'All Workspace Projects',
+        FigmaIconType.folderKanban,
+        null,
+        () {
+          Navigator.of(context).pop();
+          context.go(AppRoutes.workspaceDetailPath(widget.workspaceId));
+        },
+      ),
+      (
+        'Workspaces',
+        'All Workspaces',
+        FigmaIconType.layers3,
+        null,
+        () {
+          Navigator.of(context).pop();
+          context.go(AppRoutes.workspaces);
+        },
+      ),
+    ];
+
+    final filtered = allItems
+        .where((e) => e.$2.toLowerCase().contains(_query.trim().toLowerCase()))
+        .toList();
+
+    return Dialog(
+      backgroundColor: AppColors.surfaceFor(isDark),
+      elevation: 0,
+      alignment: const Alignment(0, -0.45),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppColors.radiusXl),
+        side: BorderSide(color: borderColor),
+      ),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 580.0, maxHeight: 480.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // .command-input
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 12.0),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: borderColor)),
+              ),
+              child: Row(
+                children: [
+                  FigmaSidebarIcon(FigmaIconType.search, size: 18.0, color: accentColor),
+                  const SizedBox(width: 12.0),
+                  Expanded(
+                    child: TextField(
+                      autofocus: true,
+                      onChanged: (val) => setState(() {
+                        _query = val;
+                        _activeIndex = 0;
+                      }),
+                      onSubmitted: (_) {
+                        if (filtered.isNotEmpty) {
+                          filtered[_activeIndex.clamp(0, filtered.length - 1)].$5();
+                        }
+                      },
+                      style: TextStyle(fontSize: 13.5, color: textPrimary),
+                      decoration: InputDecoration(
+                        hintText: 'Search pages, workspaces, or commands…',
+                        hintStyle: TextStyle(fontSize: 13.5, color: textMuted),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        filled: false,
+                        isDense: true,
+                        contentPadding: EdgeInsets.zero,
                       ),
                     ),
-                    if (shortcut != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 1.5),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface2For(isDark),
-                          borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                          border: Border.all(color: borderColor),
-                        ),
-                        child: Text(
-                          shortcut,
-                          style: TextStyle(fontSize: 9.0, color: textMuted),
-                        ),
-                      ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
+
+            // .command-results
+            Flexible(
+              child: filtered.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(28.0),
+                      child: Center(
+                        child: Text(
+                          'No matching commands or pages.',
+                          style: TextStyle(fontSize: 12.0, color: textSecondary),
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.all(8.0),
+                      itemCount: filtered.length,
+                      itemBuilder: (ctx, i) {
+                        final item = filtered[i];
+                        final showSection = i == 0 || filtered[i - 1].$1 != item.$1;
+                        final isActive = i == _activeIndex;
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (showSection)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(10.0, 8.0, 10.0, 4.0),
+                                child: Text(
+                                  item.$1.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 1.0,
+                                    color: textMuted,
+                                  ),
+                                ),
+                              ),
+                            MouseRegion(
+                              onEnter: (_) => setState(() => _activeIndex = i),
+                              cursor: SystemMouseCursors.click,
+                              child: GestureDetector(
+                                onTap: item.$5,
+                                child: Container(
+                                  height: 36.0,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                                  decoration: BoxDecoration(
+                                    color: isActive ? accentSoft : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      FigmaSidebarIcon(
+                                        item.$3,
+                                        size: 15.0,
+                                        color: isActive ? accentColor : textMuted,
+                                      ),
+                                      const SizedBox(width: 10.0),
+                                      Expanded(
+                                        child: Text(
+                                          item.$2,
+                                          style: TextStyle(
+                                            fontSize: 12.0,
+                                            fontWeight: FontWeight.w500,
+                                            color: isActive ? textPrimary : textSecondary,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      if (item.$4 != null)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 5.0,
+                                            vertical: 1.0,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.surface2For(isDark),
+                                            borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                                            border: Border.all(color: borderColor),
+                                          ),
+                                          child: Text(
+                                            item.$4!,
+                                            style: TextStyle(fontSize: 9.0, color: textMuted),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+            ),
+
+            // .command-footer
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: borderColor)),
+              ),
+              child: Row(
+                children: [
+                  _KbdHint(keys: 'Enter', label: 'select', isDark: isDark),
+                  const SizedBox(width: 14.0),
+                  _KbdHint(keys: 'Esc', label: 'close', isDark: isDark),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _KbdHint extends StatelessWidget {
+  final String keys;
+  final String label;
+  final bool isDark;
+
+  const _KbdHint({
+    required this.keys,
+    required this.label,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final textMuted = AppColors.textMutedFor(isDark);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 1.0),
+          decoration: BoxDecoration(
+            color: AppColors.surface2For(isDark),
+            borderRadius: BorderRadius.circular(AppColors.radiusSm),
+            border: Border.all(color: AppColors.borderFor(isDark)),
+          ),
+          child: Text(keys, style: TextStyle(fontSize: 9.5, color: textMuted)),
+        ),
+        const SizedBox(width: 5.0),
+        Text(label, style: TextStyle(fontSize: 10.0, color: AppColors.textSecondaryFor(isDark))),
       ],
     );
   }
