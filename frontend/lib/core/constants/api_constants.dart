@@ -34,4 +34,7 @@ class ApiConstants {
 
   // Sprint endpoints
   static const String sprints = '/sprints';
+
+  // Document endpoints
+  static const String documents = '/documents';
 }
