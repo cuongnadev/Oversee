@@ -484,6 +484,7 @@ def require_issue_permission(
             .options(
                 selectinload(Issue.parent),
                 selectinload(Issue.sub_issues),
+                selectinload(Issue.assignee),
             )
             .where(
                 Issue.id == issue_id,

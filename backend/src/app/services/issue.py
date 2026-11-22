@@ -24,7 +24,15 @@ from app.models.membership import ProjectMember, WorkspaceMember
 from app.models.project import Project
 from app.models.sprint import Sprint
 from app.models.user import User
-from app.schemas.issue import IssueCreate, IssuePageResponse, IssueUpdate
+from app.schemas.issue import (
+    BacklogOverviewResponse,
+    BacklogSprintGroup,
+    BacklogSprintSummary,
+    IssueCreate,
+    IssuePageResponse,
+    IssueResponse,
+    IssueUpdate,
+)
 
 logger = logging.getLogger("oversee.activity")
 
@@ -450,6 +458,8 @@ def create_issue(
         sprint_id=data.sprint_id,
         estimate=data.estimate,
         backlog_rank=data.backlog_rank if data.backlog_rank is not None else 0.0,
+        start_date=data.start_date,
+        end_date=data.end_date,
     )
     db.add(new_issue)
     db.commit()
@@ -469,12 +479,13 @@ def create_issue(
 
 
 def get_issue_by_id(db: Session, issue_id: uuid.UUID) -> Issue:
-    """Retrieve an active issue by its ID with parent and sub-issues preloaded."""
+    """Retrieve an active issue by its ID with parent, sub-issues, and assignee preloaded."""
     issue = db.scalar(
         select(Issue)
         .options(
             selectinload(Issue.parent),
             selectinload(Issue.sub_issues),
+            selectinload(Issue.assignee),
         )
         .where(
             Issue.id == issue_id,
@@ -573,6 +584,8 @@ def _build_sort_clauses(
         "priority": priority_order,
         "created_at": Issue.created_at,
         "updated_at": Issue.updated_at,
+        "start_date": Issue.start_date,
+        "end_date": Issue.end_date,
         "backlog_rank": Issue.backlog_rank,
         "rank": Issue.backlog_rank,
     }
@@ -765,6 +778,7 @@ def list_project_issues(
             .options(
                 selectinload(Issue.parent),
                 selectinload(Issue.sub_issues),
+                selectinload(Issue.assignee),
             )
             .where(*conditions)
             .order_by(*sort_clauses)
@@ -960,6 +974,25 @@ def update_issue(
 
     if "backlog_rank" in update_dict and data.backlog_rank is not None:
         issue.backlog_rank = data.backlog_rank
+
+    if "start_date" in update_dict or "end_date" in update_dict:
+        effective_start = (
+            data.start_date if "start_date" in update_dict else issue.start_date
+        )
+        effective_end = data.end_date if "end_date" in update_dict else issue.end_date
+        if (
+            effective_start is not None
+            and effective_end is not None
+            and effective_end < effective_start
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail="Issue end_date cannot be earlier than start_date.",
+            )
+        if "start_date" in update_dict:
+            issue.start_date = data.start_date
+        if "end_date" in update_dict:
+            issue.end_date = data.end_date
 
     db.commit()
     db.refresh(issue)
@@ -1299,6 +1332,139 @@ def list_backlog_issues(
         sort_by=sort_by,
         order=order,
         cursor=cursor,
+    )
+
+
+def get_backlog_overview(
+    db: Session,
+    project_id: uuid.UUID,
+    statuses: list[IssueStatus] | None = None,
+    assignee_id: uuid.UUID | None = None,
+    assignee: str | None = None,
+    priorities: list[IssuePriority] | None = None,
+    issue_type: IssueType | None = None,
+    search: str | None = None,
+) -> BacklogOverviewResponse:
+    """
+    Return all active project issues grouped by sprint (Active -> Planned -> Completed/Closed)
+    plus unassigned product backlog issues, along with completion metrics per sprint.
+    """
+    project = db.scalar(
+        select(Project).where(
+            Project.id == project_id,
+            Project.deleted_at.is_(None),
+        )
+    )
+    if project is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found.",
+        )
+
+    sprint_order = case(
+        (Sprint.status == SprintStatus.ACTIVE, 1),
+        (Sprint.status == SprintStatus.PLANNED, 2),
+        (Sprint.status == SprintStatus.COMPLETED, 3),
+        (Sprint.status == SprintStatus.CLOSED, 4),
+        else_=5,
+    )
+    sprints = list(
+        db.scalars(
+            select(Sprint)
+            .where(
+                Sprint.project_id == project_id,
+                Sprint.deleted_at.is_(None),
+            )
+            .order_by(sprint_order.asc(), Sprint.created_at.desc())
+        ).all()
+    )
+
+    conditions: list[Any] = [
+        Issue.project_id == project_id,
+        Issue.deleted_at.is_(None),
+    ]
+    if statuses:
+        conditions.append(Issue.status.in_(statuses))
+    if assignee is not None:
+        if assignee.lower() in ("unassigned", "none", "null"):
+            conditions.append(Issue.assignee_id.is_(None))
+        else:
+            try:
+                conditions.append(Issue.assignee_id == uuid.UUID(assignee))
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                    detail=f"Invalid assignee ID: '{assignee}'",
+                )
+    elif assignee_id is not None:
+        conditions.append(Issue.assignee_id == assignee_id)
+    if priorities:
+        conditions.append(Issue.priority.in_(priorities))
+    if issue_type is not None:
+        conditions.append(Issue.type == issue_type)
+    if search and search.strip():
+        term = f"%{search.strip()}%"
+        conditions.append(
+            or_(
+                Issue.title.ilike(term),
+                Issue.description.ilike(term),
+            )
+        )
+
+    issues = list(
+        db.scalars(
+            select(Issue)
+            .options(
+                selectinload(Issue.parent),
+                selectinload(Issue.sub_issues),
+                selectinload(Issue.assignee),
+            )
+            .where(*conditions)
+            .order_by(Issue.backlog_rank.asc(), Issue.issue_number.asc())
+        ).all()
+    )
+
+    issues_by_sprint: dict[uuid.UUID, list[Issue]] = {s.id: [] for s in sprints}
+    backlog_issues: list[Issue] = []
+
+    for issue in issues:
+        if issue.sprint_id is not None and issue.sprint_id in issues_by_sprint:
+            issues_by_sprint[issue.sprint_id].append(issue)
+        else:
+            backlog_issues.append(issue)
+
+    sprint_groups: list[BacklogSprintGroup] = []
+    for sprint in sprints:
+        sprint_issues = issues_by_sprint[sprint.id]
+        total_cnt = len(sprint_issues)
+        completed_cnt = sum(1 for i in sprint_issues if i.status == IssueStatus.DONE)
+        total_pts = sum(i.estimate or 0.0 for i in sprint_issues)
+        completed_pts = sum(
+            i.estimate or 0.0 for i in sprint_issues if i.status == IssueStatus.DONE
+        )
+        pct = round((completed_cnt / total_cnt) * 100.0, 1) if total_cnt > 0 else 0.0
+        sprint_groups.append(
+            BacklogSprintGroup(
+                sprint=BacklogSprintSummary.model_validate(sprint),
+                issues=[IssueResponse.model_validate(i) for i in sprint_issues],
+                total_issues=total_cnt,
+                completed_issues=completed_cnt,
+                total_story_points=total_pts,
+                completed_story_points=completed_pts,
+                completion_percentage=pct,
+            )
+        )
+
+    backlog_completed = sum(1 for i in backlog_issues if i.status == IssueStatus.DONE)
+    backlog_pts = sum(i.estimate or 0.0 for i in backlog_issues)
+
+    return BacklogOverviewResponse(
+        sprints=sprint_groups,
+        backlog_issues=[IssueResponse.model_validate(i) for i in backlog_issues],
+        total_issues=len(issues),
+        backlog_total_issues=len(backlog_issues),
+        backlog_completed_issues=backlog_completed,
+        backlog_story_points=backlog_pts,
     )
 
 
