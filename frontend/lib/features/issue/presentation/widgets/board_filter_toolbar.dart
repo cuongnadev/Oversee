@@ -7,12 +7,25 @@ import 'package:frontend/features/issue/domain/issue_filter_state.dart';
 import 'package:frontend/features/project/domain/project_member_model.dart';
 import 'package:frontend/shared/widgets/user_avatar.dart';
 
-/// Reusable filter and sorting toolbar aligned with Figma WorkToolbar.
+/// Saved view presets displayed in Figma WorkToolbar Row 1 (node 6:382).
+enum BoardSavedView {
+  all('All'),
+  mine('Mine'),
+  open('Open');
+
+  final String label;
+  const BoardSavedView(this.label);
+}
+
+/// Reusable filter and sorting toolbar aligned with Figma WorkToolbar (node 6:381).
 class BoardFilterToolbar extends StatefulWidget {
   final IssueFilterState filter;
   final ValueChanged<IssueFilterState> onFilterChanged;
   final List<ProjectMemberModel> members;
   final String? currentUserId;
+  final int? totalCount;
+  final BoardSavedView? activeSavedView;
+  final ValueChanged<BoardSavedView>? onSavedViewChanged;
 
   const BoardFilterToolbar({
     super.key,
@@ -20,6 +33,9 @@ class BoardFilterToolbar extends StatefulWidget {
     required this.onFilterChanged,
     this.members = const [],
     this.currentUserId,
+    this.totalCount,
+    this.activeSavedView,
+    this.onSavedViewChanged,
   });
 
   @override
@@ -92,6 +108,73 @@ class _BoardFilterToolbarState extends State<BoardFilterToolbar> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Optional Saved Views Strip (Figma WorkToolbar Row 1: node 6:382)
+          if (widget.onSavedViewChanged != null) ...[
+            Container(
+              height: 40,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: borderSoftColor)),
+              ),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: BoardSavedView.values.map((view) {
+                    final isSelected = (widget.activeSavedView ?? BoardSavedView.all) == view;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: InkWell(
+                        onTap: () => widget.onSavedViewChanged!(view),
+                        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                        child: Container(
+                          height: 26,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          decoration: BoxDecoration(
+                            color: isSelected ? accentSoft : Colors.transparent,
+                            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (view == BoardSavedView.all) ...[
+                                Icon(
+                                  Icons.view_kanban_outlined,
+                                  size: 13.5,
+                                  color: isSelected ? accentColor : textMuted,
+                                ),
+                                const SizedBox(width: 5),
+                              ],
+                              Text(
+                                view.label,
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                  color: isSelected ? textPrimary : textSecondary,
+                                ),
+                              ),
+                              if (view == BoardSavedView.all && widget.totalCount != null) ...[
+                                const SizedBox(width: 6),
+                                Text(
+                                  '${widget.totalCount}',
+                                  style: AppTypography.mono(
+                                    isDark,
+                                    fontSize: 10,
+                                    color: textMuted,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          ],
+
           // Main Toolbar Row (Figma .filters-row)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
