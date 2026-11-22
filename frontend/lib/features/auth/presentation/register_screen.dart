@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/features/auth/application/auth_provider.dart';
+import 'package:frontend/features/auth/presentation/widgets/auth_modernist_layout.dart';
 import 'package:frontend/shared/widgets/widgets.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -36,7 +37,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _handleRegister() async {
-    // Clear previous errors
+    if (ref.read(authNotifierProvider).isLoading) return;
     ref.read(authNotifierProvider.notifier).clearError();
     setState(() => _emailServerError = null);
 
@@ -70,240 +71,237 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final authState = ref.watch(authNotifierProvider);
+    final accentColor = AppColors.accentFor(isDark);
+    final textSecondary = AppColors.textSecondaryFor(isDark);
 
-    return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 440.0),
-            child: AppCard(
-              padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 36.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Brand Logo
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8.0),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(10.0),
-                          ),
-                          child: const Icon(Icons.hub_rounded, color: Colors.white, size: 28.0),
-                        ),
-                        const SizedBox(width: 12.0),
-                        Text(
-                          'Oversee',
-                          style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20.0),
-                    Text(
-                      'Create an Account',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 6.0),
-                    Text(
-                      'Get started with Oversee project management',
-                      textAlign: TextAlign.center,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                      ),
-                    ),
-                    const SizedBox(height: 24.0),
+    return AuthModernistLayout(
+      heroHeadline: 'Built for structured delivery.',
+      heroSubtitle:
+          'Organize workspaces, plan sprints, and track every milestone with complete visibility.',
+      formTitle: 'Create an Account',
+      formSubtitle: 'Get started with Oversee project management.',
+      formChild: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AuthErrorBanner(
+              message: authState.hasError ? authState.errorMessage : null,
+              onDismiss: () {
+                ref.read(authNotifierProvider.notifier).clearError();
+                setState(() => _emailServerError = null);
+              },
+            ),
+            AppTextFormField(
+              controller: _nameController,
+              label: 'Full Name',
+              isRequired: true,
+              hintText: 'John Doe',
+              textInputAction: TextInputAction.next,
+              prefixIcon: const Icon(Icons.person_outline_rounded, size: 18.0),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 13.0),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter your full name';
+                }
+                if (value.trim().length > 255) {
+                  return 'Full name cannot exceed 255 characters';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 14.0),
+            AppTextFormField(
+              controller: _emailController,
+              label: 'Email Address',
+              isRequired: true,
+              hintText: 'name@example.com',
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              prefixIcon: const Icon(Icons.email_outlined, size: 18.0),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 13.0),
+              errorText: _emailServerError,
+              onChanged: (_) {
+                if (_emailServerError != null) {
+                  setState(() => _emailServerError = null);
+                }
+              },
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter your email address';
+                }
+                if (!_emailRegex.hasMatch(value.trim())) {
+                  return 'Please enter a valid email address';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 14.0),
+            AppTextFormField(
+              controller: _passwordController,
+              label: 'Password',
+              isRequired: true,
+              isPassword: true,
+              hintText: '••••••••',
+              textInputAction: TextInputAction.next,
+              prefixIcon: const Icon(Icons.lock_outline_rounded, size: 18.0),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 13.0),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter a password';
+                }
+                if (value.length < 8) {
+                  return 'Password must be at least 8 characters';
+                }
+                if (value.length > 128) {
+                  return 'Password must not exceed 128 characters';
+                }
+                if (!RegExp(r'[A-Z]').hasMatch(value)) {
+                  return 'Password must contain at least one uppercase letter';
+                }
+                if (!RegExp(r'[a-z]').hasMatch(value)) {
+                  return 'Password must contain at least one lowercase letter';
+                }
+                if (!RegExp(r'\d').hasMatch(value)) {
+                  return 'Password must contain at least one digit';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 8.0),
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _passwordController,
+              builder: (context, value, _) {
+                return _PasswordCriteriaStrip(password: value.text, isDark: isDark);
+              },
+            ),
+            const SizedBox(height: 14.0),
+            AppTextFormField(
+              controller: _confirmPasswordController,
+              label: 'Confirm Password',
+              isRequired: true,
+              isPassword: true,
+              hintText: '••••••••',
+              textInputAction: TextInputAction.done,
+              prefixIcon: const Icon(Icons.lock_outline_rounded, size: 18.0),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 13.0),
+              onFieldSubmitted: authState.isLoading ? null : (_) => _handleRegister(),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please confirm your password';
+                }
+                if (value != _passwordController.text) {
+                  return 'Passwords do not match';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 22.0),
+            AppPrimaryButton(
+              label: 'Create Account',
+              isFullWidth: true,
+              height: 44.0,
+              isLoading: authState.isLoading,
+              onPressed: _handleRegister,
+            ),
+          ],
+        ),
+      ),
+      footerChild: Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Text(
+            'Already have an account? ',
+            style: TextStyle(fontSize: 12.5, color: textSecondary),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: accentColor,
+              padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
+              minimumSize: const Size(0, 32.0),
+              textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+            ),
+            onPressed: () {
+              ref.read(authNotifierProvider.notifier).clearError();
+              context.go(AppRoutes.login);
+            },
+            child: const Text('Sign In'),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-                    // Error Alert Banner
-                    if (authState.hasError) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 10.0),
-                        decoration: BoxDecoration(
-                          color: AppColors.errorLight.withValues(alpha: isDark ? 0.2 : 0.8),
-                          borderRadius: BorderRadius.circular(8.0),
-                          border: Border.all(
-                            color: AppColors.error.withValues(alpha: 0.5),
-                            width: 1.0,
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.error_outline_rounded,
-                              color: AppColors.error,
-                              size: 20.0,
-                            ),
-                            const SizedBox(width: 10.0),
-                            Expanded(
-                              child: Text(
-                                authState.errorMessage!,
-                                style: TextStyle(
-                                  fontSize: 13.0,
-                                  color: isDark ? const Color(0xFFFCA5A5) : AppColors.error,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.close_rounded, size: 16.0),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              onPressed: () {
-                                ref.read(authNotifierProvider.notifier).clearError();
-                                setState(() => _emailServerError = null);
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16.0),
-                    ],
+/// Minimal 4-segment password requirements meter aligned with registration rules.
+class _PasswordCriteriaStrip extends StatelessWidget {
+  final String password;
+  final bool isDark;
 
-                    // Full Name Field
-                    AppTextFormField(
-                      controller: _nameController,
-                      label: 'Full Name',
-                      isRequired: true,
-                      hintText: 'John Doe',
-                      textInputAction: TextInputAction.next,
-                      prefixIcon: const Icon(Icons.person_outline_rounded, size: 20.0),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter your full name';
-                        }
-                        if (value.trim().length > 255) {
-                          return 'Full name cannot exceed 255 characters';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16.0),
+  const _PasswordCriteriaStrip({
+    required this.password,
+    required this.isDark,
+  });
 
-                    // Email Address Field
-                    AppTextFormField(
-                      controller: _emailController,
-                      label: 'Email Address',
-                      isRequired: true,
-                      hintText: 'name@example.com',
-                      keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.next,
-                      prefixIcon: const Icon(Icons.email_outlined, size: 20.0),
-                      errorText: _emailServerError,
-                      onChanged: (_) {
-                        if (_emailServerError != null) {
-                          setState(() => _emailServerError = null);
-                        }
-                      },
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter your email address';
-                        }
-                        if (!_emailRegex.hasMatch(value.trim())) {
-                          return 'Please enter a valid email address';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16.0),
+  @override
+  Widget build(BuildContext context) {
+    final hasLength = password.length >= 8;
+    final hasUpper = RegExp(r'[A-Z]').hasMatch(password);
+    final hasLower = RegExp(r'[a-z]').hasMatch(password);
+    final hasDigit = RegExp(r'\d').hasMatch(password);
+    final score = (hasLength ? 1 : 0) +
+        (hasUpper ? 1 : 0) +
+        (hasLower ? 1 : 0) +
+        (hasDigit ? 1 : 0);
 
-                    // Password Field
-                    AppTextFormField(
-                      controller: _passwordController,
-                      label: 'Password',
-                      isRequired: true,
-                      isPassword: true,
-                      hintText: '••••••••',
-                      helperText: 'Min 8 chars with uppercase, lowercase & number',
-                      textInputAction: TextInputAction.next,
-                      prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20.0),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter a password';
-                        }
-                        if (value.length < 8) {
-                          return 'Password must be at least 8 characters';
-                        }
-                        if (value.length > 128) {
-                          return 'Password must not exceed 128 characters';
-                        }
-                        if (!RegExp(r'[A-Z]').hasMatch(value)) {
-                          return 'Password must contain at least one uppercase letter';
-                        }
-                        if (!RegExp(r'[a-z]').hasMatch(value)) {
-                          return 'Password must contain at least one lowercase letter';
-                        }
-                        if (!RegExp(r'\d').hasMatch(value)) {
-                          return 'Password must contain at least one digit';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16.0),
+    final trackColor = AppColors.borderSoftFor(isDark);
+    final activeColor = score == 4
+        ? AppColors.successFor(isDark)
+        : score >= 2
+            ? AppColors.accentSolidFor(isDark)
+            : AppColors.warningFor(isDark);
 
-                    // Confirm Password Field
-                    AppTextFormField(
-                      controller: _confirmPasswordController,
-                      label: 'Confirm Password',
-                      isRequired: true,
-                      isPassword: true,
-                      hintText: '••••••••',
-                      textInputAction: TextInputAction.done,
-                      prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20.0),
-                      onFieldSubmitted: (_) => _handleRegister(),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please confirm your password';
-                        }
-                        if (value != _passwordController.text) {
-                          return 'Passwords do not match';
-                        }
-                        return null;
-                      },
+    return Semantics(
+      label: '$score of 4 password requirements met',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: List.generate(4, (index) {
+              final filled = index < score;
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(right: index < 3 ? 5.0 : 0.0),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    height: 3.0,
+                    decoration: BoxDecoration(
+                      color: filled ? activeColor : trackColor,
+                      borderRadius: BorderRadius.circular(2.0),
                     ),
-                    const SizedBox(height: 24.0),
-
-                    // Submit Button
-                    AppPrimaryButton(
-                      label: 'Create Account',
-                      isFullWidth: true,
-                      isLoading: authState.isLoading,
-                      onPressed: _handleRegister,
-                    ),
-                    const SizedBox(height: 20.0),
-
-                    // Link back to Login
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text(
-                          'Already have an account? ',
-                          style: theme.textTheme.bodySmall,
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            ref.read(authNotifierProvider.notifier).clearError();
-                            context.go(AppRoutes.login);
-                          },
-                          child: const Text('Sign In'),
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+              );
+            }),
+          ),
+          const SizedBox(height: 6.0),
+          Text(
+            'Min 8 chars with uppercase, lowercase & number',
+            style: TextStyle(
+              fontSize: 11.0,
+              height: 1.35,
+              color: score == 4
+                  ? AppColors.successFor(isDark)
+                  : AppColors.textMutedFor(isDark),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

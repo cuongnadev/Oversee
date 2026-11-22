@@ -7,6 +7,7 @@ import 'package:frontend/core/storage/secure_storage_service.dart';
 import 'package:frontend/features/auth/data/auth_repository.dart';
 import 'package:frontend/features/auth/domain/token_model.dart';
 import 'package:frontend/features/auth/domain/user_model.dart';
+import 'package:frontend/features/auth/presentation/login_screen.dart';
 import 'package:frontend/main.dart';
 
 class FakeAuthRepository implements AuthRepository {
@@ -179,6 +180,103 @@ void main() {
 
       expect(fakeRepo.loginCallCount, 1);
       expect(find.text('User account is inactive. Please contact support.'), findsOneWidget);
+    });
+  });
+
+  group('Login Modernist Layout & Responsive Tests', () {
+    testWidgets('Desktop split layout displays hero editorial content and theme toggle',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(_buildLoginApp(fakeRepo: fakeRepo));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Clarity across every sprint.'), findsOneWidget);
+      expect(find.text('Welcome back'), findsOneWidget);
+      expect(find.byTooltip('Switch to dark mode'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Switch to dark mode'));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('Switch to light mode'), findsOneWidget);
+    });
+
+    testWidgets('Mobile compact layout stacks cleanly without overflow',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(fakeRepo),
+            secureStorageServiceProvider.overrideWithValue(SecureStorageService()),
+          ],
+          child: const MaterialApp(home: LoginScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Clarity across every sprint.'), findsOneWidget);
+      expect(find.text('Welcome back'), findsOneWidget);
+      expect(find.text('Sign In'), findsOneWidget);
+    });
+
+    testWidgets('Short split viewport and mobile notch + text scaling render without overflow',
+        (WidgetTester tester) async {
+      // Short landscape split window (e.g. tablet with soft keyboard)
+      tester.view.physicalSize = const Size(900, 380);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(fakeRepo),
+            secureStorageServiceProvider.overrideWithValue(SecureStorageService()),
+          ],
+          child: const MaterialApp(home: LoginScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Clarity across every sprint.'), findsOneWidget);
+
+      // Mobile with Dynamic Island top inset + 1.4x accessibility text scale
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.viewPadding = const FakeViewPadding(top: 59.0);
+      addTearDown(() => tester.view.resetViewPadding());
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authRepositoryProvider.overrideWithValue(fakeRepo),
+            secureStorageServiceProvider.overrideWithValue(SecureStorageService()),
+          ],
+          child: const MaterialApp(
+            home: MediaQuery(
+              data: MediaQueryData(
+                size: Size(390, 844),
+                padding: EdgeInsets.only(top: 59.0),
+                textScaler: TextScaler.linear(1.4),
+              ),
+              child: LoginScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Welcome back'), findsOneWidget);
     });
   });
 }

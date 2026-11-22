@@ -87,6 +87,21 @@ _ProjectShellMeta _resolveProjectShellMeta(String location) {
   }
 }
 
+Page<void> _authTransitionPage(GoRouterState state, Widget child) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 180),
+    reverseTransitionDuration: const Duration(milliseconds: 160),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return FadeTransition(
+        opacity: animation.drive(CurveTween(curve: Curves.easeOutCubic)),
+        child: child,
+      );
+    },
+  );
+}
+
 Page<void> _innerPage(GoRouterState state, Widget child) {
   return NoTransitionPage<void>(
     key: state.pageKey,
@@ -134,11 +149,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.login,
-        builder: (context, state) => const LoginScreen(),
+        pageBuilder: (context, state) => _authTransitionPage(state, const LoginScreen()),
       ),
       GoRoute(
         path: AppRoutes.register,
-        builder: (context, state) => const RegisterScreen(),
+        pageBuilder: (context, state) => _authTransitionPage(state, const RegisterScreen()),
       ),
       GoRoute(
         path: AppRoutes.workspaces,
