@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/theme/app_colors.dart';
+import 'package:frontend/core/theme/app_typography.dart';
 import 'package:frontend/features/issue/application/backlog_provider.dart';
 import 'package:frontend/features/issue/application/backlog_state.dart';
 import 'package:frontend/features/issue/domain/issue_filter_state.dart';
@@ -13,7 +14,7 @@ import 'package:frontend/features/project/presentation/widgets/project_navigatio
 import 'package:frontend/features/project/presentation/widgets/project_screen_scaffold.dart';
 import 'package:frontend/shared/widgets/widgets.dart';
 
-/// Product Backlog Screen supporting hierarchical listing, quick creation, filtering, and drag-and-drop reordering.
+/// Product Backlog Screen aligned with Figma Backlog view.
 class BacklogScreen extends ConsumerStatefulWidget {
   final String workspaceId;
   final String projectId;
@@ -59,6 +60,7 @@ class _BacklogScreenState extends ConsumerState<BacklogScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final state = ref.watch(backlogNotifierProvider(widget.projectId));
     final notifier = ref.read(backlogNotifierProvider(widget.projectId).notifier);
     final projectKey = state.project?.key ?? 'PROJ';
@@ -75,35 +77,35 @@ class _BacklogScreenState extends ConsumerState<BacklogScreen> {
             projectId: widget.projectId,
             activeTab: 'backlog',
           ),
+
+          // Unified Filter & Sort Toolbar (Figma .work-toolbar edge-to-edge)
+          BoardFilterToolbar(
+            filter: state.filter,
+            members: state.members,
+            currentUserId: state.currentUserId,
+            onFilterChanged: (newFilter) {
+              notifier.setFilter(newFilter);
+              _updateUrlWithFilters(newFilter);
+            },
+          ),
+
           Expanded(
             child: RefreshIndicator(
               onRefresh: () => notifier.refresh(),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+                padding: const EdgeInsets.fromLTRB(22.0, 18.0, 22.0, 16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Backlog Header Metrics & Title
-                    _buildHeaderToolbar(context, state, notifier),
-                    const SizedBox(height: 10.0),
-
-                    // Unified Filter & Sort Toolbar
-                    BoardFilterToolbar(
-                      filter: state.filter,
-                      members: state.members,
-                      currentUserId: state.currentUserId,
-                      onFilterChanged: (newFilter) {
-                        notifier.setFilter(newFilter);
-                        _updateUrlWithFilters(newFilter);
-                      },
-                    ),
-                    const SizedBox(height: 12.0),
+                    // Page Heading & Metrics (Figma .page-heading)
+                    _buildHeaderToolbar(context, state, notifier, isDark),
+                    const SizedBox(height: 14.0),
 
                     // Quick Create Issue Bar
                     QuickCreateIssueBar(projectId: widget.projectId),
                     const SizedBox(height: 14.0),
 
-                    // Reorderable Backlog List View
+                    // Reorderable Backlog List Panel
                     Expanded(
                       child: Builder(
                         builder: (context) {
@@ -129,6 +131,16 @@ class _BacklogScreenState extends ConsumerState<BacklogScreen> {
                                 description: state.hasActiveFilters
                                     ? 'Try adjusting your search terms or filters.'
                                     : 'Quickly create issues using the input bar above to start planning.',
+                                action: state.hasActiveFilters
+                                    ? AppOutlinedButton(
+                                        icon: Icons.filter_alt_off_rounded,
+                                        label: 'Clear Filters',
+                                        onPressed: () {
+                                          notifier.clearFilters();
+                                          _updateUrlWithFilters(const IssueFilterState());
+                                        },
+                                      )
+                                    : null,
                               ),
                             );
                           }
@@ -136,14 +148,16 @@ class _BacklogScreenState extends ConsumerState<BacklogScreen> {
                           return ReorderableListView.builder(
                             itemCount: issues.length,
                             buildDefaultDragHandles: false,
-                            onReorder: (oldIndex, newIndex) {
-                              notifier.reorderBacklog(oldIndex, newIndex);
+                            onReorderItem: (oldIndex, newIndex) {
+                              final adjusted = oldIndex < newIndex ? newIndex + 1 : newIndex;
+                              notifier.reorderBacklog(oldIndex, adjusted);
                             },
                             proxyDecorator: (child, index, animation) {
                               return Material(
-                                elevation: 4.0,
-                                shadowColor: Colors.black26,
-                                borderRadius: BorderRadius.circular(8.0),
+                                elevation: 6.0,
+                                color: Colors.transparent,
+                                shadowColor: Colors.black38,
+                                borderRadius: BorderRadius.circular(AppColors.radiusMd),
                                 child: child,
                               );
                             },
@@ -151,7 +165,7 @@ class _BacklogScreenState extends ConsumerState<BacklogScreen> {
                               final issue = issues[index];
                               return Padding(
                                 key: ValueKey('backlog_item_${issue.id}'),
-                                padding: const EdgeInsets.only(bottom: 8.0),
+                                padding: const EdgeInsets.only(bottom: 4.0),
                                 child: BacklogItemCard(
                                   index: index,
                                   issue: issue,
@@ -174,10 +188,17 @@ class _BacklogScreenState extends ConsumerState<BacklogScreen> {
     );
   }
 
-  Widget _buildHeaderToolbar(BuildContext context, BacklogState state, BacklogNotifier notifier) {
+  Widget _buildHeaderToolbar(
+    BuildContext context,
+    BacklogState state,
+    BacklogNotifier notifier,
+    bool isDark,
+  ) {
     final theme = Theme.of(context);
     final count = state.filteredIssues.length;
     final totalPoints = state.totalStoryPoints;
+    final accentColor = AppColors.accentFor(isDark);
+    final accentSoft = AppColors.accentSoftFor(isDark);
 
     return Wrap(
       alignment: WrapAlignment.spaceBetween,
@@ -185,40 +206,63 @@ class _BacklogScreenState extends ConsumerState<BacklogScreen> {
       spacing: 12.0,
       runSpacing: 8.0,
       children: [
-        Row(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'Backlog',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(width: 8.0),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(12.0),
-              ),
-              child: Text(
-                '$count issues',
-                style: theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(width: 6.0),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
-              decoration: BoxDecoration(
-                color: AppColors.secondary.withAlpha(30),
-                borderRadius: BorderRadius.circular(12.0),
-              ),
-              child: Text(
-                totalPoints % 1 == 0 ? '${totalPoints.toInt()} SP' : '$totalPoints SP',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: AppColors.secondary,
-                  fontWeight: FontWeight.bold,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Backlog',
+                  style: theme.textTheme.displaySmall?.copyWith(
+                    fontSize: 22.0,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.6,
+                    color: AppColors.textPrimaryFor(isDark),
+                  ),
                 ),
+                const SizedBox(width: 10.0),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7.0, vertical: 2.5),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface3For(isDark),
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                  ),
+                  child: Text(
+                    '$count issues',
+                    style: AppTypography.mono(
+                      isDark,
+                      fontSize: 10.5,
+                      color: AppColors.textSecondaryFor(isDark),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6.0),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7.0, vertical: 2.5),
+                  decoration: BoxDecoration(
+                    color: accentSoft,
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                  ),
+                  child: Text(
+                    totalPoints % 1 == 0 ? '${totalPoints.toInt()} SP' : '$totalPoints SP',
+                    style: AppTypography.mono(
+                      isDark,
+                      fontSize: 10.5,
+                      color: accentColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 3.0),
+            Text(
+              'Plan, prioritize, and organize work for upcoming sprints.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondaryFor(isDark),
               ),
             ),
           ],
@@ -226,9 +270,11 @@ class _BacklogScreenState extends ConsumerState<BacklogScreen> {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(
-              icon: const Icon(Icons.refresh, size: 20),
+            AppIconButton(
+              icon: Icons.refresh_rounded,
               tooltip: 'Refresh backlog',
+              size: 32.0,
+              backgroundColor: AppColors.surface2For(isDark),
               onPressed: () => notifier.refresh(),
             ),
           ],

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 
-/// Form text field with label, validation, password toggle, and clearable text.
+/// Form text field aligned with Figma .field / .input styling.
 class AppTextFormField extends StatefulWidget {
   final String? label;
   final bool isRequired;
@@ -120,24 +120,25 @@ class _AppTextFormFieldState extends State<AppTextFormField> {
   }
 
   Widget? _buildSuffixIcon(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     if (widget.isPassword) {
       return IconButton(
         icon: Icon(
           _obscureText ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-          size: 20.0,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          size: 18.0,
+          color: AppColors.textMutedFor(isDark),
         ),
         onPressed: _toggleObscure,
-        splashRadius: 20.0,
+        splashRadius: 18.0,
         tooltip: _obscureText ? 'Show password' : 'Hide password',
       );
     }
 
     if (widget.showClearButton && _hasText && widget.enabled && !widget.readOnly) {
       return IconButton(
-        icon: const Icon(Icons.clear_rounded, size: 18.0),
+        icon: Icon(Icons.clear_rounded, size: 16.0, color: AppColors.textMutedFor(isDark)),
         onPressed: _clearText,
-        splashRadius: 20.0,
+        splashRadius: 18.0,
         tooltip: 'Clear text',
       );
     }
@@ -151,12 +152,15 @@ class _AppTextFormFieldState extends State<AppTextFormField> {
     final bool isDark = theme.brightness == Brightness.dark;
 
     final Color fillColor = widget.enabled
-        ? (isDark ? const Color(0xFF1E293B) : Colors.white)
-        : (isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9));
+        ? AppColors.bgFor(isDark)
+        : AppColors.surface2For(isDark);
 
-    final Color borderColor = isDark ? AppColors.borderDark : AppColors.borderLight;
-    final Color textColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
-    final Color hintColor = isDark ? AppColors.textMutedDark : AppColors.textMutedLight;
+    final Color borderColor = AppColors.borderFor(isDark);
+    final Color textColor = AppColors.textPrimaryFor(isDark);
+    final Color labelColor = AppColors.textSecondaryFor(isDark);
+    final Color hintColor = AppColors.textMutedFor(isDark);
+    final Color accentColor = AppColors.accentFor(isDark);
+    final Color errorColor = AppColors.errorFor(isDark);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -169,19 +173,19 @@ class _AppTextFormFieldState extends State<AppTextFormField> {
               Text(
                 widget.label!,
                 style: TextStyle(
-                  fontSize: 13.0,
-                  fontWeight: FontWeight.w600,
-                  color: textColor,
+                  fontSize: 12.0,
+                  fontWeight: FontWeight.w500,
+                  color: labelColor,
                 ),
               ),
               if (widget.isRequired) ...[
                 const SizedBox(width: 4.0),
-                const Text(
+                Text(
                   '*',
                   style: TextStyle(
-                    fontSize: 13.0,
+                    fontSize: 12.0,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.error,
+                    color: errorColor,
                   ),
                 ),
               ],
@@ -206,14 +210,14 @@ class _AppTextFormFieldState extends State<AppTextFormField> {
           inputFormatters: widget.inputFormatters,
           focusNode: widget.focusNode,
           style: TextStyle(
-            fontSize: 14.0,
+            fontSize: 13.0,
             fontWeight: FontWeight.w400,
             color: widget.enabled ? textColor : textColor.withValues(alpha: 0.5),
           ),
           decoration: InputDecoration(
             hintText: widget.hintText,
             hintStyle: TextStyle(
-              fontSize: 14.0,
+              fontSize: 13.0,
               fontWeight: FontWeight.w400,
               color: hintColor,
             ),
@@ -224,25 +228,25 @@ class _AppTextFormFieldState extends State<AppTextFormField> {
             prefixIcon: widget.prefixIcon,
             suffixIcon: _buildSuffixIcon(context),
             contentPadding: widget.contentPadding ??
-                const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+                const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.0),
+              borderRadius: BorderRadius.circular(AppColors.radiusMd),
               borderSide: BorderSide(color: borderColor, width: 1.0),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.0),
-              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+              borderRadius: BorderRadius.circular(AppColors.radiusMd),
+              borderSide: BorderSide(color: accentColor, width: 1.5),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.0),
-              borderSide: const BorderSide(color: AppColors.error, width: 1.0),
+              borderRadius: BorderRadius.circular(AppColors.radiusMd),
+              borderSide: BorderSide(color: errorColor, width: 1.0),
             ),
             focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.0),
-              borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+              borderRadius: BorderRadius.circular(AppColors.radiusMd),
+              borderSide: BorderSide(color: errorColor, width: 1.5),
             ),
             disabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8.0),
+              borderRadius: BorderRadius.circular(AppColors.radiusMd),
               borderSide: BorderSide(color: borderColor.withValues(alpha: 0.5), width: 1.0),
             ),
           ),

@@ -2,9 +2,10 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/enums/app_enums.dart';
 import 'package:frontend/core/theme/app_colors.dart';
+import 'package:frontend/core/theme/app_typography.dart';
 import 'package:frontend/features/dashboard/application/dashboard_provider.dart';
 
-/// Donut / Pie Chart widget displaying distribution of tasks by `IssueStatus`.
+/// Donut / Pie Chart widget aligned with Figma `StatusDonut`.
 class StatusDistributionWidget extends StatefulWidget {
   final DashboardState state;
   final bool isDark;
@@ -27,83 +28,56 @@ class _StatusDistributionWidgetState extends State<StatusDistributionWidget> {
     final statusCounts = widget.state.statusCounts;
     final totalIssues = widget.state.totalTasks;
     final isDark = widget.isDark;
+    final brightness = isDark ? Brightness.dark : Brightness.light;
+    final surfaceColor = AppColors.surfaceFor(isDark);
+    final borderColor = AppColors.borderFor(isDark);
+    final textPrimary = AppColors.textPrimaryFor(isDark);
+    final textSecondary = AppColors.textSecondaryFor(isDark);
+    final textMuted = AppColors.textMutedFor(isDark);
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? AppColors.borderDark : AppColors.borderLight,
-        ),
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Icon(Icons.donut_large_rounded, color: AppColors.primary, size: 18),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Status Distribution',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                      ),
-                    ),
-                    Text(
-                      'Proportion of issues across workflow columns',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          Text(
+            'Status Distribution',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: textPrimary),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 2),
+          Text(
+            'Proportion of issues across workflow columns',
+            style: TextStyle(fontSize: 11.5, color: textMuted),
+          ),
+          const SizedBox(height: 16),
 
           if (totalIssues == 0)
             SizedBox(
-              height: 200,
+              height: 218,
               child: Center(
                 child: Text(
                   'No issues recorded in this sprint.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                  ),
+                  style: TextStyle(fontSize: 12.5, color: textSecondary),
                 ),
               ),
             )
           else
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final isNarrow = constraints.maxWidth < 380;
-
-                final chart = Semantics(
+            Column(
+              children: [
+                // Thin Ring Donut Chart (Figma .donut-chart)
+                Semantics(
                   label:
                       'Status Distribution donut chart. Total tasks: $totalIssues. Todo: ${statusCounts[IssueStatus.todo] ?? 0}, In Progress: ${statusCounts[IssueStatus.inProgress] ?? 0}, In Review: ${statusCounts[IssueStatus.inReview] ?? 0}, Done: ${statusCounts[IssueStatus.done] ?? 0}',
                   container: true,
                   child: SizedBox(
-                    width: 180,
-                    height: 180,
+                    width: 170,
+                    height: 170,
                     child: RepaintBoundary(
                       child: Stack(
                         alignment: Alignment.center,
@@ -125,8 +99,8 @@ class _StatusDistributionWidgetState extends State<StatusDistributionWidget> {
                               ),
                               borderData: FlBorderData(show: false),
                               sectionsSpace: 3,
-                              centerSpaceRadius: 44,
-                              sections: _buildSections(statusCounts, totalIssues),
+                              centerSpaceRadius: 54,
+                              sections: _buildSections(statusCounts, brightness),
                             ),
                           ),
                           Column(
@@ -135,17 +109,19 @@ class _StatusDistributionWidgetState extends State<StatusDistributionWidget> {
                               Text(
                                 '$totalIssues',
                                 style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: -0.8,
+                                  color: textPrimary,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
                                 ),
                               ),
                               Text(
                                 'Tasks',
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 10.5,
                                   fontWeight: FontWeight.w500,
-                                  color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                                  color: textMuted,
                                 ),
                               ),
                             ],
@@ -154,78 +130,99 @@ class _StatusDistributionWidgetState extends State<StatusDistributionWidget> {
                       ),
                     ),
                   ),
-                );
+                ),
+                const SizedBox(height: 16),
 
-                final legend = Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: statusCounts.entries.map((entry) {
-                    final status = entry.key;
-                    final count = entry.value;
-                    final pct = totalIssues > 0 ? (count / totalIssues * 100) : 0.0;
-
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 10,
-                            height: 10,
-                            decoration: BoxDecoration(
-                              color: status.color,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              status.label,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                // 2-Column Dot-Aligned Legend (Figma .donut-legend)
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final entries = statusCounts.entries.toList();
+                    final useTwoCols = constraints.maxWidth >= 230;
+                    if (!useTwoCols) {
+                      return Column(
+                        children: entries.map((e) => _buildLegendRow(e.key, e.value, totalIssues, brightness)).toList(),
+                      );
+                    }
+                    return Column(
+                      children: [
+                        for (int i = 0; i < entries.length; i += 2) ...[
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildLegendRow(entries[i].key, entries[i].value, totalIssues, brightness),
                               ),
-                            ),
+                              const SizedBox(width: 16),
+                              if (i + 1 < entries.length)
+                                Expanded(
+                                  child: _buildLegendRow(
+                                    entries[i + 1].key,
+                                    entries[i + 1].value,
+                                    totalIssues,
+                                    brightness,
+                                  ),
+                                )
+                              else
+                                const Expanded(child: SizedBox.shrink()),
+                            ],
                           ),
-                          Text(
-                            '$count (${pct.toStringAsFixed(0)}%)',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                            ),
-                          ),
+                          if (i + 2 < entries.length) const SizedBox(height: 8),
                         ],
-                      ),
+                      ],
                     );
-                  }).toList(),
-                );
-
-                if (isNarrow) {
-                  return Column(
-                    children: [
-                      chart,
-                      const SizedBox(height: 16),
-                      legend,
-                    ],
-                  );
-                }
-
-                return Row(
-                  children: [
-                    chart,
-                    const SizedBox(width: 24),
-                    Expanded(child: legend),
-                  ],
-                );
-              },
+                  },
+                ),
+              ],
             ),
         ],
       ),
     );
   }
 
-  List<PieChartSectionData> _buildSections(Map<IssueStatus, int> counts, int total) {
+  Widget _buildLegendRow(IssueStatus status, int count, int total, Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    final pct = total > 0 ? (count / total * 100).round() : 0;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Flexible(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: status.colorFor(brightness),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  status.label,
+                  style: TextStyle(fontSize: 11.5, color: AppColors.textSecondaryFor(isDark)),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          '$count ($pct%)',
+          style: AppTypography.mono(
+            isDark,
+            fontSize: 10.5,
+            color: AppColors.textPrimaryFor(isDark),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<PieChartSectionData> _buildSections(Map<IssueStatus, int> counts, Brightness brightness) {
     final List<PieChartSectionData> sections = [];
     int index = 0;
 
@@ -235,19 +232,12 @@ class _StatusDistributionWidgetState extends State<StatusDistributionWidget> {
       if (count == 0) continue;
 
       final isTouched = index == _touchedIndex;
-      final radius = isTouched ? 32.0 : 26.0;
-
       sections.add(
         PieChartSectionData(
-          color: status.color,
+          color: status.colorFor(brightness),
           value: count.toDouble(),
-          title: '$count',
-          radius: radius,
-          titleStyle: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+          showTitle: false,
+          radius: isTouched ? 21.0 : 16.0,
         ),
       );
       index++;

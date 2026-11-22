@@ -3,7 +3,7 @@ import 'package:frontend/core/constants/app_constants.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/shared/widgets/app_buttons.dart';
 
-/// Confirmation Dialog with optional destructive styling.
+/// Confirmation Dialog aligned with Figma Modal styling.
 class AppConfirmationDialog extends StatelessWidget {
   final String title;
   final String message;
@@ -58,68 +58,95 @@ class AppConfirmationDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
+    final Color borderColor = AppColors.borderFor(isDark);
+    final Color dangerColor = AppColors.errorFor(isDark);
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-      backgroundColor: isDark ? AppColors.cardDark : AppColors.cardLight,
-      elevation: 6.0,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppColors.radiusXl),
+        side: BorderSide(color: borderColor),
+      ),
+      backgroundColor: AppColors.surfaceFor(isDark),
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 24.0),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 440.0),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        constraints: const BoxConstraints(maxWidth: 460.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Modal header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: borderColor)),
+              ),
+              child: Row(
                 children: [
                   if (isDestructive) ...[
                     Container(
-                      padding: const EdgeInsets.all(8.0),
+                      padding: const EdgeInsets.all(7.0),
                       decoration: BoxDecoration(
-                        color: AppColors.errorLight.withValues(alpha: isDark ? 0.2 : 0.8),
-                        shape: BoxShape.circle,
+                        color: AppColors.dangerSoftFor(isDark),
+                        borderRadius: BorderRadius.circular(AppColors.radiusMd),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.warning_amber_rounded,
-                        color: AppColors.error,
-                        size: 22.0,
+                        color: dangerColor,
+                        size: 18.0,
                       ),
                     ),
-                    const SizedBox(width: 12.0),
+                    const SizedBox(width: 10.0),
                   ],
                   Expanded(
                     child: Text(
                       title,
                       style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimaryFor(isDark),
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12.0),
-              Text(
-                message,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                  height: 1.5,
-                ),
+            ),
+
+            // Modal body
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    message,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondaryFor(isDark),
+                      height: 1.5,
+                    ),
+                  ),
+                  if (content != null) ...[
+                    const SizedBox(height: 16.0),
+                    content!,
+                  ],
+                ],
               ),
-              if (content != null) ...[
-                const SizedBox(height: 16.0),
-                content!,
-              ],
-              const SizedBox(height: 24.0),
-              Row(
+            ),
+
+            // Modal footer
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 14.0),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: borderColor)),
+              ),
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   AppOutlinedButton(
                     label: cancelText,
                     onPressed: isLoading ? null : (onCancel ?? () => Navigator.of(context).pop(false)),
                   ),
-                  const SizedBox(width: 12.0),
+                  const SizedBox(width: 10.0),
                   if (isDestructive)
                     AppDestructiveButton(
                       label: confirmText,
@@ -134,8 +161,8 @@ class AppConfirmationDialog extends StatelessWidget {
                     ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -154,7 +181,7 @@ class AppAdaptiveDialog extends StatelessWidget {
     this.title,
     required this.child,
     this.maxWidth = 540.0,
-    this.padding = const EdgeInsets.all(24.0),
+    this.padding = const EdgeInsets.all(20.0),
   });
 
   /// Displays the child inside an adaptive modal container.
@@ -177,11 +204,13 @@ class AppAdaptiveDialog extends StatelessWidget {
         builder: (BuildContext sheetContext) {
           final ThemeData theme = Theme.of(sheetContext);
           final bool isDark = theme.brightness == Brightness.dark;
+          final Color borderColor = AppColors.borderFor(isDark);
 
           return Container(
             decoration: BoxDecoration(
-              color: isDark ? AppColors.cardDark : AppColors.cardLight,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16.0)),
+              color: AppColors.surfaceFor(isDark),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(AppColors.radiusXl)),
+              border: Border(top: BorderSide(color: borderColor)),
             ),
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
@@ -193,14 +222,13 @@ class AppAdaptiveDialog extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Drag handle
                       Center(
                         child: Container(
                           width: 36.0,
                           height: 4.0,
-                          margin: const EdgeInsets.only(bottom: 16.0),
+                          margin: const EdgeInsets.only(bottom: 14.0),
                           decoration: BoxDecoration(
-                            color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                            color: borderColor,
                             borderRadius: BorderRadius.circular(2.0),
                           ),
                         ),
@@ -212,17 +240,17 @@ class AppAdaptiveDialog extends StatelessWidget {
                             Expanded(
                               child: Text(
                                 title,
-                                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             IconButton(
-                              icon: const Icon(Icons.close_rounded),
+                              icon: Icon(Icons.close_rounded, size: 19.0, color: AppColors.textMutedFor(isDark)),
                               onPressed: () => Navigator.of(sheetContext).pop(),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12.0),
+                        Divider(height: 16.0, color: borderColor),
                       ],
                       child,
                     ],
@@ -241,43 +269,58 @@ class AppAdaptiveDialog extends StatelessWidget {
       builder: (BuildContext dialogContext) {
         final ThemeData theme = Theme.of(dialogContext);
         final bool isDark = theme.brightness == Brightness.dark;
+        final Color borderColor = AppColors.borderFor(isDark);
 
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-          backgroundColor: isDark ? AppColors.cardDark : AppColors.cardLight,
-          elevation: 6.0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppColors.radiusXl),
+            side: BorderSide(color: borderColor),
+          ),
+          backgroundColor: AppColors.surfaceFor(isDark),
+          elevation: 0,
           insetPadding: const EdgeInsets.all(24.0),
           child: ConstrainedBox(
             constraints: BoxConstraints(maxWidth: maxWidth),
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (title != null) ...[
-                    Row(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (title != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 14.0),
+                    decoration: BoxDecoration(
+                      border: Border(bottom: BorderSide(color: borderColor)),
+                    ),
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
                           child: Text(
                             title,
-                            style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimaryFor(isDark),
+                            ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.close_rounded),
+                          icon: Icon(Icons.close_rounded, size: 18.0, color: AppColors.textMutedFor(isDark)),
                           onPressed: () => Navigator.of(dialogContext).pop(),
-                          splashRadius: 20.0,
+                          splashRadius: 18.0,
+                          constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                          padding: EdgeInsets.zero,
                         ),
                       ],
                     ),
-                    const Divider(height: 24.0),
-                  ],
-                  child,
-                ],
-              ),
+                  ),
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20.0),
+                    child: child,
+                  ),
+                ),
+              ],
             ),
           ),
         );

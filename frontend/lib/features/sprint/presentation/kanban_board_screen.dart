@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:frontend/core/enums/app_enums.dart';
 import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/theme/app_colors.dart';
+import 'package:frontend/core/theme/app_typography.dart';
+import 'package:frontend/core/utils/responsive_breakpoints.dart';
 import 'package:frontend/features/issue/domain/issue_filter_state.dart';
 import 'package:frontend/features/issue/presentation/widgets/board_filter_toolbar.dart';
 import 'package:frontend/features/project/presentation/widgets/project_navigation_tab_bar.dart';
@@ -18,7 +20,7 @@ import 'package:frontend/features/sprint/presentation/widgets/complete_sprint_di
 import 'package:frontend/features/sprint/presentation/widgets/kanban_column_widget.dart';
 import 'package:frontend/shared/widgets/widgets.dart';
 
-/// Screen displaying the multi-column Kanban board for the active sprint.
+/// Screen displaying the multi-column Kanban board aligned with Figma Board.
 class KanbanBoardScreen extends ConsumerStatefulWidget {
   final String workspaceId;
   final String projectId;
@@ -68,10 +70,10 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final isMobile = ResponsiveBreakpoints.isMobile(context);
     final state = ref.watch(kanbanBoardProvider(widget.projectId));
     final notifier = ref.read(kanbanBoardProvider(widget.projectId).notifier);
 
-    // Listen to error messages and present a floating SnackBar
     ref.listen(kanbanBoardProvider(widget.projectId), (previous, next) {
       if (next.errorMessage != null && next.errorMessage != previous?.errorMessage) {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -79,7 +81,7 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+                const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 18),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -89,7 +91,7 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
                 ),
               ],
             ),
-            backgroundColor: AppColors.error,
+            backgroundColor: AppColors.errorFor(isDark),
             behavior: SnackBarBehavior.floating,
             duration: const Duration(seconds: 4),
           ),
@@ -105,14 +107,12 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
       title: 'Kanban Board',
       body: Column(
         children: [
-          // Project Sub-Navigation Tab Bar
           ProjectNavigationTabBar(
             workspaceId: widget.workspaceId,
             projectId: widget.projectId,
             activeTab: 'board',
           ),
 
-          // Main Board Body
           Expanded(
             child: RefreshIndicator(
               onRefresh: () => notifier.refresh(),
@@ -123,10 +123,7 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
                       : Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            // Sprint Header Bar
-                            _buildSprintHeader(context, state, notifier, isDark),
-
-                            // Reusable Filter & Sorting Toolbar
+                            // Reusable Filter & Sorting Toolbar (Figma .work-toolbar)
                             BoardFilterToolbar(
                               filter: state.filter,
                               members: state.members,
@@ -137,10 +134,16 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
                               },
                             ),
 
+                            // Board Heading Bar (Figma .board-heading)
+                            _buildSprintHeader(context, state, notifier, isDark),
+
                             // Multi-column Kanban Board View
                             Expanded(
                               child: _buildColumnsView(context, state, notifier),
                             ),
+
+                            // Subtle Board Hint Footer (Figma .board-hint)
+                            if (!isMobile) _buildBoardHintFooter(isDark),
                           ],
                         ),
             ),
@@ -180,145 +183,177 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
     final sprint = state.activeSprint!;
     final totalIssues = state.totalIssues;
     final totalStoryPoints = state.totalStoryPoints;
+    final accentColor = AppColors.accentFor(isDark);
+    final accentSoft = AppColors.accentSoftFor(isDark);
+    final successColor = AppColors.successFor(isDark);
+    final greenSoft = AppColors.greenSoftFor(isDark);
+    final textPrimary = AppColors.textPrimaryFor(isDark);
+    final textSecondary = AppColors.textSecondaryFor(isDark);
+    final textMuted = AppColors.textMutedFor(isDark);
+
+    final memberNames = state.members
+        .map((m) => m.user?.fullName.isNotEmpty == true ? m.user!.fullName : (m.user?.email ?? m.userId))
+        .toList();
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
-        border: Border(
-          bottom: BorderSide(
-            color: isDark ? AppColors.borderDark : AppColors.borderLight,
-            width: 1,
-          ),
-        ),
-      ),
+      padding: const EdgeInsets.fromLTRB(22, 16, 22, 12),
+      color: AppColors.bgFor(isDark),
       child: Wrap(
         spacing: 12,
         runSpacing: 10,
         alignment: WrapAlignment.spaceBetween,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          // Left: Sprint Name & Status Badge & Duration
-          Row(
+          // Left: Sprint Name, ACTIVE Badge, Date Range
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                sprint.name,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppColors.success.withAlpha(25),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: AppColors.success.withAlpha(80),
-                    width: 0.8,
-                  ),
-                ),
-                child: const Text(
-                  'ACTIVE',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.success,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              // Date text
-              Text(
-                sprint.dateRangeText,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                ),
-              ),
-              if (sprint.daysRemaining != null) ...[
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.white12 : Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${sprint.daysRemaining}d left',
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    sprint.name,
                     style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: isDark ? Colors.white70 : Colors.black87,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.5,
+                      color: textPrimary,
                     ),
                   ),
-                ),
-              ],
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                    decoration: BoxDecoration(
+                      color: accentSoft,
+                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                      border: Border.all(color: accentColor.withValues(alpha: 0.28)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 5,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: accentColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          'ACTIVE',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.6,
+                            color: accentColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (sprint.daysRemaining != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface3For(isDark),
+                        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                      ),
+                      child: Text(
+                        '${sprint.daysRemaining}d left',
+                        style: AppTypography.mono(
+                          isDark,
+                          fontSize: 10.5,
+                          color: textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 3),
+              Text(
+                sprint.dateRangeText,
+                style: TextStyle(fontSize: 11.5, color: textMuted),
+              ),
             ],
           ),
 
-          // Right: Metrics badges, Refresh
-          Row(
-            mainAxisSize: MainAxisSize.min,
+          // Right: Team avatars, Metrics badges, Complete Sprint, Refresh
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              // Issues Count Badge
+              if (memberNames.isNotEmpty) ...[
+                UserAvatarGroup(
+                  names: memberNames,
+                  size: UserAvatarSize.xs,
+                  maxVisible: 4,
+                ),
+                const SizedBox(width: 2),
+              ],
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.white12 : Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
+                  color: AppColors.surface2For(isDark),
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                  border: Border.all(color: AppColors.borderFor(isDark)),
                 ),
                 child: Text(
                   '$totalIssues issues',
-                  style: TextStyle(
-                    fontSize: 12,
+                  style: AppTypography.mono(
+                    isDark,
+                    fontSize: 11,
+                    color: textSecondary,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white70 : Colors.black87,
                   ),
                 ),
               ),
-              const SizedBox(width: 6),
-
-              // Total Story Points Badge
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.secondary.withAlpha(25),
-                  borderRadius: BorderRadius.circular(8),
+                  color: accentSoft,
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 ),
                 child: Text(
                   totalStoryPoints % 1 == 0
                       ? '${totalStoryPoints.toInt()} pts'
                       : '$totalStoryPoints pts',
-                  style: TextStyle(
-                    fontSize: 12,
+                  style: AppTypography.mono(
+                    isDark,
+                    fontSize: 11,
+                    color: accentColor,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? AppColors.secondaryLight : AppColors.secondaryDark,
                   ),
                 ),
               ),
-              const SizedBox(width: 6),
-
-              // Complete Sprint Button
               ElevatedButton.icon(
-                icon: const Icon(Icons.check_circle_outline, size: 16),
-                label: const Text('Complete Sprint'),
+                icon: Icon(Icons.check_circle_outline_rounded, size: 15, color: successColor),
+                label: Text(
+                  'Complete Sprint',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: successColor),
+                ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.success,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  backgroundColor: greenSoft,
+                  foregroundColor: successColor,
+                  elevation: 0,
+                  side: BorderSide(color: successColor.withValues(alpha: 0.35)),
+                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+                  minimumSize: const Size(0, 32),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                  ),
                 ),
                 onPressed: () => _openCompleteSprintDialog(context, sprint, state, notifier),
               ),
-              const SizedBox(width: 4),
-
-              // Refresh Button
-              IconButton(
-                icon: const Icon(Icons.refresh, size: 20),
+              AppIconButton(
+                icon: Icons.refresh_rounded,
                 tooltip: 'Refresh board',
+                size: 32,
+                backgroundColor: AppColors.surface2For(isDark),
                 onPressed: () => notifier.refresh(),
               ),
             ],
@@ -333,7 +368,6 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
     KanbanBoardState state,
     KanbanBoardNotifier notifier,
   ) {
-    // 4 standard Kanban workflow columns
     const columns = [
       IssueStatus.todo,
       IssueStatus.inProgress,
@@ -345,9 +379,9 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
       builder: (context, constraints) {
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 4),
           child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: constraints.maxWidth - 28),
+            constraints: BoxConstraints(minWidth: constraints.maxWidth - 30),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: columns.map((status) {
@@ -374,6 +408,31 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
     );
   }
 
+  Widget _buildBoardHintFooter(bool isDark) {
+    final textMuted = AppColors.textMutedFor(isDark);
+    return Container(
+      height: 28,
+      padding: const EdgeInsets.symmetric(horizontal: 22),
+      decoration: BoxDecoration(
+        color: AppColors.bgFor(isDark),
+        border: Border(top: BorderSide(color: AppColors.borderSoftFor(isDark))),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Drag and drop issue cards across columns to update workflow status',
+            style: TextStyle(fontSize: 10.5, color: textMuted),
+          ),
+          Text(
+            'Click any card to inspect details',
+            style: TextStyle(fontSize: 10.5, color: textMuted),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _openCompleteSprintDialog(
     BuildContext context,
     SprintModel sprint,
@@ -392,7 +451,6 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
       plannedSprints = results[0] as List<SprintModel>;
       progress = results[1] as SprintProgressModel;
     } catch (_) {
-      // Fallback: derive simple counts from board state
       final completed = state.issuesForStatus(IssueStatus.done).length;
       final total = state.totalIssues;
       progress = SprintProgressModel(
@@ -428,10 +486,11 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
     );
 
     if (result != null && context.mounted) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Sprint "${sprint.name}" completed successfully!'),
-          backgroundColor: AppColors.success,
+          backgroundColor: AppColors.successFor(isDark),
         ),
       );
       await notifier.refresh();

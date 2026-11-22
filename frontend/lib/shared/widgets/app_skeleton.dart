@@ -44,10 +44,8 @@ class AppSkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final resolvedBaseColor = baseColor ??
-        (isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0));
-    final resolvedHighlightColor = highlightColor ??
-        (isDark ? const Color(0xFF334155) : const Color(0xFFF1F5F9));
+    final resolvedBaseColor = baseColor ?? AppColors.surface2For(isDark);
+    final resolvedHighlightColor = highlightColor ?? AppColors.surface3For(isDark);
 
     return Shimmer.fromColors(
       baseColor: resolvedBaseColor,

@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/shared/widgets/widgets.dart';
 
-/// Modal dialog for creating a new planned sprint.
+/// Modal dialog for creating a new planned sprint aligned with Figma CreateDialog.
 class CreateSprintDialog extends StatefulWidget {
   final Future<bool> Function({
     required String name,
@@ -57,7 +57,6 @@ class _CreateSprintDialogState extends State<CreateSprintDialog> {
     _goalController = TextEditingController();
     _capacityController = TextEditingController(text: '30');
 
-    // Default dates: today and 14 days later
     final now = DateTime.now();
     _startDate = DateTime(now.year, now.month, now.day);
     _endDate = _startDate!.add(const Duration(days: 14));
@@ -140,7 +139,12 @@ class _CreateSprintDialogState extends State<CreateSprintDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final dateFormat = DateFormat('MMM d, yyyy');
+    final borderColor = AppColors.borderFor(isDark);
+    final labelColor = AppColors.textSecondaryFor(isDark);
+    final textColor = AppColors.textPrimaryFor(isDark);
+    final mutedColor = AppColors.textMutedFor(isDark);
 
     return Form(
       key: _formKey,
@@ -148,7 +152,6 @@ class _CreateSprintDialogState extends State<CreateSprintDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Sprint Name
           AppTextFormField(
             controller: _nameController,
             label: 'Sprint Name *',
@@ -160,51 +163,49 @@ class _CreateSprintDialogState extends State<CreateSprintDialog> {
               return null;
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
-          // Sprint Goal
           AppTextFormField(
             controller: _goalController,
             label: 'Sprint Goal',
             hintText: 'What is the key objective of this sprint?',
             maxLines: 2,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
-          // Date Selection Row
+          // 2-Column Date Selection Grid (Figma .form-grid)
           Row(
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Start Date',
-                      style: TextStyle(
-                        color: AppColors.textSecondaryDark,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: TextStyle(color: labelColor, fontSize: 12, fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 6),
                     InkWell(
                       onTap: _pickStartDate,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
                         decoration: BoxDecoration(
-                          color: AppColors.cardDark,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.borderDark),
+                          color: AppColors.bgFor(isDark),
+                          borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                          border: Border.all(color: borderColor),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              _startDate != null ? dateFormat.format(_startDate!) : 'Select date',
-                              style: const TextStyle(color: AppColors.textPrimaryDark, fontSize: 13),
+                            Flexible(
+                              child: Text(
+                                _startDate != null ? dateFormat.format(_startDate!) : 'Select date',
+                                style: TextStyle(color: textColor, fontSize: 12.5),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            const Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.textSecondaryDark),
+                            Icon(Icons.calendar_today_rounded, size: 14.5, color: mutedColor),
                           ],
                         ),
                       ),
@@ -212,38 +213,37 @@ class _CreateSprintDialogState extends State<CreateSprintDialog> {
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'End Date',
-                      style: TextStyle(
-                        color: AppColors.textSecondaryDark,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: TextStyle(color: labelColor, fontSize: 12, fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 6),
                     InkWell(
                       onTap: _pickEndDate,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
                         decoration: BoxDecoration(
-                          color: AppColors.cardDark,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.borderDark),
+                          color: AppColors.bgFor(isDark),
+                          borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                          border: Border.all(color: borderColor),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              _endDate != null ? dateFormat.format(_endDate!) : 'Select date',
-                              style: const TextStyle(color: AppColors.textPrimaryDark, fontSize: 13),
+                            Flexible(
+                              child: Text(
+                                _endDate != null ? dateFormat.format(_endDate!) : 'Select date',
+                                style: TextStyle(color: textColor, fontSize: 12.5),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            const Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.textSecondaryDark),
+                            Icon(Icons.calendar_today_rounded, size: 14.5, color: mutedColor),
                           ],
                         ),
                       ),
@@ -255,20 +255,21 @@ class _CreateSprintDialogState extends State<CreateSprintDialog> {
           ),
           if (_dateError != null) ...[
             const SizedBox(height: 6),
-            Text(_dateError!, style: const TextStyle(color: AppColors.error, fontSize: 12)),
+            Text(_dateError!, style: TextStyle(color: AppColors.errorFor(isDark), fontSize: 12)),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
 
-          // Capacity Limit
           AppTextFormField(
             controller: _capacityController,
             label: 'Capacity Limit (Story Points)',
             hintText: 'e.g. 30',
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
-          // Action Buttons
+          Divider(height: 1, color: borderColor),
+          const SizedBox(height: 14),
+
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
@@ -276,7 +277,7 @@ class _CreateSprintDialogState extends State<CreateSprintDialog> {
                 label: 'Cancel',
                 onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               AppPrimaryButton(
                 label: 'Create Sprint',
                 isLoading: _isSubmitting,

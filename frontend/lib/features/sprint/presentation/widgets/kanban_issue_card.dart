@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/theme/app_colors.dart';
+import 'package:frontend/core/theme/app_typography.dart';
 import 'package:frontend/features/issue/domain/issue_model.dart';
 import 'package:frontend/features/issue/presentation/widgets/issue_detail_dialog.dart';
+import 'package:frontend/shared/widgets/app_badge.dart';
+import 'package:frontend/shared/widgets/user_avatar.dart';
 
-/// Card widget representing an individual issue inside a Kanban board column.
-class KanbanIssueCard extends StatelessWidget {
+/// Card widget representing an individual issue inside a Kanban column aligned with Figma .issue-card.
+class KanbanIssueCard extends StatefulWidget {
   final IssueModel issue;
   final String projectKey;
   final VoidCallback? onUpdated;
@@ -17,213 +20,211 @@ class KanbanIssueCard extends StatelessWidget {
   });
 
   @override
+  State<KanbanIssueCard> createState() => _KanbanIssueCardState();
+}
+
+class _KanbanIssueCardState extends State<KanbanIssueCard> {
+  bool _isHovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final cardBg = isDark ? AppColors.cardDark : AppColors.cardLight;
-    final borderColor = isDark ? AppColors.borderDark : AppColors.borderLight;
+    final brightness = theme.brightness;
+    final isDark = brightness == Brightness.dark;
+    final issue = widget.issue;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
-      elevation: 0.5,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: borderColor, width: 1),
-      ),
-      color: cardBg,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: () async {
-          await IssueDetailDialog.show(
-            context,
-            projectId: issue.projectId,
-            projectKey: projectKey,
-            issue: issue,
-          );
-          if (onUpdated != null) {
-            onUpdated!();
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Top Row: Type icon, Key, Priority Indicator
-              Row(
+    final cardBg = _isHovered ? AppColors.surface2For(isDark) : AppColors.surfaceFor(isDark);
+    final borderColor = _isHovered ? AppColors.textMutedFor(isDark) : AppColors.borderFor(isDark);
+    final typeColor = issue.type.colorFor(brightness);
+    final statusColor = issue.status.colorFor(brightness);
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.grab,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
+        margin: const EdgeInsets.only(bottom: 9),
+        transform: Matrix4.translationValues(0.0, _isHovered ? -1.5 : 0.0, 0.0),
+        decoration: BoxDecoration(
+          color: cardBg,
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
+          border: Border.all(color: borderColor, width: 1.0),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: _isHovered ? (isDark ? 0.30 : 0.08) : (isDark ? 0.16 : 0.035)),
+              blurRadius: _isHovered ? 8.0 : 3.0,
+              offset: Offset(0, _isHovered ? 3.0 : 1.5),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+            hoverColor: Colors.transparent,
+            onTap: () async {
+              await IssueDetailDialog.show(
+                context,
+                projectId: issue.projectId,
+                projectKey: widget.projectKey,
+                issue: issue,
+              );
+              if (widget.onUpdated != null) {
+                widget.onUpdated!();
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 11, 12, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    issue.type.icon,
-                    size: 16,
-                    color: issue.type.color,
+                  // Top Row (Figma .card-key-row): Type icon, Monospace Key, Priority Badge
+                  Row(
+                    children: [
+                      Icon(issue.type.icon, size: 14, color: typeColor),
+                      const SizedBox(width: 6),
+                      Text(
+                        issue.formattedKey(widget.projectKey),
+                        style: AppTypography.mono(
+                          isDark,
+                          fontSize: 10.5,
+                          color: AppColors.textMutedFor(isDark),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Spacer(),
+                      IssuePriorityBadge(priority: issue.priority, isSmall: true),
+                    ],
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    issue.formattedKey(projectKey),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? AppColors.secondaryLight : AppColors.primary,
-                      letterSpacing: 0.3,
-                    ),
+                  const SizedBox(height: 9),
+
+                  // Title Row (Figma .card-title): Status Icon + Title
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2.5),
+                        child: Icon(issue.status.icon, size: 13.5, color: statusColor),
+                      ),
+                      const SizedBox(width: 7),
+                      Expanded(
+                        child: Text(
+                          issue.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 13,
+                            height: 1.45,
+                            color: AppColors.textPrimaryFor(isDark),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  const Spacer(),
-                  _buildPriorityIndicator(isDark),
-                ],
-              ),
-              const SizedBox(height: 8),
+                  const SizedBox(height: 11),
 
-              // Title
-              Text(
-                issue.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                  height: 1.25,
-                ),
-              ),
-              const SizedBox(height: 12),
+                  // Bottom Footer Row (Figma .card-footer): Meta, Points, Avatar
+                  Row(
+                    children: [
+                      // Sub-issue progress pill
+                      if (issue.subIssueCount > 0) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface3For(isDark),
+                            borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.check_box_outlined,
+                                size: 11.5,
+                                color: AppColors.textSecondaryFor(isDark),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${issue.completedSubIssueCount}/${issue.subIssueCount}',
+                                style: AppTypography.mono(
+                                  isDark,
+                                  fontSize: 10,
+                                  color: AppColors.textSecondaryFor(isDark),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                      ],
 
-              // Bottom Row: Sub-issue progress, Story points, Assignee avatar
-              Row(
-                children: [
-                  // Sub-issue progress pill
-                  if (issue.subIssueCount > 0) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withAlpha(20)
-                            : Colors.black.withAlpha(12),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.check_box_outlined,
-                            size: 12,
-                            color: isDark ? Colors.white70 : Colors.black54,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${issue.completedSubIssueCount}/${issue.subIssueCount}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: isDark ? Colors.white70 : Colors.black87,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
+                      const Spacer(),
 
-                  // Story Points estimate pill
-                  if (issue.estimate != null) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.secondary.withAlpha(25),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.bolt_rounded,
-                            size: 13,
-                            color: isDark ? AppColors.secondaryLight : AppColors.secondaryDark,
+                      // Story Points monospace box (Figma .points)
+                      if (issue.estimate != null) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface2For(isDark),
+                            borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                            border: Border.all(color: AppColors.borderFor(isDark)),
                           ),
-                          const SizedBox(width: 2),
-                          Text(
+                          child: Text(
                             issue.estimate! % 1 == 0
                                 ? '${issue.estimate!.toInt()} pts'
                                 : '${issue.estimate} pts',
-                            style: TextStyle(
-                              fontSize: 11,
+                            style: AppTypography.mono(
+                              isDark,
+                              fontSize: 10,
+                              color: AppColors.textSecondaryFor(isDark),
                               fontWeight: FontWeight.w600,
-                              color: isDark ? AppColors.secondaryLight : AppColors.secondaryDark,
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
+                        ),
+                        const SizedBox(width: 7),
+                      ],
 
-                  const Spacer(),
-
-                  // Assignee Avatar
-                  _buildAssigneeAvatar(isDark),
+                      // Assignee Avatar
+                      _buildAssigneeAvatar(isDark),
+                    ],
+                  ),
                 ],
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPriorityIndicator(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: issue.priority.color.withAlpha(25),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: issue.priority.color.withAlpha(60),
-          width: 0.8,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            issue.priority.icon,
-            size: 12,
-            color: issue.priority.color,
-          ),
-          const SizedBox(width: 3),
-          Text(
-            issue.priority.label,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: issue.priority.color,
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildAssigneeAvatar(bool isDark) {
-    if (issue.assignee != null) {
-      final initials = issue.assignee!.initials;
-      return CircleAvatar(
-        radius: 12,
-        backgroundColor: AppColors.primaryLight,
-        child: Text(
-          initials,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+    final assignee = widget.issue.assignee;
+    if (assignee != null) {
+      final name = assignee.fullName.isNotEmpty ? assignee.fullName : assignee.email;
+      return UserAvatar(
+        name: name,
+        size: UserAvatarSize.xs,
       );
     }
 
-    return CircleAvatar(
-      radius: 12,
-      backgroundColor: isDark ? Colors.white12 : Colors.grey.shade200,
-      child: Icon(
-        Icons.person_outline,
-        size: 14,
-        color: isDark ? Colors.white38 : Colors.grey.shade600,
+    return Tooltip(
+      message: 'Unassigned',
+      child: Container(
+        width: 22,
+        height: 22,
+        decoration: BoxDecoration(
+          color: AppColors.surface3For(isDark),
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.borderFor(isDark)),
+        ),
+        child: Icon(
+          Icons.person_outline_rounded,
+          size: 13,
+          color: AppColors.textMutedFor(isDark),
+        ),
       ),
     );
   }

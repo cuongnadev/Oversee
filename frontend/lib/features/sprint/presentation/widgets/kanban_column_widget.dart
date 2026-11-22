@@ -2,13 +2,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/enums/app_enums.dart';
 import 'package:frontend/core/theme/app_colors.dart';
+import 'package:frontend/core/theme/app_typography.dart';
 import 'package:frontend/features/issue/domain/issue_model.dart';
 import 'package:frontend/features/sprint/presentation/widgets/kanban_issue_card.dart';
 
 /// Callback when an issue is dropped or moved into this column.
 typedef IssueDropCallback = void Function(IssueModel issue);
 
-/// Represents a single status column on the Kanban board (TODO, IN_PROGRESS, IN_REVIEW, DONE).
+/// Single workflow column on the Kanban board aligned with Figma .kanban-column.
 class KanbanColumnWidget extends StatefulWidget {
   final IssueStatus status;
   final List<IssueModel> issues;
@@ -37,27 +38,34 @@ class _KanbanColumnWidgetState extends State<KanbanColumnWidget> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final brightness = theme.brightness;
+    final isDark = brightness == Brightness.dark;
     final isMouseDevice = kIsWeb ||
         theme.platform == TargetPlatform.windows ||
         theme.platform == TargetPlatform.macOS ||
         theme.platform == TargetPlatform.linux;
 
-    final columnBg = isDark
-        ? (_isDragOver ? AppColors.surfaceDark.withAlpha(220) : const Color(0xFF131B2E))
-        : (_isDragOver ? Colors.indigo.shade50 : const Color(0xFFF1F5F9));
-    final borderColor = _isDragOver
-        ? widget.status.color
-        : (isDark ? AppColors.borderDark : const Color(0xFFE2E8F0));
+    final accentColor = AppColors.accentFor(isDark);
+    final accentSoft = AppColors.accentSoftFor(isDark);
+    final statusColor = widget.status.colorFor(brightness);
+
+    final columnBg = _isDragOver
+        ? accentSoft
+        : AppColors.surfaceFor(isDark).withValues(alpha: isDark ? 0.45 : 0.65);
+    final borderColor = _isDragOver ? accentColor : AppColors.borderSoftFor(isDark);
 
     return DragTarget<IssueModel>(
       onWillAcceptWithDetails: (details) {
         final willAccept = details.data.status != widget.status;
-        setState(() => _isDragOver = willAccept);
+        if (_isDragOver != willAccept) {
+          setState(() => _isDragOver = willAccept);
+        }
         return willAccept;
       },
       onLeave: (_) {
-        setState(() => _isDragOver = false);
+        if (_isDragOver) {
+          setState(() => _isDragOver = false);
+        }
       },
       onAcceptWithDetails: (details) {
         setState(() => _isDragOver = false);
@@ -66,61 +74,67 @@ class _KanbanColumnWidgetState extends State<KanbanColumnWidget> {
         }
       },
       builder: (context, candidateData, rejectedData) {
-        return Container(
-          width: 300,
-          margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          width: 292,
+          margin: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
           decoration: BoxDecoration(
             color: columnBg,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppColors.radiusLg),
             border: Border.all(
               color: borderColor,
-              width: _isDragOver ? 2.0 : 1.0,
+              width: _isDragOver ? 1.6 : 1.0,
             ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Column Header
-              _buildColumnHeader(context, isDark),
-              const Divider(height: 1, thickness: 1),
+              // Column Header (Figma .column-heading)
+              _buildColumnHeader(context, isDark, statusColor),
+              Divider(height: 1, thickness: 1, color: AppColors.borderSoftFor(isDark)),
 
-              // Visual Drop Preview Banner when dragging over this column
-              if (_isDragOver) ...[
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                  decoration: BoxDecoration(
-                    color: widget.status.color.withAlpha(25),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: widget.status.color,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.arrow_downward_rounded, size: 16, color: widget.status.color),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Drop to move to ${widget.status.label}',
-                        style: TextStyle(
-                          color: widget.status.color,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+              // Animated Drop Preview Banner when dragging over this column
+              AnimatedSize(
+                duration: const Duration(milliseconds: 150),
+                curve: Curves.easeOut,
+                child: _isDragOver
+                    ? Container(
+                        margin: const EdgeInsets.fromLTRB(10, 8, 10, 2),
+                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: accentColor.withValues(alpha: isDark ? 0.16 : 0.12),
+                          borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                          border: Border.all(color: accentColor, width: 1.2),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.arrow_downward_rounded, size: 15, color: accentColor),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                'Drop to move to ${widget.status.label}',
+                                style: TextStyle(
+                                  color: accentColor,
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
 
               // Scrollable Column Cards
               Expanded(
                 child: widget.issues.isEmpty && !_isDragOver
                     ? _buildEmptyColumnPlaceholder(context, isDark)
                     : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
                         itemCount: widget.issues.length,
                         itemBuilder: (context, index) {
                           final issue = widget.issues[index];
@@ -131,43 +145,53 @@ class _KanbanColumnWidgetState extends State<KanbanColumnWidget> {
                           );
 
                           final feedback = Material(
-                            elevation: 8,
+                            elevation: 12,
+                            shadowColor: Colors.black45,
                             color: Colors.transparent,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(AppColors.radiusMd),
                             child: Transform.rotate(
-                              angle: 0.03,
+                              angle: 0.025,
                               child: SizedBox(
-                                width: 280,
-                                child: Opacity(
-                                  opacity: 0.95,
-                                  child: KanbanIssueCard(
-                                    issue: issue,
-                                    projectKey: widget.projectKey,
+                                width: 274,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: accentColor.withValues(alpha: 0.25),
+                                        blurRadius: 14,
+                                        spreadRadius: 1,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Opacity(
+                                    opacity: 0.96,
+                                    child: KanbanIssueCard(
+                                      issue: issue,
+                                      projectKey: widget.projectKey,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
                           );
 
-                          final childWhenDragging = Opacity(
-                            opacity: 0.3,
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(vertical: 4),
-                              height: 75,
-                              decoration: BoxDecoration(
-                                color: isDark ? Colors.white10 : Colors.black.withAlpha(10),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: isDark ? Colors.white24 : Colors.black12,
-                                  width: 1,
-                                ),
+                          final childWhenDragging = Container(
+                            margin: const EdgeInsets.only(bottom: 9),
+                            height: 82,
+                            decoration: BoxDecoration(
+                              color: accentSoft.withValues(alpha: 0.45),
+                              borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                              border: Border.all(
+                                color: accentColor.withValues(alpha: 0.45),
+                                width: 1.2,
                               ),
-                              child: Center(
-                                child: Icon(
-                                  Icons.drag_indicator,
-                                  size: 20,
-                                  color: isDark ? Colors.white24 : Colors.black26,
-                                ),
+                            ),
+                            child: Center(
+                              child: Icon(
+                                Icons.drag_indicator_rounded,
+                                size: 18,
+                                color: accentColor.withValues(alpha: 0.6),
                               ),
                             ),
                           );
@@ -181,7 +205,7 @@ class _KanbanColumnWidgetState extends State<KanbanColumnWidget> {
                                 )
                               : LongPressDraggable<IssueModel>(
                                   data: issue,
-                                  delay: const Duration(milliseconds: 250),
+                                  delay: const Duration(milliseconds: 220),
                                   hapticFeedbackOnStart: true,
                                   feedback: feedback,
                                   childWhenDragging: childWhenDragging,
@@ -190,6 +214,32 @@ class _KanbanColumnWidgetState extends State<KanbanColumnWidget> {
                         },
                       ),
               ),
+
+              // Column Footer (Figma .column-footer)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: AppColors.borderSoftFor(isDark))),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${widget.issues.length} ${widget.issues.length == 1 ? 'Issue' : 'Issues'}',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: AppColors.textMutedFor(isDark),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Icon(
+                      Icons.drag_indicator_rounded,
+                      size: 13,
+                      color: AppColors.textMutedFor(isDark).withValues(alpha: 0.55),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         );
@@ -197,33 +247,25 @@ class _KanbanColumnWidgetState extends State<KanbanColumnWidget> {
     );
   }
 
-  Widget _buildColumnHeader(BuildContext context, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+  Widget _buildColumnHeader(BuildContext context, bool isDark, Color statusColor) {
+    final accentColor = AppColors.accentFor(isDark);
+    final accentSoft = AppColors.accentSoftFor(isDark);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
-          // Status Icon Indicator
-          Container(
-            padding: const EdgeInsets.all(5),
-            decoration: BoxDecoration(
-              color: widget.status.color.withAlpha(25),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              widget.status.icon,
-              size: 14,
-              color: widget.status.color,
-            ),
-          ),
+          Icon(widget.status.icon, size: 15, color: statusColor),
           const SizedBox(width: 8),
 
-          // Column Name
+          // Column Title
           Expanded(
             child: Text(
               widget.status.label,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                color: AppColors.textPrimaryFor(isDark),
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -231,17 +273,18 @@ class _KanbanColumnWidgetState extends State<KanbanColumnWidget> {
 
           // Card Count Badge
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 6.5, vertical: 2),
             decoration: BoxDecoration(
-              color: isDark ? Colors.white12 : Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(12),
+              color: AppColors.surface3For(isDark),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
             ),
             child: Text(
               '${widget.issues.length}',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white70 : Colors.black87,
+              style: AppTypography.mono(
+                isDark,
+                fontSize: 10.5,
+                color: AppColors.textSecondaryFor(isDark),
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -250,19 +293,20 @@ class _KanbanColumnWidgetState extends State<KanbanColumnWidget> {
           if (widget.totalStoryPoints > 0) ...[
             const SizedBox(width: 6),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 6.5, vertical: 2),
               decoration: BoxDecoration(
-                color: AppColors.secondary.withAlpha(25),
-                borderRadius: BorderRadius.circular(10),
+                color: accentSoft,
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
               ),
               child: Text(
                 widget.totalStoryPoints % 1 == 0
                     ? '${widget.totalStoryPoints.toInt()} pts'
                     : '${widget.totalStoryPoints} pts',
-                style: TextStyle(
-                  fontSize: 11,
+                style: AppTypography.mono(
+                  isDark,
+                  fontSize: 10.5,
+                  color: accentColor,
                   fontWeight: FontWeight.w600,
-                  color: isDark ? AppColors.secondaryLight : AppColors.secondaryDark,
                 ),
               ),
             ),
@@ -275,21 +319,29 @@ class _KanbanColumnWidgetState extends State<KanbanColumnWidget> {
   Widget _buildEmptyColumnPlaceholder(BuildContext context, bool isDark) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.inbox_outlined,
-              size: 32,
-              color: isDark ? Colors.white24 : Colors.grey.shade300,
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.surface2For(isDark),
+                borderRadius: BorderRadius.circular(AppColors.radiusLg),
+                border: Border.all(color: AppColors.borderSoftFor(isDark)),
+              ),
+              child: Icon(
+                Icons.inbox_outlined,
+                size: 22,
+                color: AppColors.textMutedFor(isDark).withValues(alpha: 0.7),
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               'No issues in ${widget.status.label}',
               style: TextStyle(
-                fontSize: 12,
-                color: isDark ? Colors.white38 : Colors.grey.shade500,
+                fontSize: 11.5,
+                color: AppColors.textMutedFor(isDark),
               ),
               textAlign: TextAlign.center,
             ),

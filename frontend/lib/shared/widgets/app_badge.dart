@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/enums/app_enums.dart';
+import 'package:frontend/core/theme/app_colors.dart';
 
-/// Base badge container with soft-tinted background and saturated text.
+/// Base badge container aligned with Figma badge / status-badge styling.
 class AppBadge extends StatelessWidget {
   final String label;
   final Color color;
@@ -24,11 +25,12 @@ class AppBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color effectiveText = textColor ?? color;
     final double horizontalPadding = isSmall ? 6.0 : 8.0;
-    final double verticalPadding = isSmall ? 2.0 : 4.0;
-    final double fontSize = isSmall ? 11.0 : 12.0;
-    final double iconSize = isSmall ? 12.0 : 14.0;
+    final double verticalPadding = isSmall ? 2.5 : 3.5;
+    final double fontSize = isSmall ? 10.5 : 11.5;
+    final double iconSize = isSmall ? 12.0 : 13.5;
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -36,11 +38,11 @@ class AppBadge extends StatelessWidget {
         vertical: verticalPadding,
       ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999.0), // Pill shape
+        color: color.withValues(alpha: isDark ? 0.14 : 0.10),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm + 1.0),
         border: Border.all(
-          color: color.withValues(alpha: 0.28),
-          width: 0.8,
+          color: color.withValues(alpha: isDark ? 0.28 : 0.22),
+          width: 0.9,
         ),
       ),
       child: Row(
@@ -49,10 +51,10 @@ class AppBadge extends StatelessWidget {
         children: [
           if (leading != null) ...[
             leading!,
-            const SizedBox(width: 4.0),
+            const SizedBox(width: 4.5),
           ] else if (icon != null) ...[
             Icon(icon, size: iconSize, color: effectiveText),
-            const SizedBox(width: 4.0),
+            const SizedBox(width: 4.5),
           ],
           Text(
             label,
@@ -60,14 +62,15 @@ class AppBadge extends StatelessWidget {
               fontSize: fontSize,
               fontWeight: FontWeight.w600,
               color: effectiveText,
-              letterSpacing: 0.2,
+              letterSpacing: 0.1,
+              height: 1.2,
             ),
           ),
           if (onDeleted != null) ...[
             const SizedBox(width: 4.0),
             InkWell(
               onTap: onDeleted,
-              borderRadius: BorderRadius.circular(10.0),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm),
               child: Icon(Icons.close_rounded, size: iconSize, color: effectiveText),
             ),
           ],
@@ -98,9 +101,10 @@ class IssueStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return AppBadge(
       label: status.label,
-      color: status.color,
+      color: status.colorFor(brightness),
       icon: status.icon,
       isSmall: isSmall,
     );
@@ -136,17 +140,20 @@ class IssuePriorityBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    final resolvedColor = priority.colorFor(brightness);
+
     if (!showLabel) {
-      final double size = isSmall ? 14.0 : 18.0;
+      final double size = isSmall ? 14.0 : 16.0;
       return Tooltip(
         message: 'Priority: ${priority.label}',
-        child: Icon(priority.icon, size: size, color: priority.color),
+        child: Icon(priority.icon, size: size, color: resolvedColor),
       );
     }
 
     return AppBadge(
       label: priority.label,
-      color: priority.color,
+      color: resolvedColor,
       icon: priority.icon,
       isSmall: isSmall,
     );
@@ -174,9 +181,10 @@ class RoleBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
     return AppBadge(
       label: role.label,
-      color: role.color,
+      color: role.colorFor(brightness),
       icon: role.icon,
       isSmall: isSmall,
     );
@@ -212,17 +220,20 @@ class IssueTypeBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brightness = Theme.of(context).brightness;
+    final resolvedColor = type.colorFor(brightness);
+
     if (!showLabel) {
-      final double size = isSmall ? 14.0 : 18.0;
+      final double size = isSmall ? 14.0 : 16.0;
       return Tooltip(
         message: 'Type: ${type.label}',
-        child: Icon(type.icon, size: size, color: type.color),
+        child: Icon(type.icon, size: size, color: resolvedColor),
       );
     }
 
     return AppBadge(
       label: type.label,
-      color: type.color,
+      color: resolvedColor,
       icon: type.icon,
       isSmall: isSmall,
     );

@@ -3,13 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/theme/app_colors.dart';
+import 'package:frontend/core/theme/app_typography.dart';
 import 'package:frontend/core/theme/theme_provider.dart';
 import 'package:frontend/core/utils/responsive_breakpoints.dart';
 import 'package:frontend/features/auth/application/auth_provider.dart';
 import 'package:frontend/features/workspace/presentation/widgets/workspace_switcher_dropdown.dart';
 import 'package:frontend/shared/widgets/widgets.dart';
 
-/// Top Bar / App Header for Oversee Shell.
+/// Top Bar / App Header for Oversee Shell aligned with Figma Topbar.
 class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
   final String workspaceId;
   final String? projectId;
@@ -32,19 +33,33 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
     final ThemeData theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
     final bool isMobile = ResponsiveBreakpoints.isMobile(context);
+    final bool isDesktop = ResponsiveBreakpoints.isDesktop(context);
     final authState = ref.watch(authNotifierProvider);
 
     final String userEmail = authState.email ?? 'user@oversee.local';
-    final String userName = userEmail.split('@').first.replaceAll('.', ' ');
+    final String? fullName = authState.user?.fullName;
+    final String userName = (fullName != null && fullName.isNotEmpty)
+        ? fullName
+        : userEmail.split('@').first.replaceAll('.', ' ');
+
+    final Color bgColor = AppColors.bgFor(isDark);
+    final Color surfaceColor = AppColors.surfaceFor(isDark);
+    final Color borderColor = AppColors.borderFor(isDark);
+    final Color accentColor = AppColors.accentFor(isDark);
+    final Color accentSoftColor = AppColors.accentSoftFor(isDark);
+    final Color textPrimary = AppColors.textPrimaryFor(isDark);
+    final Color textSecondary = AppColors.textSecondaryFor(isDark);
+    final Color textMuted = AppColors.textMutedFor(isDark);
+    final Color errorColor = AppColors.errorFor(isDark);
 
     return Container(
       height: 60.0,
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 12.0 : 20.0),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        color: bgColor,
         border: Border(
           bottom: BorderSide(
-            color: isDark ? AppColors.borderDark : AppColors.borderLight,
+            color: borderColor,
             width: 1.0,
           ),
         ),
@@ -54,14 +69,16 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
           // Mobile menu drawer toggle
           if (isMobile) ...[
             IconButton(
-              icon: const Icon(Icons.menu_rounded),
+              icon: Icon(Icons.menu_rounded, color: textPrimary, size: 20.0),
               onPressed: onMenuToggle ?? () => Scaffold.of(context).openDrawer(),
               tooltip: 'Navigation Menu',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             ),
-            const SizedBox(width: 8.0),
+            const SizedBox(width: 6.0),
           ],
 
-          // Breadcrumbs Navigation
+          // Breadcrumbs Navigation (Figma .breadcrumb)
           Expanded(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
@@ -70,39 +87,62 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                   WorkspaceSwitcherDropdown(activeWorkspaceId: workspaceId),
                   if (projectId != null) ...[
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                      child: Text(
-                        '/',
-                        style: TextStyle(
-                          color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                          fontSize: 14.0,
-                        ),
+                      padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                      child: Icon(
+                        Icons.chevron_right_rounded,
+                        size: 14.0,
+                        color: textMuted,
                       ),
                     ),
                     InkWell(
                       onTap: () => context.go(AppRoutes.projectOverviewPath(workspaceId, projectId!)),
-                      borderRadius: BorderRadius.circular(4.0),
+                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
-                        child: Text(
-                          projectId!,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: currentViewTitle == null ? AppColors.primary : null,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 20.0,
+                              height: 20.0,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: accentSoftColor,
+                                borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                                border: Border.all(
+                                  color: accentColor.withValues(alpha: 0.22),
+                                ),
+                              ),
+                              child: Text(
+                                projectId!.isNotEmpty ? projectId![0].toUpperCase() : 'P',
+                                style: TextStyle(
+                                  fontSize: 10.0,
+                                  fontWeight: FontWeight.w700,
+                                  color: accentColor,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 7.0),
+                            Text(
+                              projectId!,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontSize: 12.5,
+                                fontWeight: currentViewTitle == null ? FontWeight.w600 : FontWeight.w500,
+                                color: currentViewTitle == null ? accentColor : textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ],
                   if (currentViewTitle != null) ...[
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                      child: Text(
-                        '/',
-                        style: TextStyle(
-                          color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                          fontSize: 14.0,
-                        ),
+                      padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                      child: Icon(
+                        Icons.chevron_right_rounded,
+                        size: 14.0,
+                        color: textMuted,
                       ),
                     ),
                     Padding(
@@ -110,9 +150,43 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                       child: Text(
                         currentViewTitle!,
                         style: theme.textTheme.bodyMedium?.copyWith(
+                          fontSize: 12.5,
                           fontWeight: FontWeight.w600,
-                          color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                          color: textPrimary,
                         ),
+                      ),
+                    ),
+                  ],
+                  if (isDesktop && projectId != null) ...[
+                    const SizedBox(width: 10.0),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7.0, vertical: 2.5),
+                      decoration: BoxDecoration(
+                        color: surfaceColor,
+                        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                        border: Border.all(color: borderColor),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 5.0,
+                            height: 5.0,
+                            decoration: BoxDecoration(
+                              color: AppColors.successFor(isDark),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 5.0),
+                          Text(
+                            'workspace',
+                            style: AppTypography.mono(
+                              isDark,
+                              fontSize: 9.5,
+                              color: textSecondary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -121,7 +195,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
             ),
           ),
 
-          const SizedBox(width: 12.0),
+          const SizedBox(width: 10.0),
 
           // Theme mode toggle
           IconButton(
@@ -130,20 +204,31 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
               ref.watch(themeModeProvider) == ThemeMode.dark
                   ? Icons.light_mode_outlined
                   : Icons.dark_mode_outlined,
-              size: 20.0,
+              size: 18.0,
+              color: textSecondary,
+            ),
+            style: IconButton.styleFrom(
+              minimumSize: const Size(32, 32),
+              padding: const EdgeInsets.all(6),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
+              ),
             ),
             onPressed: () => ref.read(themeModeProvider.notifier).toggleTheme(),
           ),
 
-          const SizedBox(width: 4.0),
+          const SizedBox(width: 6.0),
 
           // User Profile Dropdown Menu
           PopupMenuButton<String>(
             tooltip: 'User Profile',
-            offset: const Offset(0, 48),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.0)),
+            offset: const Offset(0, 44),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppColors.radiusLg),
+              side: BorderSide(color: borderColor),
+            ),
             child: Padding(
-              padding: const EdgeInsets.all(4.0),
+              padding: const EdgeInsets.all(2.0),
               child: UserAvatar(
                 name: userName,
                 size: UserAvatarSize.sm,
@@ -158,12 +243,16 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                   children: [
                     Text(
                       userName,
-                      style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: textPrimary,
+                      ),
                     ),
+                    const SizedBox(height: 2.0),
                     Text(
                       userEmail,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                        color: textMuted,
                       ),
                     ),
                     const Divider(height: 16.0),
@@ -174,7 +263,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                 value: 'workspaces',
                 child: Row(
                   children: [
-                    Icon(Icons.hub_outlined, size: 18.0),
+                    Icon(Icons.hub_outlined, size: 17.0),
                     SizedBox(width: 10.0),
                     Expanded(child: Text('All Workspaces')),
                   ],
@@ -184,20 +273,25 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                 value: 'workspace_settings',
                 child: Row(
                   children: [
-                    Icon(Icons.settings_outlined, size: 18.0),
+                    Icon(Icons.settings_outlined, size: 17.0),
                     SizedBox(width: 10.0),
                     Expanded(child: Text('Workspace Settings')),
                   ],
                 ),
               ),
               const PopupMenuDivider(),
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'logout',
                 child: Row(
                   children: [
-                    Icon(Icons.logout_rounded, size: 18.0, color: AppColors.error),
-                    SizedBox(width: 10.0),
-                    Expanded(child: Text('Log Out', style: TextStyle(color: AppColors.error))),
+                    Icon(Icons.logout_rounded, size: 17.0, color: errorColor),
+                    const SizedBox(width: 10.0),
+                    Expanded(
+                      child: Text(
+                        'Log Out',
+                        style: TextStyle(color: errorColor, fontWeight: FontWeight.w500),
+                      ),
+                    ),
                   ],
                 ),
               ),

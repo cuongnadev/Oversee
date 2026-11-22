@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/core/enums/app_enums.dart';
 import 'package:frontend/core/theme/app_colors.dart';
+import 'package:frontend/core/theme/app_typography.dart';
 import 'package:frontend/core/utils/responsive_breakpoints.dart';
 import 'package:frontend/features/issue/domain/issue_model.dart';
 import 'package:frontend/features/issue/presentation/widgets/issue_detail_panel.dart';
+import 'package:frontend/features/project/presentation/widgets/project_navigation_tab_bar.dart';
 import 'package:frontend/features/project/presentation/widgets/project_screen_scaffold.dart';
 import 'package:frontend/features/sprint/application/sprint_planning_provider.dart';
 import 'package:frontend/features/sprint/data/sprint_repository.dart';
@@ -14,11 +16,7 @@ import 'package:frontend/features/sprint/presentation/widgets/create_sprint_dial
 import 'package:frontend/features/sprint/presentation/widgets/start_sprint_dialog.dart';
 import 'package:frontend/shared/widgets/widgets.dart';
 
-/// Sprint Planning screen supporting:
-/// - 2-column visual layout (Backlog on left, Sprints on right)
-/// - Drag & Drop issue assignment and quick move buttons
-/// - Capacity calculation and prominent over-capacity warning banners
-/// - Create sprint dialog
+/// Sprint Planning screen aligned with Figma Planning & Backlog-to-Sprint layout.
 class SprintPlanningScreen extends ConsumerStatefulWidget {
   final String workspaceId;
   final String projectId;
@@ -110,151 +108,203 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
     final state = ref.watch(sprintPlanningProvider(widget.projectId));
     final notifier = ref.read(sprintPlanningProvider(widget.projectId).notifier);
     final isMobile = ResponsiveBreakpoints.isMobile(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accentColor = AppColors.accentFor(isDark);
+    final errorColor = AppColors.errorFor(isDark);
 
     return ProjectScreenScaffold(
       workspaceId: widget.workspaceId,
       projectId: widget.projectId,
       currentRoute: 'sprints',
       title: 'Sprint Planning',
-      body: state.isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            )
-          : Column(
-              children: [
-                // Top Planning Toolbar
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: const BoxDecoration(
-                    color: AppColors.surfaceDark,
-                    border: Border(bottom: BorderSide(color: AppColors.borderDark)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: Column(
+        children: [
+          ProjectNavigationTabBar(
+            workspaceId: widget.workspaceId,
+            projectId: widget.projectId,
+            activeTab: 'sprints',
+          ),
+          Expanded(
+            child: state.isLoading
+                ? Center(child: CircularProgressIndicator(color: accentColor))
+                : Column(
                     children: [
-                      const Row(
-                        children: [
-                          Icon(Icons.tune_rounded, size: 18, color: AppColors.primaryLight),
-                          SizedBox(width: 8),
-                          Text(
-                            'Sprint Planning',
-                            style: TextStyle(
-                              color: AppColors.textPrimaryDark,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.refresh_rounded, color: AppColors.textSecondaryDark),
-                            tooltip: 'Refresh planning data',
-                            onPressed: () => notifier.refresh(),
-                          ),
-                          const SizedBox(width: 8),
-                          AppPrimaryButton(
-                            label: 'Create Sprint',
-                            icon: Icons.add_rounded,
-                            onPressed: () => _openCreateSprintDialog(notifier),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                // Error message banner
-                if (state.errorMessage != null)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    color: AppColors.error.withValues(alpha: 0.15),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.error_outline, size: 18, color: AppColors.error),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            state.errorMessage!,
-                            style: const TextStyle(color: AppColors.error, fontSize: 13),
+                      // Top Planning Header Bar
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: AppColors.bgFor(isDark),
+                          border: Border(
+                            bottom: BorderSide(color: AppColors.borderFor(isDark)),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-
-                // Main two-column or mobile tabbed planning interface
-                Expanded(
-                  child: isMobile
-                      ? DefaultTabController(
-                          length: 2,
-                          child: Column(
-                            children: [
-                              TabBar(
-                                indicatorColor: AppColors.primary,
-                                labelColor: AppColors.primary,
-                                unselectedLabelColor: AppColors.textSecondaryDark,
-                                tabs: [
-                                  Tab(text: 'Backlog (${state.backlogIssues.length})'),
-                                  Tab(text: 'Sprints (${state.sprints.length})'),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'ITERATE & DELIVER',
+                                    style: AppTypography.eyebrow(isDark).copyWith(fontSize: 9),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Sprint Planning',
+                                    style: TextStyle(
+                                      color: AppColors.textPrimaryFor(isDark),
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: -0.5,
+                                    ),
+                                  ),
                                 ],
                               ),
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                AppIconButton(
+                                  icon: Icons.refresh_rounded,
+                                  tooltip: 'Refresh planning data',
+                                  size: 34,
+                                  backgroundColor: AppColors.surface2For(isDark),
+                                  onPressed: () => notifier.refresh(),
+                                ),
+                                const SizedBox(width: 8),
+                                AppPrimaryButton(
+                                  label: 'Create Sprint',
+                                  icon: Icons.add_rounded,
+                                  height: 34,
+                                  onPressed: () => _openCreateSprintDialog(notifier),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Error message banner
+                      if (state.errorMessage != null)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: AppColors.dangerSoftFor(isDark),
+                            border: Border(
+                              bottom: BorderSide(color: errorColor.withValues(alpha: 0.3)),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.error_outline_rounded, size: 17, color: errorColor),
+                              const SizedBox(width: 8),
                               Expanded(
-                                child: TabBarView(
-                                  children: [
-                                    _buildBacklogColumn(state, notifier),
-                                    _buildSprintsColumn(state, notifier),
-                                  ],
+                                child: Text(
+                                  state.errorMessage!,
+                                  style: TextStyle(color: errorColor, fontSize: 12.5, fontWeight: FontWeight.w500),
                                 ),
                               ),
                             ],
                           ),
-                        )
-                      : Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Left Column: Product Backlog
-                              Expanded(
-                                flex: 5,
-                                child: _buildBacklogColumn(state, notifier),
-                              ),
-                              const SizedBox(width: 16),
-
-                              // Right Column: Sprints Bucket
-                              Expanded(
-                                flex: 6,
-                                child: _buildSprintsColumn(state, notifier),
-                              ),
-                            ],
-                          ),
                         ),
-                ),
-              ],
-            ),
+
+                      // Balanced 2-Column (Desktop/Tablet) or Tabbed (Mobile) Planning Area
+                      Expanded(
+                        child: isMobile
+                            ? DefaultTabController(
+                                length: 2,
+                                child: Column(
+                                  children: [
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: AppColors.surfaceFor(isDark),
+                                        border: Border(
+                                          bottom: BorderSide(color: AppColors.borderFor(isDark)),
+                                        ),
+                                      ),
+                                      child: TabBar(
+                                        indicatorColor: accentColor,
+                                        labelColor: AppColors.textPrimaryFor(isDark),
+                                        unselectedLabelColor: AppColors.textSecondaryFor(isDark),
+                                        tabs: [
+                                          Tab(text: 'Backlog (${state.backlogIssues.length})'),
+                                          Tab(text: 'Sprints (${state.sprints.length})'),
+                                        ],
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(14),
+                                        child: TabBarView(
+                                          children: [
+                                            _buildBacklogColumn(state, notifier, isDark),
+                                            _buildSprintsColumn(state, notifier, isDark),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : Padding(
+                                padding: const EdgeInsets.all(20),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    // Left Column: Product Backlog Pool
+                                    Expanded(
+                                      flex: 5,
+                                      child: _buildBacklogColumn(state, notifier, isDark),
+                                    ),
+                                    const SizedBox(width: 18),
+
+                                    // Right Column: Sprint Buckets
+                                    Expanded(
+                                      flex: 6,
+                                      child: _buildSprintsColumn(state, notifier, isDark),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildBacklogColumn(SprintPlanningState state, SprintPlanningNotifier notifier) {
+  Widget _buildBacklogColumn(
+    SprintPlanningState state,
+    SprintPlanningNotifier notifier,
+    bool isDark,
+  ) {
     final issues = state.filteredBacklogIssues;
     final projectKey = state.project?.key ?? 'OVS';
+    final accentColor = AppColors.accentFor(isDark);
+    final accentSoft = AppColors.accentSoftFor(isDark);
+    final borderColor = AppColors.borderFor(isDark);
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.cardDark,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.borderDark),
+        color: AppColors.surfaceFor(isDark),
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
+        border: Border.all(color: borderColor),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Backlog Header
+          // Backlog Pool Header (Figma .backlog-group-header)
           Container(
             padding: const EdgeInsets.all(14),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: AppColors.borderDark)),
+            decoration: BoxDecoration(
+              color: AppColors.surface2For(isDark),
+              border: Border(bottom: BorderSide(color: borderColor)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,47 +313,54 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.inventory_2_outlined, size: 18, color: AppColors.textSecondaryDark),
+                        Icon(
+                          Icons.inventory_2_outlined,
+                          size: 16,
+                          color: AppColors.textSecondaryFor(isDark),
+                        ),
                         const SizedBox(width: 8),
-                        const Text(
+                        Text(
                           'Product Backlog',
                           style: TextStyle(
-                            color: AppColors.textPrimaryDark,
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimaryFor(isDark),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(horizontal: 6.5, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppColors.surfaceDark,
-                            borderRadius: BorderRadius.circular(12),
+                            color: AppColors.surface3For(isDark),
+                            borderRadius: BorderRadius.circular(AppColors.radiusSm),
                           ),
                           child: Text(
                             '${issues.length}',
-                            style: const TextStyle(
-                              color: AppColors.textSecondaryDark,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                            style: AppTypography.mono(
+                              isDark,
+                              fontSize: 10.5,
+                              color: AppColors.textSecondaryFor(isDark),
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
                       ],
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(horizontal: 7.5, vertical: 2.5),
                       decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(6),
+                        color: accentSoft,
+                        borderRadius: BorderRadius.circular(AppColors.radiusSm),
                       ),
                       child: Text(
                         '${state.totalBacklogStoryPoints.toInt()} pts',
-                        style: const TextStyle(
-                          color: AppColors.primaryLight,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                        style: AppTypography.mono(
+                          isDark,
+                          fontSize: 10.5,
+                          color: accentColor,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -312,30 +369,31 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
                 const SizedBox(height: 10),
                 // Search field
                 SizedBox(
-                  height: 36,
+                  height: 34,
                   child: TextField(
                     controller: _searchController,
                     onChanged: (val) => notifier.setSearchQuery(val),
-                    style: const TextStyle(color: AppColors.textPrimaryDark, fontSize: 13),
+                    style: TextStyle(color: AppColors.textPrimaryFor(isDark), fontSize: 12.5),
                     decoration: InputDecoration(
                       hintText: 'Filter backlog issues...',
-                      hintStyle: const TextStyle(color: AppColors.textMutedDark, fontSize: 13),
-                      prefixIcon: const Icon(Icons.search, size: 16, color: AppColors.textSecondaryDark),
+                      hintStyle: TextStyle(color: AppColors.textMutedFor(isDark), fontSize: 12),
+                      prefixIcon: Icon(Icons.search_rounded, size: 15, color: AppColors.textMutedFor(isDark)),
+                      prefixIconConstraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                       isDense: true,
                       contentPadding: EdgeInsets.zero,
                       filled: true,
-                      fillColor: AppColors.surfaceDark,
+                      fillColor: AppColors.bgFor(isDark),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
-                        borderSide: const BorderSide(color: AppColors.borderDark),
+                        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                        borderSide: BorderSide(color: borderColor),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
-                        borderSide: const BorderSide(color: AppColors.borderDark),
+                        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                        borderSide: BorderSide(color: borderColor),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(6),
-                        borderSide: const BorderSide(color: AppColors.primary),
+                        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                        borderSide: BorderSide(color: accentColor, width: 1.4),
                       ),
                     ),
                   ),
@@ -347,10 +405,17 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
           // Backlog List
           Expanded(
             child: issues.isEmpty
-                ? const Center(
-                    child: Text(
-                      'No backlog issues found.',
-                      style: TextStyle(color: AppColors.textMutedDark, fontStyle: FontStyle.italic),
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        'No backlog issues found.',
+                        style: TextStyle(
+                          color: AppColors.textMutedFor(isDark),
+                          fontSize: 12.5,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
                     ),
                   )
                 : ListView.separated(
@@ -359,7 +424,7 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
                     separatorBuilder: (_, index) => const SizedBox(height: 6),
                     itemBuilder: (context, index) {
                       final issue = issues[index];
-                      return _buildBacklogIssueCard(issue, projectKey, state, notifier);
+                      return _buildBacklogIssueCard(issue, projectKey, state, notifier, isDark);
                     },
                   ),
           ),
@@ -373,34 +438,53 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
     String projectKey,
     SprintPlanningState state,
     SprintPlanningNotifier notifier,
+    bool isDark,
   ) {
+    final accentColor = AppColors.accentFor(isDark);
+
     return LongPressDraggable<IssueModel>(
       data: issue,
       feedback: Material(
-        elevation: 6,
-        borderRadius: BorderRadius.circular(8),
+        elevation: 10,
+        shadowColor: Colors.black45,
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
         color: Colors.transparent,
         child: Container(
           width: 320,
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: AppColors.cardDark,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.primary, width: 1.5),
+            color: AppColors.surfaceFor(isDark),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+            border: Border.all(color: accentColor, width: 1.5),
           ),
-          child: Text(
-            issue.title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: AppColors.textPrimaryDark, fontSize: 13, fontWeight: FontWeight.bold),
+          child: Row(
+            children: [
+              Text(
+                issue.formattedKey(projectKey),
+                style: AppTypography.mono(isDark, fontSize: 10.5, color: accentColor, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  issue.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppColors.textPrimaryFor(isDark),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
       childWhenDragging: Opacity(
         opacity: 0.35,
-        child: _buildIssueTile(issue, projectKey, state, notifier),
+        child: _buildIssueTile(issue, projectKey, state, notifier, isDark),
       ),
-      child: _buildIssueTile(issue, projectKey, state, notifier),
+      child: _buildIssueTile(issue, projectKey, state, notifier, isDark),
     );
   }
 
@@ -409,24 +493,31 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
     String projectKey,
     SprintPlanningState state,
     SprintPlanningNotifier notifier,
+    bool isDark,
   ) {
+    final brightness = isDark ? Brightness.dark : Brightness.light;
+    final accentColor = AppColors.accentFor(isDark);
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
       decoration: BoxDecoration(
-        color: AppColors.surfaceDark,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.borderDark),
+        color: AppColors.bgFor(isDark),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        border: Border.all(color: AppColors.borderSoftFor(isDark)),
       ),
       child: Row(
         children: [
-          Icon(issue.type.icon, size: 16, color: issue.type.color),
+          Icon(Icons.drag_indicator_rounded, size: 15, color: AppColors.textMutedFor(isDark)),
+          const SizedBox(width: 6),
+          Icon(issue.type.icon, size: 14.5, color: issue.type.colorFor(brightness)),
           const SizedBox(width: 8),
           Text(
             issue.formattedKey(projectKey),
-            style: const TextStyle(
-              color: AppColors.textSecondaryDark,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
+            style: AppTypography.mono(
+              isDark,
+              fontSize: 10.5,
+              color: AppColors.textMutedFor(isDark),
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(width: 10),
@@ -442,85 +533,78 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
                 issue.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.textPrimaryDark,
-                  fontSize: 13,
+                style: TextStyle(
+                  color: AppColors.textPrimaryFor(isDark),
+                  fontSize: 12.5,
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ),
           ),
           const SizedBox(width: 8),
-          Icon(issue.priority.icon, size: 14, color: issue.priority.color),
+          Icon(issue.priority.icon, size: 14, color: issue.priority.colorFor(brightness)),
           const SizedBox(width: 8),
           if (issue.estimate != null)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: AppColors.cardDark,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: AppColors.borderDark),
+                color: AppColors.surface2For(isDark),
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                border: Border.all(color: AppColors.borderFor(isDark)),
               ),
               child: Text(
                 '${issue.estimate!.toInt()} pts',
-                style: const TextStyle(color: AppColors.textSecondaryDark, fontSize: 11),
+                style: AppTypography.mono(
+                  isDark,
+                  fontSize: 10,
+                  color: AppColors.textSecondaryFor(isDark),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-          const SizedBox(width: 6),
-
-          // Quick move to first available sprint button
-          if (state.sprints.isNotEmpty)
+          if (state.sprints.isNotEmpty) ...[
+            const SizedBox(width: 4),
             PopupMenuButton<String>(
               tooltip: 'Move to Sprint',
-              icon: const Icon(Icons.arrow_forward_rounded, size: 16, color: AppColors.primaryLight),
-              color: AppColors.cardDark,
+              padding: EdgeInsets.zero,
+              icon: Icon(Icons.arrow_forward_rounded, size: 16, color: accentColor),
               onSelected: (sprintId) => notifier.assignIssueToSprint(sprintId, issue),
               itemBuilder: (context) {
                 return state.sprints.map((sprint) {
                   return PopupMenuItem(
                     value: sprint.id,
-                    child: Text('Move to ${sprint.name}', style: const TextStyle(fontSize: 13)),
+                    child: Text('Move to ${sprint.name}', style: const TextStyle(fontSize: 12.5)),
                   );
                 }).toList();
               },
             ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildSprintsColumn(SprintPlanningState state, SprintPlanningNotifier notifier) {
+  Widget _buildSprintsColumn(
+    SprintPlanningState state,
+    SprintPlanningNotifier notifier,
+    bool isDark,
+  ) {
     if (state.sprints.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: AppColors.cardDark,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.borderDark),
+          color: AppColors.surfaceFor(isDark),
+          borderRadius: BorderRadius.circular(AppColors.radiusLg),
+          border: Border.all(color: AppColors.borderFor(isDark)),
         ),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.timeline_rounded, size: 48, color: AppColors.textMutedDark),
-              const SizedBox(height: 12),
-              const Text(
-                'No Sprints Planned Yet',
-                style: TextStyle(color: AppColors.textPrimaryDark, fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Create a sprint to start planning and allocating backlog issues.',
-                style: TextStyle(color: AppColors.textSecondaryDark, fontSize: 13),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              AppPrimaryButton(
-                label: 'Create First Sprint',
-                icon: Icons.add_rounded,
-                onPressed: () => _openCreateSprintDialog(notifier),
-              ),
-            ],
+        child: AppEmptyState(
+          icon: Icons.timeline_rounded,
+          title: 'No Sprints Planned Yet',
+          description: 'Create a sprint to start planning and allocating backlog issues.',
+          action: AppPrimaryButton(
+            label: 'Create First Sprint',
+            icon: Icons.add_rounded,
+            onPressed: () => _openCreateSprintDialog(notifier),
           ),
         ),
       );
@@ -528,12 +612,12 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
 
     return ListView.separated(
       itemCount: state.sprints.length,
-      separatorBuilder: (_, index) => const SizedBox(height: 16),
+      separatorBuilder: (_, index) => const SizedBox(height: 14),
       itemBuilder: (context, index) {
         final sprint = state.sprints[index];
         final summary = state.planningSummaries[sprint.id] ??
             SprintPlanningModel(sprint: sprint, capacity: sprint.capacity);
-        return _buildSprintBucket(sprint, summary, state, notifier);
+        return _buildSprintBucket(sprint, summary, state, notifier, isDark);
       },
     );
   }
@@ -543,10 +627,16 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
     SprintPlanningModel summary,
     SprintPlanningState state,
     SprintPlanningNotifier notifier,
+    bool isDark,
   ) {
     final projectKey = state.project?.key ?? 'OVS';
     final hasCapacity = summary.capacity != null && summary.capacity! > 0;
     final isOverCapacity = summary.isOverCapacity;
+    final accentColor = AppColors.accentFor(isDark);
+    final accentSoft = AppColors.accentSoftFor(isDark);
+    final warningColor = AppColors.warningFor(isDark);
+    final successColor = AppColors.successFor(isDark);
+    final borderColor = AppColors.borderFor(isDark);
 
     return DragTarget<IssueModel>(
       onWillAcceptWithDetails: (details) => true,
@@ -556,25 +646,28 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
       builder: (context, candidateData, rejectedData) {
         final isHovered = candidateData.isNotEmpty;
 
-        return Container(
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
           decoration: BoxDecoration(
-            color: AppColors.cardDark,
-            borderRadius: BorderRadius.circular(10),
+            color: isHovered ? accentSoft.withValues(alpha: 0.35) : AppColors.surfaceFor(isDark),
+            borderRadius: BorderRadius.circular(AppColors.radiusLg),
             border: Border.all(
               color: isHovered
-                  ? AppColors.primary
-                  : (isOverCapacity ? AppColors.warning : AppColors.borderDark),
+                  ? accentColor
+                  : (isOverCapacity ? warningColor : borderColor),
               width: isHovered || isOverCapacity ? 1.5 : 1.0,
             ),
           ),
+          clipBehavior: Clip.antiAlias,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Sprint Header Card
+              // Sprint Header Card (Figma .backlog-group-header / .sprint-card)
               Container(
                 padding: const EdgeInsets.all(14),
-                decoration: const BoxDecoration(
-                  border: Border(bottom: BorderSide(color: AppColors.borderDark)),
+                decoration: BoxDecoration(
+                  color: AppColors.surface2For(isDark),
+                  border: Border(bottom: BorderSide(color: borderColor)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -585,39 +678,48 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
                         Expanded(
                           child: Row(
                             children: [
+                              _buildSprintStateIcon(sprint.status, isDark),
+                              const SizedBox(width: 10),
                               Flexible(
                                 child: Text(
                                   sprint.name,
-                                  style: const TextStyle(
-                                    color: AppColors.textPrimaryDark,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
+                                  style: TextStyle(
+                                    color: AppColors.textPrimaryFor(isDark),
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              _buildSprintStatusBadge(sprint.status),
+                              _buildSprintStatusBadge(sprint.status, isDark),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
                         Text(
                           sprint.dateRangeText,
-                          style: const TextStyle(color: AppColors.textSecondaryDark, fontSize: 12),
+                          style: TextStyle(
+                            color: AppColors.textMutedFor(isDark),
+                            fontSize: 11.5,
+                          ),
                         ),
                         if (sprint.status == SprintStatus.planned) ...[
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 10),
                           ElevatedButton.icon(
                             icon: const Icon(Icons.play_arrow_rounded, size: 14),
                             label: const Text('Start'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
+                              backgroundColor: AppColors.accentSolidFor(isDark),
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              textStyle: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
                               minimumSize: Size.zero,
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                              ),
                             ),
                             onPressed: () => _openStartSprintDialog(context, sprint, state, notifier),
                           ),
@@ -632,25 +734,27 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
                       children: [
                         Text(
                           '${summary.totalIssues} issue${summary.totalIssues == 1 ? '' : 's'}',
-                          style: const TextStyle(color: AppColors.textSecondaryDark, fontSize: 13),
+                          style: TextStyle(color: AppColors.textSecondaryFor(isDark), fontSize: 12),
                         ),
                         Row(
                           children: [
                             Text(
                               '${summary.totalEstimate.toInt()} / ${hasCapacity ? summary.capacity!.toInt() : '∞'} pts',
-                              style: TextStyle(
-                                color: isOverCapacity ? AppColors.warning : AppColors.textPrimaryDark,
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
+                              style: AppTypography.mono(
+                                isDark,
+                                fontSize: 11.5,
+                                color: isOverCapacity ? warningColor : AppColors.textPrimaryFor(isDark),
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                             if (hasCapacity) ...[
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 6),
                               Text(
                                 '(${summary.capacityPercentageText})',
-                                style: TextStyle(
-                                  color: isOverCapacity ? AppColors.warning : AppColors.textMutedDark,
-                                  fontSize: 12,
+                                style: AppTypography.mono(
+                                  isDark,
+                                  fontSize: 11,
+                                  color: isOverCapacity ? warningColor : AppColors.textMutedFor(isDark),
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -660,17 +764,17 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
                       ],
                     ),
 
-                    // Capacity Progress Bar
+                    // Capacity Progress Bar (Figma 4-5px rounded .progress)
                     if (hasCapacity) ...[
                       const SizedBox(height: 8),
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(99),
                         child: LinearProgressIndicator(
                           value: summary.capacityUsageRatio.clamp(0.0, 1.0),
-                          minHeight: 6,
-                          backgroundColor: AppColors.surfaceDark,
+                          minHeight: 5,
+                          backgroundColor: AppColors.surface3For(isDark),
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            isOverCapacity ? AppColors.warning : AppColors.success,
+                            isOverCapacity ? warningColor : successColor,
                           ),
                         ),
                       ),
@@ -685,21 +789,21 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppColors.warning.withValues(alpha: 0.15),
-                    border: const Border(
-                      bottom: BorderSide(color: AppColors.warning),
+                    color: AppColors.warningSoftFor(isDark),
+                    border: Border(
+                      bottom: BorderSide(color: warningColor.withValues(alpha: 0.35)),
                     ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.warning_amber_rounded, size: 18, color: AppColors.warning),
+                      Icon(Icons.warning_amber_rounded, size: 17, color: warningColor),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           summary.warning ??
                               'Sprint estimate (${summary.totalEstimate.toInt()} pts) exceeds capacity (${summary.capacity!.toInt()} pts).',
-                          style: const TextStyle(
-                            color: AppColors.warning,
+                          style: TextStyle(
+                            color: warningColor,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -712,15 +816,15 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
               // Issues List in this Sprint
               if (summary.issues.isEmpty)
                 Container(
-                  padding: const EdgeInsets.symmetric(vertical: 28),
+                  padding: const EdgeInsets.symmetric(vertical: 26, horizontal: 16),
                   child: Center(
                     child: Text(
                       isHovered
                           ? 'Drop issue here to add to ${sprint.name}'
                           : 'Drag backlog issues here or use the → button',
                       style: TextStyle(
-                        color: isHovered ? AppColors.primary : AppColors.textMutedDark,
-                        fontSize: 13,
+                        color: isHovered ? accentColor : AppColors.textMutedFor(isDark),
+                        fontSize: 12.5,
                         fontStyle: FontStyle.italic,
                       ),
                     ),
@@ -735,7 +839,7 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
                   separatorBuilder: (_, index) => const SizedBox(height: 6),
                   itemBuilder: (context, idx) {
                     final issue = summary.issues[idx];
-                    return _buildSprintIssueCard(issue, sprint.id, projectKey, notifier);
+                    return _buildSprintIssueCard(issue, sprint.id, projectKey, notifier, isDark);
                   },
                 ),
             ],
@@ -745,29 +849,63 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
     );
   }
 
+  Widget _buildSprintStateIcon(SprintStatus status, bool isDark) {
+    final Color bg;
+    final Color fg;
+    switch (status) {
+      case SprintStatus.active:
+        bg = AppColors.accentSoftFor(isDark);
+        fg = AppColors.accentFor(isDark);
+        break;
+      case SprintStatus.completed:
+        bg = AppColors.greenSoftFor(isDark);
+        fg = AppColors.successFor(isDark);
+        break;
+      case SprintStatus.planned:
+      case SprintStatus.closed:
+        bg = AppColors.surface3For(isDark);
+        fg = AppColors.textSecondaryFor(isDark);
+        break;
+    }
+
+    return Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+      ),
+      child: Icon(Icons.track_changes_rounded, size: 15, color: fg),
+    );
+  }
+
   Widget _buildSprintIssueCard(
     IssueModel issue,
     String sprintId,
     String projectKey,
     SprintPlanningNotifier notifier,
+    bool isDark,
   ) {
+    final brightness = isDark ? Brightness.dark : Brightness.light;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
       decoration: BoxDecoration(
-        color: AppColors.surfaceDark,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.borderDark),
+        color: AppColors.bgFor(isDark),
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        border: Border.all(color: AppColors.borderSoftFor(isDark)),
       ),
       child: Row(
         children: [
-          Icon(issue.type.icon, size: 16, color: issue.type.color),
+          Icon(issue.type.icon, size: 14.5, color: issue.type.colorFor(brightness)),
           const SizedBox(width: 8),
           Text(
             issue.formattedKey(projectKey),
-            style: const TextStyle(
-              color: AppColors.textSecondaryDark,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
+            style: AppTypography.mono(
+              isDark,
+              fontSize: 10.5,
+              color: AppColors.textMutedFor(isDark),
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(width: 10),
@@ -783,36 +921,41 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
                 issue.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.textPrimaryDark,
-                  fontSize: 13,
+                style: TextStyle(
+                  color: AppColors.textPrimaryFor(isDark),
+                  fontSize: 12.5,
                   fontWeight: FontWeight.w500,
                 ),
               ),
             ),
           ),
           const SizedBox(width: 8),
-          Icon(issue.priority.icon, size: 14, color: issue.priority.color),
+          Icon(issue.priority.icon, size: 14, color: issue.priority.colorFor(brightness)),
           const SizedBox(width: 8),
           if (issue.estimate != null)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: AppColors.cardDark,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: AppColors.borderDark),
+                color: AppColors.surface2For(isDark),
+                borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                border: Border.all(color: AppColors.borderFor(isDark)),
               ),
               child: Text(
                 '${issue.estimate!.toInt()} pts',
-                style: const TextStyle(color: AppColors.textSecondaryDark, fontSize: 11),
+                style: AppTypography.mono(
+                  isDark,
+                  fontSize: 10,
+                  color: AppColors.textSecondaryFor(isDark),
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-          const SizedBox(width: 6),
-
-          // Remove issue from sprint button (returns to backlog)
+          const SizedBox(width: 4),
           IconButton(
-            icon: const Icon(Icons.arrow_back_rounded, size: 16, color: AppColors.textMutedDark),
+            icon: Icon(Icons.arrow_back_rounded, size: 15, color: AppColors.textMutedFor(isDark)),
             tooltip: 'Remove to Backlog',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
             onPressed: () => notifier.removeIssueFromSprint(sprintId, issue),
           ),
         ],
@@ -820,43 +963,43 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
     );
   }
 
-  Widget _buildSprintStatusBadge(SprintStatus status) {
-    Color bg;
-    Color fg;
-    String text;
+  Widget _buildSprintStatusBadge(SprintStatus status, bool isDark) {
+    final Color bg;
+    final Color fg;
+    final String text;
 
     switch (status) {
       case SprintStatus.active:
-        bg = AppColors.success.withValues(alpha: 0.15);
-        fg = AppColors.success;
+        bg = AppColors.accentSoftFor(isDark);
+        fg = AppColors.accentFor(isDark);
         text = 'ACTIVE';
         break;
       case SprintStatus.planned:
-        bg = AppColors.primary.withValues(alpha: 0.15);
-        fg = AppColors.primaryLight;
+        bg = AppColors.surface3For(isDark);
+        fg = AppColors.textSecondaryFor(isDark);
         text = 'PLANNED';
         break;
       case SprintStatus.completed:
-        bg = AppColors.borderDark;
-        fg = AppColors.textSecondaryDark;
+        bg = AppColors.greenSoftFor(isDark);
+        fg = AppColors.successFor(isDark);
         text = 'COMPLETED';
         break;
       case SprintStatus.closed:
-        bg = AppColors.borderDark;
-        fg = AppColors.textMutedDark;
+        bg = AppColors.surface3For(isDark);
+        fg = AppColors.textMutedFor(isDark);
         text = 'CLOSED';
         break;
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6.5, vertical: 2),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(AppColors.radiusSm),
       ),
       child: Text(
         text,
-        style: TextStyle(color: fg, fontSize: 10, fontWeight: FontWeight.bold),
+        style: TextStyle(color: fg, fontSize: 9.5, fontWeight: FontWeight.w700, letterSpacing: 0.4),
       ),
     );
   }
