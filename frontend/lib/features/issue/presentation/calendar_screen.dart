@@ -657,7 +657,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     : ListView.separated(
                         padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                         itemCount: unscheduled.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        separatorBuilder: (_, _) => const SizedBox(height: 8),
                         itemBuilder: (context, index) {
                           final issue = unscheduled[index];
                           final sc = issue.status.colorFor(brightness);
@@ -883,7 +883,7 @@ class _CalendarDayCellState extends State<_CalendarDayCell> {
                   child: ListView.separated(
                     padding: EdgeInsets.zero,
                     itemCount: widget.issues.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 3),
+                    separatorBuilder: (_, _) => const SizedBox(height: 3),
                     itemBuilder: (context, idx) {
                       final issue = widget.issues[idx];
                       final sc = issue.status.colorFor(widget.brightness);
