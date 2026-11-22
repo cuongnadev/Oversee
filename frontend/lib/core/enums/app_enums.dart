@@ -21,16 +21,19 @@ enum RoleType {
     );
   }
 
-  Color get color {
+  Color get color => colorFor(Brightness.light);
+
+  Color colorFor(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
     switch (this) {
       case RoleType.owner:
-        return AppColors.primary;
+        return AppColors.accentFor(isDark);
       case RoleType.admin:
-        return AppColors.secondary;
+        return AppColors.infoFor(isDark);
       case RoleType.member:
-        return AppColors.success;
+        return AppColors.successFor(isDark);
       case RoleType.viewer:
-        return AppColors.textSecondaryLight;
+        return AppColors.textSecondaryFor(isDark);
     }
   }
 
@@ -69,18 +72,21 @@ enum IssueType {
     );
   }
 
-  Color get color {
+  Color get color => colorFor(Brightness.light);
+
+  Color colorFor(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
     switch (this) {
       case IssueType.epic:
-        return const Color(0xFF8B5CF6); // Purple 500
+        return AppColors.accentFor(isDark);
       case IssueType.story:
-        return const Color(0xFF10B981); // Green 500
+        return AppColors.successFor(isDark);
       case IssueType.task:
-        return const Color(0xFF3B82F6); // Blue 500
+        return AppColors.infoFor(isDark);
       case IssueType.bug:
-        return const Color(0xFFEF4444); // Red 500
+        return AppColors.errorFor(isDark);
       case IssueType.subtask:
-        return const Color(0xFF0EA5E9); // Sky 500
+        return isDark ? const Color(0xFF6DBDC0) : const Color(0xFF23636B);
     }
   }
 
@@ -123,20 +129,23 @@ enum IssueStatus {
     );
   }
 
-  Color get color {
+  Color get color => colorFor(Brightness.light);
+
+  Color colorFor(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
     switch (this) {
       case IssueStatus.backlog:
-        return AppColors.statusBacklog;
+        return isDark ? AppColors.statusTodoDark : AppColors.statusBacklog;
       case IssueStatus.todo:
-        return AppColors.statusTodo;
+        return isDark ? AppColors.statusTodoDark : AppColors.statusTodo;
       case IssueStatus.inProgress:
-        return AppColors.statusInProgress;
+        return isDark ? AppColors.statusInProgressDark : AppColors.statusInProgress;
       case IssueStatus.inReview:
-        return AppColors.statusInReview;
+        return isDark ? AppColors.statusInReviewDark : AppColors.statusInReview;
       case IssueStatus.done:
-        return AppColors.statusDone;
+        return isDark ? AppColors.statusDoneDark : AppColors.statusDone;
       case IssueStatus.canceled:
-        return AppColors.statusCanceled;
+        return AppColors.textMutedFor(isDark);
     }
   }
 
@@ -179,18 +188,21 @@ enum IssuePriority {
     );
   }
 
-  Color get color {
+  Color get color => colorFor(Brightness.light);
+
+  Color colorFor(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
     switch (this) {
       case IssuePriority.lowest:
-        return AppColors.priorityLowest;
+        return isDark ? AppColors.priorityLowDark : AppColors.priorityLowest;
       case IssuePriority.low:
-        return AppColors.priorityLow;
+        return isDark ? AppColors.priorityLowDark : AppColors.priorityLow;
       case IssuePriority.medium:
-        return AppColors.priorityMedium;
+        return isDark ? AppColors.priorityMediumDark : AppColors.priorityMedium;
       case IssuePriority.high:
-        return AppColors.priorityHigh;
+        return isDark ? AppColors.priorityHighDark : AppColors.priorityHigh;
       case IssuePriority.urgent:
-        return AppColors.priorityUrgent;
+        return isDark ? AppColors.priorityUrgentDark : AppColors.priorityUrgent;
     }
   }
 
@@ -230,16 +242,19 @@ enum SprintStatus {
     );
   }
 
-  Color get color {
+  Color get color => colorFor(Brightness.light);
+
+  Color colorFor(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
     switch (this) {
       case SprintStatus.planned:
-        return AppColors.statusBacklog;
+        return AppColors.textSecondaryFor(isDark);
       case SprintStatus.active:
-        return AppColors.primary;
+        return AppColors.accentFor(isDark);
       case SprintStatus.completed:
-        return AppColors.success;
+        return AppColors.successFor(isDark);
       case SprintStatus.closed:
-        return AppColors.textMutedLight;
+        return AppColors.textMutedFor(isDark);
     }
   }
 }
