@@ -447,6 +447,13 @@ void main() {
       expect(find.text('Oversee Web App'), findsWidgets);
       expect(find.text('OVS'), findsWidgets);
       expect(find.text('ACTIVE'), findsWidgets);
+      expect(find.text('WORKSPACE OVERVIEW'), findsOneWidget);
+      expect(find.text('Total Issues'), findsOneWidget);
+      expect(find.text('In Progress'), findsWidgets);
+      expect(find.text('Completed'), findsWidgets);
+      expect(find.text('Story Points'), findsOneWidget);
+      expect(find.text('Sprint Velocity'), findsOneWidget);
+      expect(find.text('Recent Activity'), findsOneWidget);
       expect(find.text('Team Members'), findsWidgets);
       expect(find.text('Alice Owner'), findsOneWidget);
       expect(find.text('Bob Dev'), findsOneWidget);
