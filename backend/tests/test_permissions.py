@@ -17,7 +17,7 @@ def test_permission_enum_values_and_prefixes():
     perm_values = [p.value for p in Permission]
     assert len(perm_values) == len(set(perm_values))
 
-    valid_prefixes = ("workspace:", "project:", "sprint:", "issue:")
+    valid_prefixes = ("workspace:", "project:", "sprint:", "issue:", "document:")
     for perm in Permission:
         assert perm.value.startswith(valid_prefixes)
 
@@ -78,11 +78,13 @@ def test_viewer_role_permissions():
             Permission.PROJECT_READ,
             Permission.SPRINT_READ,
             Permission.ISSUE_READ,
+            Permission.DOCUMENT_READ,
         }
     )
     assert Permission.WORKSPACE_UPDATE not in viewer_perms
     assert Permission.ISSUE_CREATE not in viewer_perms
     assert Permission.SPRINT_CREATE not in viewer_perms
+    assert Permission.DOCUMENT_CREATE not in viewer_perms
 
 
 def test_member_role_permissions():

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import BaseEntity
 
 if TYPE_CHECKING:
+    from app.models.document import Document
     from app.models.issue import Issue
     from app.models.membership import ProjectMember
     from app.models.sprint import Sprint
@@ -65,6 +66,12 @@ class Project(BaseEntity):
     )
     sprints: Mapped[list[Sprint]] = relationship(
         "Sprint",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        back_populates="project",
+    )
+    documents: Mapped[list[Document]] = relationship(
+        "Document",
         cascade="all, delete-orphan",
         passive_deletes=True,
         back_populates="project",

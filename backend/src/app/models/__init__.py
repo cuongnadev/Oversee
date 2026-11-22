@@ -8,6 +8,7 @@ from app.models.base import (
     TimestampMixin,
     UUIDMixin,
 )
+from app.models.document import Document
 from app.models.enums import (
     IssuePriority,
     IssueStatus,
@@ -29,6 +30,7 @@ __all__ = [
     "Base",
     "BaseAuditEntity",
     "BaseEntity",
+    "Document",
     "Issue",
     "IssuePriority",
     "IssueStatus",

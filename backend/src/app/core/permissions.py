@@ -16,6 +16,7 @@ _VIEWER_PERMISSIONS: Final[frozenset[Permission]] = frozenset(
         Permission.PROJECT_READ,
         Permission.SPRINT_READ,
         Permission.ISSUE_READ,
+        Permission.DOCUMENT_READ,
     }
 )
 
@@ -26,6 +27,8 @@ _MEMBER_PERMISSIONS: Final[frozenset[Permission]] = _VIEWER_PERMISSIONS | frozen
         Permission.ISSUE_CREATE,
         Permission.ISSUE_UPDATE,
         Permission.ISSUE_COMMENT,
+        Permission.DOCUMENT_CREATE,
+        Permission.DOCUMENT_UPDATE,
     }
 )
 
@@ -39,6 +42,7 @@ _ADMIN_PERMISSIONS: Final[frozenset[Permission]] = _MEMBER_PERMISSIONS | frozens
         Permission.PROJECT_MANAGE_MEMBERS,
         Permission.SPRINT_DELETE,
         Permission.ISSUE_DELETE,
+        Permission.DOCUMENT_DELETE,
     }
 )
 
