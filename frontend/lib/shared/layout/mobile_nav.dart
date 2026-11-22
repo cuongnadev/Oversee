@@ -4,11 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/theme/app_colors.dart';
+import 'package:frontend/core/theme/app_typography.dart';
 import 'package:frontend/features/auth/application/auth_provider.dart';
 import 'package:frontend/shared/layout/nav_item.dart';
 import 'package:frontend/shared/widgets/widgets.dart';
 
-/// Bottom Navigation Bar for Mobile (< 600px).
+/// Bottom Navigation Bar for Mobile (< 600px) aligned with Figma .bottom-nav.
 class MobileBottomNav extends StatelessWidget {
   final String workspaceId;
   final String projectId;
@@ -57,23 +58,22 @@ class MobileBottomNav extends StatelessWidget {
 
     int currentIndex = primaryItems.indexWhere((item) => item.keyName == currentRoute);
     if (currentIndex == -1) {
-      // If current route is dashboard or settings, 'More' is active
       currentIndex = 4;
     }
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        color: AppColors.sidebarFor(isDark),
         border: Border(
           top: BorderSide(
-            color: isDark ? AppColors.borderDark : AppColors.borderLight,
+            color: AppColors.borderFor(isDark),
             width: 1.0,
           ),
         ),
       ),
       child: SafeArea(
         child: SizedBox(
-          height: 56.0,
+          height: 58.0,
           child: Row(
             children: [
               for (int i = 0; i < primaryItems.length; i++) ...[
@@ -130,12 +130,12 @@ class MobileBottomNav extends StatelessWidget {
     required bool isDark,
     required VoidCallback onTap,
   }) {
-    const Color selectedColor = AppColors.primary;
-    final Color unselectedColor = isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight;
+    final Color selectedColor = AppColors.accentFor(isDark);
+    final Color unselectedColor = AppColors.textMutedFor(isDark);
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8.0),
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
         child: Column(
@@ -144,10 +144,10 @@ class MobileBottomNav extends StatelessWidget {
           children: [
             Icon(
               isSelected ? item.selectedIcon : item.icon,
-              size: 20.0,
+              size: 19.0,
               color: isSelected ? selectedColor : unselectedColor,
             ),
-            const SizedBox(height: 2.0),
+            const SizedBox(height: 3.0),
             Text(
               item.label,
               style: TextStyle(
@@ -165,7 +165,7 @@ class MobileBottomNav extends StatelessWidget {
   }
 }
 
-/// Navigation Drawer for Mobile (< 600px).
+/// Navigation Drawer for Mobile (< 600px) aligned with Figma mobile drawer.
 class MobileAppDrawer extends ConsumerWidget {
   final String workspaceId;
   final String projectId;
@@ -202,47 +202,55 @@ class MobileAppDrawer extends ConsumerWidget {
     final ThemeData theme = Theme.of(context);
     final bool isDark = theme.brightness == Brightness.dark;
     final authState = ref.watch(authNotifierProvider);
+    final Color accentColor = AppColors.accentFor(isDark);
+    final Color borderColor = AppColors.borderFor(isDark);
+    final Color textPrimary = AppColors.textPrimaryFor(isDark);
+    final Color textMuted = AppColors.textMutedFor(isDark);
 
     return Drawer(
+      backgroundColor: AppColors.sidebarFor(isDark),
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Drawer Header
             Container(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
               decoration: BoxDecoration(
                 border: Border(
-                  bottom: BorderSide(
-                    color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                    width: 1.0,
-                  ),
+                  bottom: BorderSide(color: borderColor, width: 1.0),
                 ),
               ),
               child: Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8.0),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                    child: const Icon(Icons.hub_rounded, color: Colors.white, size: 22.0),
-                  ),
-                  const SizedBox(width: 12.0),
+                  Icon(Icons.layers_rounded, color: accentColor, size: 22.0),
+                  const SizedBox(width: 10.0),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Oversee',
-                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                        RichText(
+                          text: TextSpan(
+                            text: 'oversee',
+                            style: TextStyle(
+                              fontFamily: AppTypography.fontFamily,
+                              fontFamilyFallback: AppTypography.fontFallback,
+                              fontSize: 19.0,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.7,
+                              color: textPrimary,
+                            ),
+                            children: [
+                              TextSpan(
+                                text: '.',
+                                style: TextStyle(color: accentColor),
+                              ),
+                            ],
+                          ),
                         ),
                         Text(
                           'Workspace: $workspaceId',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                          ),
+                          style: theme.textTheme.bodySmall?.copyWith(color: textMuted),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
@@ -255,28 +263,31 @@ class MobileAppDrawer extends ConsumerWidget {
             // Navigation Items
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
+                padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 10.0),
                 children: [
-                  for (final item in NavItem.projectNavItems) ...[
+                  for (final item in NavItem.projectNavItems)
                     _buildDrawerItem(
                       context,
                       item: item,
                       isSelected: currentRoute == item.keyName,
                       isDark: isDark,
                     ),
-                  ],
-                  const Divider(height: 24.0),
+                  Divider(height: 24.0, color: borderColor),
                   ListTile(
-                    leading: const Icon(Icons.hub_outlined, size: 20.0),
-                    title: const Text('All Workspaces', style: TextStyle(fontSize: 14.0)),
+                    dense: true,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
+                    leading: Icon(Icons.hub_outlined, size: 18.0, color: textMuted),
+                    title: Text('All Workspaces', style: TextStyle(fontSize: 13.0, color: textPrimary)),
                     onTap: () {
                       Navigator.of(context).pop();
                       context.go(AppRoutes.workspaces);
                     },
                   ),
                   ListTile(
-                    leading: const Icon(Icons.settings_outlined, size: 20.0),
-                    title: const Text('Workspace Settings', style: TextStyle(fontSize: 14.0)),
+                    dense: true,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
+                    leading: Icon(Icons.settings_outlined, size: 18.0, color: textMuted),
+                    title: Text('Workspace Settings', style: TextStyle(fontSize: 13.0, color: textPrimary)),
                     onTap: () {
                       Navigator.of(context).pop();
                       context.go(AppRoutes.workspaceSettingsPath(workspaceId));
@@ -288,13 +299,10 @@ class MobileAppDrawer extends ConsumerWidget {
 
             // Bottom user info & logout
             Container(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(14.0),
               decoration: BoxDecoration(
                 border: Border(
-                  top: BorderSide(
-                    color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                    width: 1.0,
-                  ),
+                  top: BorderSide(color: borderColor, width: 1.0),
                 ),
               ),
               child: Row(
@@ -302,17 +310,22 @@ class MobileAppDrawer extends ConsumerWidget {
                   UserAvatar(
                     name: authState.email ?? 'User',
                     size: UserAvatarSize.sm,
+                    showStatus: true,
+                    isOnline: true,
                   ),
                   const SizedBox(width: 10.0),
                   Expanded(
                     child: Text(
                       authState.email ?? 'user@oversee.local',
-                      style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: textPrimary,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.logout_rounded, color: AppColors.error, size: 20.0),
+                    icon: Icon(Icons.logout_rounded, color: AppColors.errorFor(isDark), size: 19.0),
                     tooltip: 'Log Out',
                     onPressed: () {
                       Navigator.of(context).pop();
@@ -334,26 +347,28 @@ class MobileAppDrawer extends ConsumerWidget {
     required bool isSelected,
     required bool isDark,
   }) {
-    final Color selectedBg = AppColors.primary.withValues(alpha: 0.12);
-    const Color selectedColor = AppColors.primary;
-    final Color unselectedColor = isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight;
+    final Color selectedBg = AppColors.accentSoftFor(isDark);
+    final Color accentColor = AppColors.accentFor(isDark);
+    final Color selectedText = AppColors.textPrimaryFor(isDark);
+    final Color unselectedColor = AppColors.textSecondaryFor(isDark);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2.0),
       child: ListTile(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
+        dense: true,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
         tileColor: isSelected ? selectedBg : Colors.transparent,
         leading: Icon(
           isSelected ? item.selectedIcon : item.icon,
-          color: isSelected ? selectedColor : unselectedColor,
-          size: 20.0,
+          color: isSelected ? accentColor : AppColors.textMutedFor(isDark),
+          size: 18.0,
         ),
         title: Text(
           item.label,
           style: TextStyle(
-            fontSize: 14.0,
+            fontSize: 13.0,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            color: isSelected ? selectedColor : unselectedColor,
+            color: isSelected ? selectedText : unselectedColor,
           ),
         ),
         onTap: () {

@@ -20,56 +20,59 @@ class ProjectNavigationTabBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final borderColor = isDark ? AppColors.borderDark : AppColors.borderLight;
+    final borderColor = AppColors.borderFor(isDark);
+    final accentColor = AppColors.accentFor(isDark);
+    final activeTextColor = AppColors.textPrimaryFor(isDark);
+    final inactiveColor = AppColors.textSecondaryFor(isDark);
 
     final tabs = [
       _TabItem(
         id: 'overview',
         label: 'Overview',
         icon: Icons.dashboard_outlined,
-        activeIcon: Icons.dashboard,
+        activeIcon: Icons.dashboard_rounded,
         path: AppRoutes.projectOverviewPath(workspaceId, projectId),
       ),
       _TabItem(
         id: 'board',
         label: 'Kanban Board',
         icon: Icons.view_kanban_outlined,
-        activeIcon: Icons.view_kanban,
+        activeIcon: Icons.view_kanban_rounded,
         path: AppRoutes.projectBoardPath(workspaceId, projectId),
       ),
       _TabItem(
         id: 'backlog',
         label: 'Backlog',
         icon: Icons.format_list_bulleted_outlined,
-        activeIcon: Icons.format_list_bulleted,
+        activeIcon: Icons.format_list_bulleted_rounded,
         path: AppRoutes.projectBacklogPath(workspaceId, projectId),
       ),
       _TabItem(
         id: 'sprints',
         label: 'Sprint Planning',
         icon: Icons.timer_outlined,
-        activeIcon: Icons.timer,
+        activeIcon: Icons.timer_rounded,
         path: AppRoutes.projectSprintsPath(workspaceId, projectId),
       ),
       _TabItem(
         id: 'dashboard',
         label: 'Dashboard',
         icon: Icons.bar_chart_outlined,
-        activeIcon: Icons.bar_chart,
+        activeIcon: Icons.bar_chart_rounded,
         path: AppRoutes.projectDashboardPath(workspaceId, projectId),
       ),
       _TabItem(
         id: 'settings',
         label: 'Settings',
         icon: Icons.settings_outlined,
-        activeIcon: Icons.settings,
+        activeIcon: Icons.settings_rounded,
         path: AppRoutes.projectSettingsPath(workspaceId, projectId),
       ),
     ];
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        color: AppColors.bgFor(isDark),
         border: Border(
           bottom: BorderSide(color: borderColor, width: 1.0),
         ),
@@ -80,8 +83,6 @@ class ProjectNavigationTabBar extends StatelessWidget {
         child: Row(
           children: tabs.map((tab) {
             final isActive = tab.id == activeTab;
-            final primaryColor = isDark ? AppColors.primaryDark : AppColors.primaryLight;
-            final inactiveColor = theme.colorScheme.onSurface.withValues(alpha: 0.65);
 
             return InkWell(
               onTap: () {
@@ -89,14 +90,14 @@ class ProjectNavigationTabBar extends StatelessWidget {
                   context.go(tab.path);
                 }
               },
-              borderRadius: BorderRadius.circular(6.0),
+              hoverColor: AppColors.hoverFor(isDark),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+                padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 11.0),
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
-                      color: isActive ? primaryColor : Colors.transparent,
-                      width: 2.5,
+                      color: isActive ? accentColor : Colors.transparent,
+                      width: 2.0,
                     ),
                   ),
                 ),
@@ -105,14 +106,15 @@ class ProjectNavigationTabBar extends StatelessWidget {
                   children: [
                     Icon(
                       isActive ? tab.activeIcon : tab.icon,
-                      size: 18,
-                      color: isActive ? primaryColor : inactiveColor,
+                      size: 16,
+                      color: isActive ? accentColor : inactiveColor,
                     ),
-                    const SizedBox(width: 8.0),
+                    const SizedBox(width: 7.0),
                     Text(
                       tab.label,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: isActive ? primaryColor : inactiveColor,
+                      style: theme.textTheme.labelLarge?.copyWith(
+                        fontSize: 12.5,
+                        color: isActive ? activeTextColor : inactiveColor,
                         fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
                       ),
                     ),
