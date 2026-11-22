@@ -10,6 +10,7 @@ import 'package:frontend/features/auth/presentation/register_screen.dart';
 import 'package:frontend/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:frontend/features/issue/presentation/backlog_screen.dart';
 import 'package:frontend/features/issue/presentation/calendar_screen.dart';
+import 'package:frontend/features/issue/presentation/issues_list_screen.dart';
 import 'package:frontend/features/issue/presentation/timeline_screen.dart';
 import 'package:frontend/features/project/presentation/create_project_screen.dart';
 import 'package:frontend/features/project/presentation/project_feature_empty_screen.dart';
@@ -296,17 +297,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               final projectId = state.pathParameters['projectId']!;
               return _innerPage(
                 state,
-                ProjectFeatureEmptyScreen(
-                  workspaceId: workspaceId,
-                  projectId: projectId,
-                  routeKey: 'issues',
-                  sectionEyebrow: 'Planning',
-                  title: 'Issues',
-                  subtitle: 'All project issues in a single filterable table.',
-                  icon: Icons.table_rows_outlined,
-                  emptyTitle: 'No Issues Yet',
-                  emptyDescription: 'Create an issue to see it listed in the issues table.',
-                ),
+                IssuesListScreen(workspaceId: workspaceId, projectId: projectId),
               );
             },
           ),
