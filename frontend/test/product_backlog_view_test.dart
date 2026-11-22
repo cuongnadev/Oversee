@@ -96,9 +96,13 @@ class FakeIssueRepository implements IssueRepository {
     required String title,
     String? description,
     IssueType type = IssueType.task,
+    IssueStatus? status,
     IssuePriority priority = IssuePriority.medium,
     double? estimate,
     String? assigneeId,
+    String? sprintId,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     if (shouldThrowOnCreate) {
       throw const AppException(message: 'Failed to create issue');
@@ -146,6 +150,12 @@ class FakeIssueRepository implements IssueRepository {
     IssuePriority? priority,
     double? estimate,
     String? assigneeId,
+    String? sprintId,
+    bool clearSprint = false,
+    DateTime? startDate,
+    bool clearStartDate = false,
+    DateTime? endDate,
+    bool clearEndDate = false,
   }) async {
     final index = mockIssues.indexWhere((i) => i.id == issueId);
     if (index != -1) {

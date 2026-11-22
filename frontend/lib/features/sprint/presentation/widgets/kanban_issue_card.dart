@@ -78,10 +78,8 @@ class _KanbanIssueCardState extends State<KanbanIssueCard> {
                   projectId: issue.projectId,
                   projectKey: widget.projectKey,
                   issue: issue,
+                  onIssueUpdated: widget.onUpdated,
                 );
-                if (widget.onUpdated != null) {
-                  widget.onUpdated!();
-                }
               },
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),

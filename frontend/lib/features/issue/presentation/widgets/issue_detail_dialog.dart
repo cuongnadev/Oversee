@@ -29,13 +29,14 @@ class IssueDetailDialog extends StatelessWidget {
     VoidCallback? onIssueUpdated,
   }) {
     final isMobile = ResponsiveBreakpoints.isMobile(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (isMobile) {
       return showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,
         useSafeArea: true,
-        backgroundColor: AppColors.surfaceDark,
+        backgroundColor: AppColors.surfaceFor(isDark),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
         ),
@@ -54,7 +55,7 @@ class IssueDetailDialog extends StatelessWidget {
         context: context,
         barrierDismissible: true,
         barrierLabel: 'Issue Details',
-        barrierColor: Colors.black.withValues(alpha: 0.55),
+        barrierColor: Colors.black.withValues(alpha: isDark ? 0.55 : 0.35),
         transitionDuration: const Duration(milliseconds: 280),
         pageBuilder: (ctx, anim1, anim2) {
           return Align(
