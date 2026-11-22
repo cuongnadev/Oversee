@@ -4,7 +4,7 @@ import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/features/sprint/domain/sprint_model.dart';
 import 'package:intl/intl.dart';
 
-/// Dialog allowing project members to start a planned sprint.
+/// Dialog allowing project members to start a planned sprint aligned with Figma Modal.
 class StartSprintDialog extends StatefulWidget {
   final SprintModel sprint;
   final bool hasOtherActiveSprint;
@@ -102,229 +102,274 @@ class _StartSprintDialogState extends State<StartSprintDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final dateFormat = DateFormat('MMM d, yyyy');
+    final borderColor = AppColors.borderFor(isDark);
+    final accentColor = AppColors.accentFor(isDark);
+    final warningColor = AppColors.warningFor(isDark);
+    final errorColor = AppColors.errorFor(isDark);
 
     final canStart = !widget.hasOtherActiveSprint &&
         !_isSubmitting &&
         widget.sprint.status == SprintStatus.planned;
 
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      backgroundColor: isDark ? AppColors.cardDark : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppColors.radiusXl),
+        side: BorderSide(color: borderColor),
+      ),
+      backgroundColor: AppColors.surfaceFor(isDark),
+      elevation: 0,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 480),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(Icons.play_arrow_rounded, color: AppColors.primary, size: 22),
-                      ),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'Start Sprint',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 20),
-                    onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(false),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Sprint Name & Goal Display
+              // Modal Header
               Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.surfaceDark : Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                  ),
+                  border: Border(bottom: BorderSide(color: borderColor)),
                 ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: AppColors.accentSoftFor(isDark),
+                            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                          ),
+                          child: Icon(Icons.play_arrow_rounded, color: accentColor, size: 19),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Start Sprint',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimaryFor(isDark),
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close_rounded, size: 18, color: AppColors.textMutedFor(isDark)),
+                      onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(false),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Modal Body
+              Padding(
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      widget.sprint.name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface2For(isDark),
+                        borderRadius: BorderRadius.circular(AppColors.radiusLg),
+                        border: Border.all(color: borderColor),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.sprint.name,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimaryFor(isDark),
+                            ),
+                          ),
+                          if (widget.sprint.goal != null && widget.sprint.goal!.isNotEmpty) ...[
+                            const SizedBox(height: 5),
+                            Text(
+                              'Goal: ${widget.sprint.goal}',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                color: AppColors.textSecondaryFor(isDark),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
-                    if (widget.sprint.goal != null && widget.sprint.goal!.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        'Goal: ${widget.sprint.goal}',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                          fontStyle: FontStyle.italic,
+                    const SizedBox(height: 16),
+
+                    if (widget.hasOtherActiveSprint)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: AppColors.warningSoftFor(isDark),
+                          borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                          border: Border.all(color: warningColor.withValues(alpha: 0.45)),
                         ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.warning_amber_rounded, color: warningColor, size: 18),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Another sprint is currently active. Oversee allows only one active sprint per project. Please complete or close the active sprint before starting this one.',
+                                style: TextStyle(
+                                  color: warningColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                    Text(
+                      'Duration & Schedule',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimaryFor(isDark),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: _isSubmitting ? null : _pickStartDate,
+                            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                            child: InputDecorator(
+                              decoration: InputDecoration(
+                                labelText: 'Start Date',
+                                suffixIcon: Icon(
+                                  Icons.calendar_today_outlined,
+                                  size: 16,
+                                  color: AppColors.textMutedFor(isDark),
+                                ),
+                                filled: true,
+                                fillColor: AppColors.bgFor(isDark),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                                  borderSide: BorderSide(color: borderColor),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              ),
+                              child: Text(
+                                dateFormat.format(_startDate),
+                                style: TextStyle(fontSize: 12.5, color: AppColors.textPrimaryFor(isDark)),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: InkWell(
+                            onTap: _isSubmitting ? null : _pickEndDate,
+                            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                            child: InputDecorator(
+                              decoration: InputDecoration(
+                                labelText: 'End Date',
+                                suffixIcon: Icon(
+                                  Icons.calendar_today_outlined,
+                                  size: 16,
+                                  color: AppColors.textMutedFor(isDark),
+                                ),
+                                filled: true,
+                                fillColor: AppColors.bgFor(isDark),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                                  borderSide: BorderSide(color: borderColor),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              ),
+                              child: Text(
+                                dateFormat.format(_endDate),
+                                style: TextStyle(fontSize: 12.5, color: AppColors.textPrimaryFor(isDark)),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    Text(
+                      'Duration: ${_endDate.difference(_startDate).inDays} days',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: AppColors.textMutedFor(isDark),
+                      ),
+                    ),
+
+                    if (_errorMessage != null) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        _errorMessage!,
+                        style: TextStyle(color: errorColor, fontSize: 12.5),
                       ),
                     ],
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
 
-              // Warning if another sprint is active
-              if (widget.hasOtherActiveSprint)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: AppColors.warning.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.warning),
-                  ),
-                  child: const Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 20),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'Another sprint is currently active. Oversee allows only one active sprint per project. Please complete or close the active sprint before starting this one.',
-                          style: TextStyle(
-                            color: AppColors.warning,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
+              // Modal Footer
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                decoration: BoxDecoration(
+                  border: Border(top: BorderSide(color: borderColor)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(false),
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accentSolidFor(isDark),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppColors.radiusMd),
                         ),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       ),
-                    ],
-                  ),
-                ),
-
-              // Dates Selection
-              const Text(
-                'Duration & Schedule',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: InkWell(
-                      onTap: _isSubmitting ? null : _pickStartDate,
-                      borderRadius: BorderRadius.circular(8),
-                      child: InputDecorator(
-                        decoration: InputDecoration(
-                          labelText: 'Start Date',
-                          suffixIcon: const Icon(Icons.calendar_today_outlined, size: 18),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        ),
-                        child: Text(
-                          dateFormat.format(_startDate),
-                          style: const TextStyle(fontSize: 13),
-                        ),
+                      onPressed: canStart ? _handleSubmit : null,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (_isSubmitting)
+                            const SizedBox(
+                              width: 15,
+                              height: 15,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          else
+                            const Icon(Icons.play_arrow_rounded, size: 17),
+                          const SizedBox(width: 6),
+                          Text(_isSubmitting ? 'Starting...' : 'Start Sprint'),
+                        ],
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: InkWell(
-                      onTap: _isSubmitting ? null : _pickEndDate,
-                      borderRadius: BorderRadius.circular(8),
-                      child: InputDecorator(
-                        decoration: InputDecoration(
-                          labelText: 'End Date',
-                          suffixIcon: const Icon(Icons.calendar_today_outlined, size: 18),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        ),
-                        child: Text(
-                          dateFormat.format(_endDate),
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              Text(
-                'Duration: ${_endDate.difference(_startDate).inDays} days',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                  ],
                 ),
-              ),
-
-              if (_errorMessage != null) ...[
-                const SizedBox(height: 12),
-                Text(
-                  _errorMessage!,
-                  style: const TextStyle(color: AppColors.error, fontSize: 13),
-                ),
-              ],
-              const SizedBox(height: 24),
-
-              // Actions
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(false),
-                    child: const Text('Cancel'),
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                    ),
-                    onPressed: canStart ? _handleSubmit : null,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (_isSubmitting)
-                          const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        else
-                          const Icon(Icons.play_arrow_rounded, size: 18),
-                        const SizedBox(width: 6),
-                        Text(_isSubmitting ? 'Starting...' : 'Start Sprint'),
-                      ],
-                    ),
-                  ),
-                ],
               ),
             ],
           ),
