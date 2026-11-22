@@ -7,6 +7,8 @@ import 'package:frontend/features/issue/domain/issue_activity_model.dart';
 import 'package:frontend/features/issue/domain/issue_model.dart';
 import 'package:frontend/features/project/data/project_repository.dart';
 import 'package:frontend/features/project/domain/project_member_model.dart';
+import 'package:frontend/features/sprint/data/sprint_repository.dart';
+import 'package:frontend/features/sprint/domain/sprint_model.dart';
 
 /// State for the Issue Detail panel and inline editing forms.
 class IssueDetailState extends Equatable {
@@ -14,6 +16,7 @@ class IssueDetailState extends Equatable {
   final List<IssueModel> subIssues;
   final List<IssueActivityModel> activities;
   final List<ProjectMemberModel> members;
+  final List<SprintModel> sprints;
   final bool isLoading;
   final bool isSaving;
   final bool isCreatingSubTask;
@@ -24,6 +27,7 @@ class IssueDetailState extends Equatable {
     this.subIssues = const [],
     this.activities = const [],
     this.members = const [],
+    this.sprints = const [],
     this.isLoading = false,
     this.isSaving = false,
     this.isCreatingSubTask = false,
@@ -41,6 +45,7 @@ class IssueDetailState extends Equatable {
     List<IssueModel>? subIssues,
     List<IssueActivityModel>? activities,
     List<ProjectMemberModel>? members,
+    List<SprintModel>? sprints,
     bool? isLoading,
     bool? isSaving,
     bool? isCreatingSubTask,
@@ -51,6 +56,7 @@ class IssueDetailState extends Equatable {
       subIssues: subIssues ?? this.subIssues,
       activities: activities ?? this.activities,
       members: members ?? this.members,
+      sprints: sprints ?? this.sprints,
       isLoading: isLoading ?? this.isLoading,
       isSaving: isSaving ?? this.isSaving,
       isCreatingSubTask: isCreatingSubTask ?? this.isCreatingSubTask,
@@ -64,6 +70,7 @@ class IssueDetailState extends Equatable {
         subIssues,
         activities,
         members,
+        sprints,
         isLoading,
         isSaving,
         isCreatingSubTask,
@@ -75,14 +82,17 @@ class IssueDetailNotifier extends StateNotifier<IssueDetailState> {
   final String projectId;
   final IssueRepository _issueRepository;
   final ProjectRepository _projectRepository;
+  final SprintRepository? _sprintRepository;
 
   IssueDetailNotifier({
     required this.projectId,
     required IssueModel initialIssue,
     required IssueRepository issueRepository,
     required ProjectRepository projectRepository,
+    SprintRepository? sprintRepository,
   })  : _issueRepository = issueRepository,
         _projectRepository = projectRepository,
+        _sprintRepository = sprintRepository,
         super(IssueDetailState(issue: initialIssue, isLoading: true));
 
   Future<void> loadDetails() async {
@@ -98,24 +108,30 @@ class IssueDetailNotifier extends StateNotifier<IssueDetailState> {
       final membersFuture = _projectRepository
           .listProjectMembers(projectId)
           .catchError((_) => <ProjectMemberModel>[]);
+      final sprintsFuture = _sprintRepository != null
+          ? _sprintRepository.listProjectSprints(projectId).catchError((_) => <SprintModel>[])
+          : Future.value(<SprintModel>[]);
 
       final results = await Future.wait([
         issueFuture,
         subIssuesFuture,
         activitiesFuture,
         membersFuture,
+        sprintsFuture,
       ]);
 
       final freshIssue = results[0] as IssueModel;
       final subIssues = results[1] as List<IssueModel>;
       final activities = results[2] as List<IssueActivityModel>;
       final members = results[3] as List<ProjectMemberModel>;
+      final sprints = results[4] as List<SprintModel>;
 
       state = state.copyWith(
         issue: freshIssue,
         subIssues: subIssues,
         activities: activities,
         members: members,
+        sprints: sprints,
         isLoading: false,
         errorMessage: () => null,
       );
@@ -432,6 +448,85 @@ class IssueDetailNotifier extends StateNotifier<IssueDetailState> {
     }
   }
 
+  Future<bool> updateSprint(String? sprintId) async {
+    if (sprintId == state.issue.sprintId) return true;
+    final prev = state.issue;
+    state = state.copyWith(
+      issue: state.issue.copyWith(
+        sprintId: sprintId,
+        clearSprint: sprintId == null,
+      ),
+      isSaving: true,
+      errorMessage: () => null,
+    );
+    try {
+      final updated = await _issueRepository.updateIssue(
+        state.issue.id,
+        sprintId: sprintId,
+        clearSprint: sprintId == null,
+      );
+      state = state.copyWith(issue: updated, isSaving: false);
+      await _refreshActivitiesQuietly();
+      return true;
+    } catch (e) {
+      final msg = e is AppException ? e.message : e.toString();
+      state = state.copyWith(
+        issue: prev,
+        isSaving: false,
+        errorMessage: () => msg,
+      );
+      return false;
+    }
+  }
+
+  Future<bool> updateDates({
+    DateTime? startDate,
+    bool clearStartDate = false,
+    DateTime? endDate,
+    bool clearEndDate = false,
+  }) async {
+    final prev = state.issue;
+    final nextStart = clearStartDate ? null : (startDate ?? prev.startDate);
+    final nextEnd = clearEndDate ? null : (endDate ?? prev.endDate);
+    if (nextStart != null && nextEnd != null && nextEnd.isBefore(nextStart)) {
+      state = state.copyWith(
+        errorMessage: () => 'End date cannot be earlier than start date.',
+      );
+      return false;
+    }
+
+    state = state.copyWith(
+      issue: prev.copyWith(
+        startDate: startDate,
+        clearStartDate: clearStartDate,
+        endDate: endDate,
+        clearEndDate: clearEndDate,
+      ),
+      isSaving: true,
+      errorMessage: () => null,
+    );
+    try {
+      final updated = await _issueRepository.updateIssue(
+        state.issue.id,
+        startDate: startDate,
+        clearStartDate: clearStartDate,
+        endDate: endDate,
+        clearEndDate: clearEndDate,
+      );
+      state = state.copyWith(issue: updated, isSaving: false);
+      await _refreshActivitiesQuietly();
+      return true;
+    } catch (e) {
+      final msg = e is AppException ? e.message : e.toString();
+      state = state.copyWith(
+        issue: prev,
+        isSaving: false,
+        errorMessage: () => msg,
+      );
+      return false;
+    }
+  }
+
   Future<void> _refreshActivitiesQuietly() async {
     try {
       final activities = await _issueRepository.listIssueActivities(state.issue.id);
@@ -446,11 +541,13 @@ final issueDetailProvider = StateNotifierProvider.autoDispose
   (ref, args) {
     final issueRepo = ref.watch(issueRepositoryProvider);
     final projectRepo = ref.watch(projectRepositoryProvider);
+    final sprintRepo = ref.watch(sprintRepositoryProvider);
     final notifier = IssueDetailNotifier(
       projectId: args.projectId,
       initialIssue: args.initialIssue,
       issueRepository: issueRepo,
       projectRepository: projectRepo,
+      sprintRepository: sprintRepo,
     );
     notifier.loadDetails();
     return notifier;

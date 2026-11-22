@@ -92,11 +92,17 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
     }
   }
 
-  Future<void> _openQuickCreateIssue(KanbanBoardNotifier notifier) async {
+  Future<void> _openQuickCreateIssue(
+    KanbanBoardNotifier notifier, {
+    IssueStatus? initialStatus,
+    String? initialSprintId,
+  }) async {
     final created = await QuickCreateDialog.show(
       context,
       projectId: widget.projectId,
       initialType: QuickCreateEntityType.issue,
+      initialStatus: initialStatus,
+      initialSprintId: initialSprintId,
     );
     if (created == true && mounted) {
       await notifier.refresh();
@@ -484,10 +490,11 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
                     onIssueDropped: (issue) {
                       notifier.updateIssueStatus(issue.id, status);
                     },
-                    onCardUpdated: () {
-                      notifier.refresh();
-                    },
-                    onAddIssue: () => _openQuickCreateIssue(notifier),
+                    onAddIssue: () => _openQuickCreateIssue(
+                      notifier,
+                      initialStatus: status,
+                      initialSprintId: state.activeSprint?.id,
+                    ),
                   );
                 }).toList(),
               ),

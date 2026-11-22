@@ -30,17 +30,26 @@ class _FakeIssueRepo implements IssueRepository {
     required String title,
     String? description,
     IssueType type = IssueType.task,
+    IssueStatus? status,
     IssuePriority priority = IssuePriority.medium,
     double? estimate,
     String? assigneeId,
+    String? sprintId,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     created.add({
       'projectId': projectId,
       'title': title,
       'description': description,
       'type': type,
+      'status': status,
       'priority': priority,
       'estimate': estimate,
+      'assigneeId': assigneeId,
+      'sprintId': sprintId,
+      'startDate': startDate,
+      'endDate': endDate,
     });
     return IssueModel(
       id: 'iss-new',

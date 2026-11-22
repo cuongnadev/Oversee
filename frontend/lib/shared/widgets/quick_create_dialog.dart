@@ -8,9 +8,12 @@ import 'package:frontend/features/dashboard/application/dashboard_provider.dart'
 import 'package:frontend/features/document/data/document_repository.dart';
 import 'package:frontend/features/issue/application/backlog_provider.dart';
 import 'package:frontend/features/issue/data/issue_repository.dart';
+import 'package:frontend/features/project/data/project_repository.dart';
+import 'package:frontend/features/project/domain/project_member_model.dart';
 import 'package:frontend/features/sprint/application/kanban_board_provider.dart';
 import 'package:frontend/features/sprint/application/sprint_overview_provider.dart';
 import 'package:frontend/features/sprint/data/sprint_repository.dart';
+import 'package:frontend/features/sprint/domain/sprint_model.dart';
 import 'package:frontend/shared/widgets/app_buttons.dart';
 import 'package:frontend/shared/widgets/app_dialog.dart';
 import 'package:frontend/shared/widgets/app_feedback.dart';
@@ -35,12 +38,20 @@ enum QuickCreateEntityType {
 class QuickCreateDialog extends ConsumerStatefulWidget {
   final String projectId;
   final QuickCreateEntityType initialType;
+  final IssueStatus? initialStatus;
+  final String? initialSprintId;
+  final DateTime? initialStartDate;
+  final DateTime? initialEndDate;
   final VoidCallback? onCreated;
 
   const QuickCreateDialog({
     super.key,
     required this.projectId,
     this.initialType = QuickCreateEntityType.issue,
+    this.initialStatus,
+    this.initialSprintId,
+    this.initialStartDate,
+    this.initialEndDate,
     this.onCreated,
   });
 
@@ -48,15 +59,23 @@ class QuickCreateDialog extends ConsumerStatefulWidget {
     BuildContext context, {
     required String projectId,
     QuickCreateEntityType initialType = QuickCreateEntityType.issue,
+    IssueStatus? initialStatus,
+    String? initialSprintId,
+    DateTime? initialStartDate,
+    DateTime? initialEndDate,
     VoidCallback? onCreated,
   }) {
     return AppAdaptiveDialog.show<bool>(
       context,
       title: 'Quick Create',
-      maxWidth: 540,
+      maxWidth: 580,
       child: QuickCreateDialog(
         projectId: projectId,
         initialType: initialType,
+        initialStatus: initialStatus,
+        initialSprintId: initialSprintId,
+        initialStartDate: initialStartDate,
+        initialEndDate: initialEndDate,
         onCreated: onCreated,
       ),
     );
@@ -75,7 +94,17 @@ class _QuickCreateDialogState extends ConsumerState<QuickCreateDialog> {
   final _descriptionController = TextEditingController();
   final _estimateController = TextEditingController();
   IssueType _issueType = IssueType.task;
+  late IssueStatus _issueStatus;
   IssuePriority _priority = IssuePriority.medium;
+  String? _assigneeId;
+  String? _sprintId;
+  DateTime? _issueStartDate;
+  DateTime? _issueEndDate;
+  String? _issueDateError;
+
+  // Reference options loaded for human-readable labels (no raw UUIDs shown)
+  List<ProjectMemberModel> _members = const [];
+  List<SprintModel> _sprints = const [];
 
   // Sprint fields
   final _sprintNameController = TextEditingController();
@@ -92,9 +121,37 @@ class _QuickCreateDialogState extends ConsumerState<QuickCreateDialog> {
   void initState() {
     super.initState();
     _activeType = widget.initialType;
+    _issueStatus = widget.initialStatus ?? IssueStatus.todo;
+    _sprintId = widget.initialSprintId;
+    _issueStartDate = widget.initialStartDate;
+    _issueEndDate = widget.initialEndDate;
     final now = DateTime.now();
     _sprintStartDate = DateTime(now.year, now.month, now.day);
     _sprintEndDate = _sprintStartDate!.add(const Duration(days: 14));
+    _loadReferenceData();
+  }
+
+  Future<void> _loadReferenceData() async {
+    try {
+      final results = await Future.wait([
+        ref.read(projectRepositoryProvider).listProjectMembers(widget.projectId).catchError((_) => <ProjectMemberModel>[]),
+        ref.read(sprintRepositoryProvider).listProjectSprints(widget.projectId).catchError((_) => <SprintModel>[]),
+      ]);
+      if (!mounted) return;
+      final members = results[0] as List<ProjectMemberModel>;
+      final sprints = (results[1] as List<SprintModel>)
+          .where((s) => s.status != SprintStatus.completed && s.status != SprintStatus.closed)
+          .toList();
+      setState(() {
+        _members = members;
+        _sprints = sprints;
+        if (_sprintId != null && !_sprints.any((s) => s.id == _sprintId)) {
+          _sprintId = null;
+        }
+      });
+    } catch (_) {
+      // Safe fallback when repositories are not mocked in isolated widget tests
+    }
   }
 
   @override
@@ -173,13 +230,54 @@ class _QuickCreateDialogState extends ConsumerState<QuickCreateDialog> {
     });
   }
 
+  Future<void> _pickIssueDate({required bool isStart}) async {
+    final initial = isStart
+        ? (_issueStartDate ?? DateTime.now())
+        : (_issueEndDate ?? (_issueStartDate ?? DateTime.now()).add(const Duration(days: 3)));
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2035),
+    );
+    if (picked == null) return;
+
+    setState(() {
+      if (isStart) {
+        _issueStartDate = picked;
+        if (_issueEndDate != null && _issueEndDate!.isBefore(picked)) {
+          _issueDateError = 'End date cannot be earlier than start date';
+        } else {
+          _issueDateError = null;
+        }
+      } else {
+        _issueEndDate = picked;
+        if (_issueStartDate != null && picked.isBefore(_issueStartDate!)) {
+          _issueDateError = 'End date cannot be earlier than start date';
+        } else {
+          _issueDateError = null;
+        }
+      }
+    });
+  }
+
   Future<void> _handleSubmit() async {
     setState(() {
       _submitError = null;
       _dateError = null;
+      _issueDateError = null;
     });
 
     if (!_formKey.currentState!.validate()) return;
+
+    if (_activeType == QuickCreateEntityType.issue) {
+      if (_issueStartDate != null &&
+          _issueEndDate != null &&
+          _issueEndDate!.isBefore(_issueStartDate!)) {
+        setState(() => _issueDateError = 'End date cannot be earlier than start date');
+        return;
+      }
+    }
 
     if (_activeType == QuickCreateEntityType.sprint) {
       if (_sprintStartDate != null &&
@@ -206,8 +304,13 @@ class _QuickCreateDialogState extends ConsumerState<QuickCreateDialog> {
                     ? null
                     : _descriptionController.text.trim(),
                 type: _issueType,
+                status: _issueStatus,
                 priority: _priority,
                 estimate: estimate,
+                assigneeId: _assigneeId,
+                sprintId: _sprintId,
+                startDate: _issueStartDate,
+                endDate: _issueEndDate,
               );
           ref.invalidate(backlogNotifierProvider(widget.projectId));
           ref.invalidate(kanbanBoardProvider(widget.projectId));
@@ -441,6 +544,12 @@ class _QuickCreateDialogState extends ConsumerState<QuickCreateDialog> {
 
   Widget _buildIssueFields(bool isDark) {
     final brightness = isDark ? Brightness.dark : Brightness.light;
+    final dateFormat = DateFormat('MMM d, yyyy');
+    final borderColor = AppColors.borderFor(isDark);
+    final textPrimary = AppColors.textPrimaryFor(isDark);
+    final textSecondary = AppColors.textSecondaryFor(isDark);
+    final textMuted = AppColors.textMutedFor(isDark);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -459,6 +568,7 @@ class _QuickCreateDialogState extends ConsumerState<QuickCreateDialog> {
           maxLines: 3,
         ),
         const SizedBox(height: 12),
+        // Row 1: Type & Status
         Row(
           children: [
             Expanded(
@@ -481,6 +591,36 @@ class _QuickCreateDialogState extends ConsumerState<QuickCreateDialog> {
             ),
             const SizedBox(width: 12),
             Expanded(
+              child: _buildDropdownField<IssueStatus>(
+                isDark: isDark,
+                label: 'Status',
+                value: _issueStatus,
+                items: IssueStatus.values,
+                itemBuilder: (s) => Row(
+                  children: [
+                    Icon(s.icon, size: 14, color: s.colorFor(brightness)),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        s.label,
+                        style: const TextStyle(fontSize: 12.5),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                onChanged: (v) {
+                  if (v != null) setState(() => _issueStatus = v);
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Row 2: Priority & Story Points
+        Row(
+          children: [
+            Expanded(
               child: _buildDropdownField<IssuePriority>(
                 isDark: isDark,
                 label: 'Priority',
@@ -498,15 +638,243 @@ class _QuickCreateDialogState extends ConsumerState<QuickCreateDialog> {
                 },
               ),
             ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: AppTextFormField(
+                controller: _estimateController,
+                label: 'Story Points',
+                hintText: 'e.g. 5',
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                validator: (v) => _validateNonNegativeNumber(v, 'Story points'),
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 12),
-        AppTextFormField(
-          controller: _estimateController,
-          label: 'Story Points',
-          hintText: 'e.g. 5',
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          validator: (v) => _validateNonNegativeNumber(v, 'Story points'),
+        // Row 3: Assignee & Sprint (human-readable labels, never raw UUIDs)
+        Row(
+          children: [
+            Expanded(
+              child: _buildNullableDropdownField<String>(
+                isDark: isDark,
+                label: 'Assignee',
+                value: _assigneeId,
+                emptyLabel: 'Unassigned',
+                emptyIcon: Icons.person_outline_rounded,
+                items: _members.map((m) => m.userId).toList(),
+                itemLabel: (uid) {
+                  final member = _members.where((m) => m.userId == uid).firstOrNull;
+                  final name = member?.user?.fullName.trim();
+                  if (name != null && name.isNotEmpty) return name;
+                  return member?.user?.email ?? 'Team Member';
+                },
+                onChanged: (v) => setState(() => _assigneeId = v),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildNullableDropdownField<String>(
+                isDark: isDark,
+                label: 'Sprint',
+                value: _sprintId,
+                emptyLabel: 'Product Backlog',
+                emptyIcon: Icons.layers_outlined,
+                items: _sprints.map((s) => s.id).toList(),
+                itemLabel: (sid) {
+                  final sprint = _sprints.where((s) => s.id == sid).firstOrNull;
+                  if (sprint == null) return 'Sprint';
+                  return sprint.isActive ? '${sprint.name} (Active)' : sprint.name;
+                },
+                onChanged: (v) => setState(() => _sprintId = v),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        // Row 4: Start Date & End Date
+        Row(
+          children: [
+            Expanded(
+              child: _buildOptionalDatePicker(
+                isDark: isDark,
+                label: 'Start Date',
+                value: _issueStartDate,
+                dateFormat: dateFormat,
+                borderColor: borderColor,
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
+                textMuted: textMuted,
+                onPick: () => _pickIssueDate(isStart: true),
+                onClear: () => setState(() {
+                  _issueStartDate = null;
+                  _issueDateError = null;
+                }),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildOptionalDatePicker(
+                isDark: isDark,
+                label: 'End Date',
+                value: _issueEndDate,
+                dateFormat: dateFormat,
+                borderColor: _issueDateError != null ? AppColors.errorFor(isDark) : borderColor,
+                textPrimary: textPrimary,
+                textSecondary: textSecondary,
+                textMuted: textMuted,
+                onPick: () => _pickIssueDate(isStart: false),
+                onClear: () => setState(() {
+                  _issueEndDate = null;
+                  _issueDateError = null;
+                }),
+              ),
+            ),
+          ],
+        ),
+        if (_issueDateError != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            _issueDateError!,
+            style: TextStyle(color: AppColors.errorFor(isDark), fontSize: 11.5),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildOptionalDatePicker({
+    required bool isDark,
+    required String label,
+    required DateTime? value,
+    required DateFormat dateFormat,
+    required Color borderColor,
+    required Color textPrimary,
+    required Color textSecondary,
+    required Color textMuted,
+    required VoidCallback onPick,
+    required VoidCallback onClear,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(color: textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 6),
+        InkWell(
+          onTap: onPick,
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
+          child: Container(
+            height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: AppColors.bgFor(isDark),
+              borderRadius: BorderRadius.circular(AppColors.radiusMd),
+              border: Border.all(color: borderColor),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.calendar_today_rounded, size: 13.5, color: textMuted),
+                const SizedBox(width: 7),
+                Expanded(
+                  child: Text(
+                    value != null ? dateFormat.format(value) : 'Not set',
+                    style: TextStyle(
+                      color: value != null ? textPrimary : textMuted,
+                      fontSize: 12.5,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (value != null)
+                  GestureDetector(
+                    onTap: onClear,
+                    child: Icon(Icons.close_rounded, size: 14, color: textMuted),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNullableDropdownField<T>({
+    required bool isDark,
+    required String label,
+    required T? value,
+    required String emptyLabel,
+    required IconData emptyIcon,
+    required List<T> items,
+    required String Function(T) itemLabel,
+    required ValueChanged<T?> onChanged,
+  }) {
+    final textPrimary = AppColors.textPrimaryFor(isDark);
+    final textMuted = AppColors.textMutedFor(isDark);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textSecondaryFor(isDark),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: AppColors.bgFor(isDark),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+            border: Border.all(color: AppColors.borderFor(isDark)),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<T?>(
+              value: items.contains(value) ? value : null,
+              isExpanded: true,
+              isDense: true,
+              dropdownColor: AppColors.surfaceFor(isDark),
+              icon: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 16,
+                color: textMuted,
+              ),
+              items: [
+                DropdownMenuItem<T?>(
+                  value: null,
+                  child: Row(
+                    children: [
+                      Icon(emptyIcon, size: 14, color: textMuted),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          emptyLabel,
+                          style: TextStyle(fontSize: 12.5, color: textMuted),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ...items.map(
+                  (item) => DropdownMenuItem<T?>(
+                    value: item,
+                    child: Text(
+                      itemLabel(item),
+                      style: TextStyle(fontSize: 12.5, color: textPrimary),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ],
+              onChanged: onChanged,
+            ),
+          ),
         ),
       ],
     );
