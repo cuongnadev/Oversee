@@ -170,6 +170,9 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
                                 currentUserId: state.currentUserId,
                                 totalCount: state.totalIssues,
                                 activeSavedView: _activeSavedView,
+                                workspaceId: widget.workspaceId,
+                                projectId: widget.projectId,
+                                activeView: 'board',
                                 onSavedViewChanged: (view) =>
                                     _handleSavedViewChanged(view, state, notifier),
                                 onFilterChanged: (newFilter) {

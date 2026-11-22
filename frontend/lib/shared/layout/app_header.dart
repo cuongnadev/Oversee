@@ -333,36 +333,17 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
 
               if (showSecondaryIcons) ...[
                 const SizedBox(width: 2.0),
-                // Notifications Bell (Figma 1:385)
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    _TopbarIconButton(
-                      tooltip: 'Notifications',
-                      icon: Icons.notifications_none_rounded,
-                      iconColor: textSecondary,
-                      onPressed: () {
-                        if (projectId != null) {
-                          context.go(AppRoutes.projectNotificationsPath(workspaceId, projectId!));
-                        } else {
-                          AppFeedback.showInfo(context, 'No new notifications');
-                        }
-                      },
-                    ),
-                    Positioned(
-                      right: 6,
-                      top: 5,
-                      child: Container(
-                        width: 5.5,
-                        height: 5.5,
-                        decoration: BoxDecoration(
-                          color: accentColor,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: bgColor, width: 1.0),
-                        ),
-                      ),
-                    ),
-                  ],
+                // Notifications Bell Popup (Figma 1:385)
+                _NotificationsPopupButton(
+                  isDark: isDark,
+                  bgColor: bgColor,
+                  surfaceColor: surfaceColor,
+                  borderColor: borderColor,
+                  accentColor: accentColor,
+                  accentSoftColor: accentSoftColor,
+                  textPrimary: textPrimary,
+                  textSecondary: textSecondary,
+                  textMuted: textMuted,
                 ),
 
                 if (!isMobile) ...[
@@ -539,6 +520,297 @@ class _TopbarIconButton extends StatelessWidget {
         ),
       ),
       onPressed: onPressed,
+    );
+  }
+}
+
+class _NotificationItem {
+  final String id;
+  final String title;
+  final String subtitle;
+  final String timeAgo;
+  final IconData icon;
+  final bool unread;
+
+  const _NotificationItem({
+    required this.id,
+    required this.title,
+    required this.subtitle,
+    required this.timeAgo,
+    required this.icon,
+    this.unread = true,
+  });
+
+  _NotificationItem copyWith({bool? unread}) => _NotificationItem(
+        id: id,
+        title: title,
+        subtitle: subtitle,
+        timeAgo: timeAgo,
+        icon: icon,
+        unread: unread ?? this.unread,
+      );
+}
+
+/// Notifications bell button that opens an anchored popup instead of navigating to a new route.
+class _NotificationsPopupButton extends StatefulWidget {
+  final bool isDark;
+  final Color bgColor;
+  final Color surfaceColor;
+  final Color borderColor;
+  final Color accentColor;
+  final Color accentSoftColor;
+  final Color textPrimary;
+  final Color textSecondary;
+  final Color textMuted;
+
+  const _NotificationsPopupButton({
+    required this.isDark,
+    required this.bgColor,
+    required this.surfaceColor,
+    required this.borderColor,
+    required this.accentColor,
+    required this.accentSoftColor,
+    required this.textPrimary,
+    required this.textSecondary,
+    required this.textMuted,
+  });
+
+  @override
+  State<_NotificationsPopupButton> createState() => _NotificationsPopupButtonState();
+}
+
+class _NotificationsPopupButtonState extends State<_NotificationsPopupButton> {
+  List<_NotificationItem> _notifications = const [
+    _NotificationItem(
+      id: 'n1',
+      title: 'Sprint progress updated',
+      subtitle: 'Completed issues are synced across Board and Backlog.',
+      timeAgo: 'Just now',
+      icon: Icons.bolt_rounded,
+      unread: true,
+    ),
+    _NotificationItem(
+      id: 'n2',
+      title: 'Timeline & Calendar ready',
+      subtitle: 'Drag issues to reschedule dates directly on the canvas.',
+      timeAgo: '10m ago',
+      icon: Icons.calendar_today_outlined,
+      unread: true,
+    ),
+  ];
+
+  int get _unreadCount => _notifications.where((n) => n.unread).length;
+
+  void _markAllRead() {
+    setState(() {
+      _notifications = _notifications.map((n) => n.copyWith(unread: false)).toList();
+    });
+  }
+
+  void _markOneRead(String id) {
+    setState(() {
+      _notifications = _notifications
+          .map((n) => n.id == id ? n.copyWith(unread: false) : n)
+          .toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      tooltip: 'Notifications',
+      offset: const Offset(0, 40),
+      constraints: const BoxConstraints(minWidth: 320, maxWidth: 360),
+      color: widget.surfaceColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppColors.radiusLg),
+        side: BorderSide(color: widget.borderColor),
+      ),
+      onSelected: (value) {
+        if (value == '__mark_all__') {
+          _markAllRead();
+        } else {
+          _markOneRead(value);
+        }
+      },
+      itemBuilder: (ctx) {
+        final entries = <PopupMenuEntry<String>>[
+          PopupMenuItem<String>(
+            enabled: false,
+            height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              children: [
+                Text(
+                  'Notifications',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: widget.textPrimary,
+                  ),
+                ),
+                if (_unreadCount > 0) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: widget.accentSoftColor,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: Text(
+                      '$_unreadCount',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: widget.accentColor,
+                      ),
+                    ),
+                  ),
+                ],
+                const Spacer(),
+                if (_unreadCount > 0)
+                  InkWell(
+                    onTap: () {
+                      Navigator.of(ctx).pop('__mark_all__');
+                    },
+                    borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      child: Text(
+                        'Mark all read',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: widget.accentColor,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const PopupMenuDivider(height: 1),
+        ];
+
+        if (_notifications.isEmpty) {
+          entries.add(
+            PopupMenuItem<String>(
+              enabled: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 18),
+                child: Center(
+                  child: Text(
+                    'You are all caught up!',
+                    style: TextStyle(fontSize: 12, color: widget.textMuted),
+                  ),
+                ),
+              ),
+            ),
+          );
+        } else {
+          for (final item in _notifications) {
+            entries.add(
+              PopupMenuItem<String>(
+                value: item.id,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: item.unread
+                            ? widget.accentSoftColor
+                            : AppColors.surface2For(widget.isDark),
+                        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                      ),
+                      child: Icon(
+                        item.icon,
+                        size: 14,
+                        color: item.unread ? widget.accentColor : widget.textMuted,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  item.title,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: item.unread ? FontWeight.w600 : FontWeight.w500,
+                                    color: widget.textPrimary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                item.timeAgo,
+                                style: TextStyle(fontSize: 10, color: widget.textMuted),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            item.subtitle,
+                            style: TextStyle(fontSize: 11, color: widget.textSecondary),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (item.unread) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        margin: const EdgeInsets.only(top: 5),
+                        width: 6,
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: widget.accentColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          }
+        }
+        return entries;
+      },
+      child: SizedBox(
+        width: 30,
+        height: 30,
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            Icon(Icons.notifications_none_rounded, size: 17.5, color: widget.textSecondary),
+            if (_unreadCount > 0)
+              Positioned(
+                right: 6,
+                top: 5,
+                child: Container(
+                  width: 5.5,
+                  height: 5.5,
+                  decoration: BoxDecoration(
+                    color: widget.accentColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: widget.bgColor, width: 1.0),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -244,65 +244,76 @@ class _KanbanColumnWidgetState extends State<KanbanColumnWidget> {
       padding: const EdgeInsets.fromLTRB(4, 6, 2, 10),
       child: Row(
         children: [
-          Icon(widget.status.icon, size: 15, color: statusColor),
-          const SizedBox(width: 7),
+          // Maximized left cluster so the '+' button always anchors flush to the right edge
+          Expanded(
+            child: Row(
+              children: [
+                Icon(widget.status.icon, size: 15, color: statusColor),
+                const SizedBox(width: 7),
 
-          // Column Title
-          Flexible(
-            child: Text(
-              widget.status.label,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 12.5,
-                color: textPrimary,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(width: 7),
-
-          // Issue Count (Figma 6:584)
-          Text(
-            '${widget.issues.length}',
-            style: AppTypography.mono(
-              isDark,
-              fontSize: 11,
-              color: textMuted,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-
-          // Story Points Pill
-          if (widget.totalStoryPoints > 0) ...[
-            const SizedBox(width: 7),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-              decoration: BoxDecoration(
-                color: accentSoft,
-                borderRadius: BorderRadius.circular(AppColors.radiusSm),
-              ),
-              child: Text(
-                widget.totalStoryPoints % 1 == 0
-                    ? '${widget.totalStoryPoints.toInt()} pts'
-                    : '${widget.totalStoryPoints} pts',
-                style: AppTypography.mono(
-                  isDark,
-                  fontSize: 10,
-                  color: accentColor,
-                  fontWeight: FontWeight.w600,
+                // Column Title
+                Flexible(
+                  child: Text(
+                    widget.status.label,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12.5,
+                      color: textPrimary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
                 ),
-              ),
-            ),
-          ],
+                const SizedBox(width: 7),
 
-          const Spacer(),
+                // Issue Count (Figma 6:584)
+                Text(
+                  '${widget.issues.length}',
+                  style: AppTypography.mono(
+                    isDark,
+                    fontSize: 11,
+                    color: textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+
+                // Story Points Pill
+                if (widget.totalStoryPoints > 0) ...[
+                  const SizedBox(width: 7),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                    decoration: BoxDecoration(
+                      color: accentSoft,
+                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                    ),
+                    child: Text(
+                      widget.totalStoryPoints % 1 == 0
+                          ? '${widget.totalStoryPoints.toInt()} pts'
+                          : '${widget.totalStoryPoints} pts',
+                      style: AppTypography.mono(
+                        isDark,
+                        fontSize: 10,
+                        color: accentColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
 
           if (widget.onAddIssue != null)
             IconButton(
               icon: Icon(Icons.add_rounded, size: 16, color: textMuted),
               tooltip: 'Add issue to ${widget.status.label}',
               padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
+              visualDensity: VisualDensity.compact,
+              style: IconButton.styleFrom(
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                minimumSize: const Size(26, 26),
+                maximumSize: const Size(26, 26),
+              ),
               onPressed: widget.onAddIssue,
             ),
         ],
