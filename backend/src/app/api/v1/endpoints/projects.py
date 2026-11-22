@@ -21,6 +21,7 @@ from app.schemas.document import (
 )
 from app.schemas.issue import (
     BacklogAddIssuesRequest,
+    BacklogOverviewResponse,
     BacklogReorderRequest,
     IssueCreate,
     IssuePageResponse,
@@ -46,6 +47,7 @@ from app.services.document import (
 from app.services.issue import (
     add_issues_to_backlog,
     create_issue,
+    get_backlog_overview,
     list_backlog_issues,
     list_project_issues,
     parse_issue_priorities,
@@ -478,6 +480,62 @@ def list_backlog_endpoint(
         sort_by=sort_by,
         order=order,
         cursor=cursor,
+    )
+
+
+@router.get(
+    "/{project_id}/backlog/grouped",
+    response_model=BacklogOverviewResponse,
+    status_code=status.HTTP_200_OK,
+    summary="List backlog and sprint issues grouped by sprint",
+    description=(
+        "Return all active project issues grouped by sprint (with completion counts and story points) "
+        "plus unassigned product backlog issues. Requires ISSUE_READ permission."
+    ),
+)
+def get_grouped_backlog_endpoint(
+    project_id: uuid.UUID,
+    member: Annotated[
+        ProjectMember, Depends(require_project_permission(Permission.ISSUE_READ))
+    ],
+    db: Annotated[Session, Depends(get_db)],
+    status_filter: Annotated[
+        list[str] | None,
+        Query(alias="status", description="Filter by issue status"),
+    ] = None,
+    assignee_id: Annotated[
+        uuid.UUID | None,
+        Query(description="Filter by assignee user ID"),
+    ] = None,
+    assignee: Annotated[
+        str | None,
+        Query(description="Filter by assignee ('unassigned' or user UUID string)"),
+    ] = None,
+    priority: Annotated[
+        list[str] | None,
+        Query(description="Filter by priority"),
+    ] = None,
+    type: Annotated[
+        IssueType | None,
+        Query(description="Filter by issue type"),
+    ] = None,
+    search: Annotated[
+        str | None,
+        Query(description="Search keyword in title or description"),
+    ] = None,
+) -> BacklogOverviewResponse:
+    """Retrieve issues grouped by sprint plus unassigned backlog."""
+    parsed_statuses = parse_issue_statuses(status_filter)
+    parsed_priorities = parse_issue_priorities(priority)
+    return get_backlog_overview(
+        db=db,
+        project_id=project_id,
+        statuses=parsed_statuses,
+        assignee_id=assignee_id,
+        assignee=assignee,
+        priorities=parsed_priorities,
+        issue_type=type,
+        search=search,
     )
 
 
