@@ -131,6 +131,21 @@ void main() {
       await tester.tap(expandBtn);
       await tester.pumpAndSettle();
       expect(find.byTooltip('Collapse Sidebar'), findsOneWidget);
+
+      // Figma sidebar elements: project selector, quick search, and collapsible nav groups
+      expect(find.text('Quick search...'), findsOneWidget);
+      expect(find.text('PLANNING'), findsOneWidget);
+      expect(find.text('Board'), findsOneWidget);
+
+      // Collapse PLANNING group hides its items
+      await tester.tap(find.text('PLANNING'));
+      await tester.pumpAndSettle();
+      expect(find.text('Board'), findsNothing);
+
+      // Re-expand PLANNING group restores its items
+      await tester.tap(find.text('PLANNING'));
+      await tester.pumpAndSettle();
+      expect(find.text('Board'), findsOneWidget);
     });
   });
 
