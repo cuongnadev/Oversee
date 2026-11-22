@@ -7,6 +7,7 @@ import 'package:frontend/core/storage/preferences_service.dart';
 import 'package:frontend/features/workspace/application/workspace_provider.dart';
 import 'package:frontend/features/workspace/data/workspace_repository.dart';
 import 'package:frontend/features/workspace/domain/workspace_model.dart';
+import 'package:frontend/features/workspace/presentation/widgets/create_workspace_dialog.dart';
 import 'package:frontend/features/workspace/presentation/widgets/workspace_switcher_dropdown.dart';
 
 class FakeWorkspaceRepository implements WorkspaceRepository {
@@ -295,6 +296,42 @@ void main() {
 
       // Create action
       expect(find.text('Create Workspace'), findsOneWidget);
+    });
+  });
+
+  group('CreateWorkspaceDialog Tests', () {
+    test('generateSlug and computeInitials format workspace inputs safely', () {
+      expect(CreateWorkspaceDialog.generateSlug('  Engineering & Core!!  '), 'engineering-core');
+      expect(CreateWorkspaceDialog.generateSlug('Mobile---App'), 'mobile-app');
+      expect(CreateWorkspaceDialog.computeInitials('Engineering Team'), 'ET');
+      expect(CreateWorkspaceDialog.computeInitials('Oversee'), 'OV');
+      expect(CreateWorkspaceDialog.computeInitials('   '), 'W');
+    });
+
+    testWidgets('updates live identity preview and slug as workspace name is typed',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: CreateWorkspaceDialog(),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('oversee.app/w/workspace-slug'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextFormField).first, 'Platform Engineering');
+      await tester.pump();
+
+      expect(find.text('PE'), findsOneWidget);
+      expect(find.text('oversee.app/w/platform-engineering'), findsOneWidget);
     });
   });
 }
