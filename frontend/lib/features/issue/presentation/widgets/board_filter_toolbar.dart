@@ -2,10 +2,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:frontend/core/enums/app_enums.dart';
 import 'package:frontend/core/theme/app_colors.dart';
+import 'package:frontend/core/theme/app_typography.dart';
 import 'package:frontend/features/issue/domain/issue_filter_state.dart';
 import 'package:frontend/features/project/domain/project_member_model.dart';
+import 'package:frontend/shared/widgets/user_avatar.dart';
 
-/// Reusable filter and sorting toolbar for Backlog and Kanban Board.
+/// Reusable filter and sorting toolbar aligned with Figma WorkToolbar.
 class BoardFilterToolbar extends StatefulWidget {
   final IssueFilterState filter;
   final ValueChanged<IssueFilterState> onFilterChanged;
@@ -53,6 +55,7 @@ class _BoardFilterToolbarState extends State<BoardFilterToolbar> {
   }
 
   void _onSearchChanged(String text) {
+    setState(() {});
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
       widget.onFilterChanged(widget.filter.copyWith(searchQuery: text.trim()));
@@ -62,53 +65,66 @@ class _BoardFilterToolbarState extends State<BoardFilterToolbar> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final brightness = theme.brightness;
+    final isDark = brightness == Brightness.dark;
     final filter = widget.filter;
+
+    final bgColor = AppColors.bgFor(isDark);
+    final surfaceColor = AppColors.surfaceFor(isDark);
+    final surface2Color = AppColors.surface2For(isDark);
+    final borderColor = AppColors.borderFor(isDark);
+    final borderSoftColor = AppColors.borderSoftFor(isDark);
+    final accentColor = AppColors.accentFor(isDark);
+    final accentSolid = AppColors.accentSolidFor(isDark);
+    final accentSoft = AppColors.accentSoftFor(isDark);
+    final textPrimary = AppColors.textPrimaryFor(isDark);
+    final textSecondary = AppColors.textSecondaryFor(isDark);
+    final textMuted = AppColors.textMutedFor(isDark);
+    final errorColor = AppColors.errorFor(isDark);
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
+        color: bgColor,
         border: Border(
-          bottom: BorderSide(
-            color: isDark ? AppColors.borderDark : AppColors.borderLight,
-            width: 1,
-          ),
+          bottom: BorderSide(color: borderColor, width: 1.0),
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Main Bar: Search, My Issues, Filter Toggle, Sort Dropdown
+          // Main Toolbar Row (Figma .filters-row)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
             child: Wrap(
               spacing: 10,
               runSpacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               alignment: WrapAlignment.spaceBetween,
               children: [
-                // Left: Search Input & Quick "My Issues"
-                Row(
-                  mainAxisSize: MainAxisSize.min,
+                // Left: Search Input, My Issues chip, Quick Assignee Avatar filters
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     // Search with Debounce
                     SizedBox(
-                      width: 200,
-                      height: 34,
+                      width: 210,
+                      height: 32,
                       child: TextField(
                         controller: _searchController,
                         onChanged: _onSearchChanged,
-                        style: const TextStyle(fontSize: 13),
+                        style: TextStyle(fontSize: 12.5, color: textPrimary),
                         decoration: InputDecoration(
                           hintText: 'Search title or key...',
-                          hintStyle: TextStyle(
-                            fontSize: 12,
-                            color: isDark ? Colors.white38 : Colors.black38,
-                          ),
-                          prefixIcon: const Icon(Icons.search, size: 16),
+                          hintStyle: TextStyle(fontSize: 12, color: textMuted),
+                          prefixIcon: Icon(Icons.search_rounded, size: 15, color: textMuted),
+                          prefixIconConstraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                           suffixIcon: _searchController.text.isNotEmpty
                               ? IconButton(
-                                  icon: const Icon(Icons.clear, size: 14),
+                                  icon: Icon(Icons.close_rounded, size: 14, color: textMuted),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(minWidth: 26, minHeight: 26),
                                   onPressed: () {
                                     _searchController.clear();
                                     _debounceTimer?.cancel();
@@ -119,31 +135,54 @@ class _BoardFilterToolbarState extends State<BoardFilterToolbar> {
                                   },
                                 )
                               : null,
-                          contentPadding: EdgeInsets.zero,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
                           filled: true,
-                          fillColor: isDark ? AppColors.cardDark : Colors.grey.shade50,
+                          fillColor: surfaceColor,
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(
-                              color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                            ),
+                            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                            borderSide: BorderSide(color: borderColor),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(
-                              color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                            ),
+                            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                            borderSide: BorderSide(color: borderColor),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                            borderSide: BorderSide(color: accentColor, width: 1.4),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+
+                    Container(width: 1, height: 16, color: borderColor),
 
                     // Quick "My Issues" Filter Chip
                     FilterChip(
-                      label: const Text('My Issues', style: TextStyle(fontSize: 11)),
-                      avatar: const Icon(Icons.person, size: 14),
+                      label: Text(
+                        'My Issues',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                          color: filter.selectedAssigneeId == 'me' ? accentColor : textSecondary,
+                        ),
+                      ),
+                      avatar: Icon(
+                        Icons.person_outline_rounded,
+                        size: 14,
+                        color: filter.selectedAssigneeId == 'me' ? accentColor : textMuted,
+                      ),
                       selected: filter.selectedAssigneeId == 'me',
+                      showCheckmark: false,
+                      selectedColor: accentSoft,
+                      backgroundColor: surface2Color,
+                      side: BorderSide(
+                        color: filter.selectedAssigneeId == 'me'
+                            ? accentColor.withValues(alpha: 0.4)
+                            : borderColor,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                      ),
                       onSelected: (selected) {
                         widget.onFilterChanged(
                           filter.copyWith(
@@ -153,25 +192,70 @@ class _BoardFilterToolbarState extends State<BoardFilterToolbar> {
                         );
                       },
                       visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
                     ),
+
+                    // Quick Assignee Avatar Filter Pills (Figma .assignee-filters)
+                    if (widget.members.isNotEmpty)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: widget.members.take(4).map((member) {
+                          final isSelected = filter.selectedAssigneeId == member.userId;
+                          final memberName = member.user?.fullName.isNotEmpty == true
+                              ? member.user!.fullName
+                              : (member.user?.email ?? member.userId);
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 3),
+                            child: Tooltip(
+                              message: 'Filter: $memberName',
+                              child: InkWell(
+                                onTap: () {
+                                  widget.onFilterChanged(
+                                    filter.copyWith(
+                                      selectedAssigneeId: isSelected ? null : member.userId,
+                                      clearAssigneeId: isSelected,
+                                    ),
+                                  );
+                                },
+                                customBorder: const CircleBorder(),
+                                child: Container(
+                                  padding: const EdgeInsets.all(1.5),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: isSelected ? accentColor : Colors.transparent,
+                                      width: 1.8,
+                                    ),
+                                  ),
+                                  child: UserAvatar(
+                                    name: memberName,
+                                    size: UserAvatarSize.xs,
+                                    showTooltip: false,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
                   ],
                 ),
 
-                // Right: Sort by Dropdown, Sort Order, Filter Expansion Toggle, Clear All
-                Row(
-                  mainAxisSize: MainAxisSize.min,
+                // Right: Sort Dropdown, Order Toggle, Filter Expansion, Clear
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     // Sort Field Dropdown
                     Container(
-                      height: 34,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      height: 32,
+                      padding: const EdgeInsets.symmetric(horizontal: 9),
                       decoration: BoxDecoration(
-                        color: isDark ? AppColors.cardDark : Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                        ),
+                        color: surface2Color,
+                        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                        border: Border.all(color: borderColor),
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<IssueSortField>(
@@ -179,10 +263,14 @@ class _BoardFilterToolbarState extends State<BoardFilterToolbar> {
                           isDense: true,
                           style: TextStyle(
                             fontSize: 12,
-                            color: isDark ? Colors.white : Colors.black87,
+                            fontWeight: FontWeight.w500,
+                            color: textPrimary,
                           ),
-                          dropdownColor: isDark ? AppColors.cardDark : Colors.white,
-                          icon: const Icon(Icons.sort, size: 16),
+                          dropdownColor: surfaceColor,
+                          icon: Padding(
+                            padding: const EdgeInsets.only(left: 4),
+                            child: Icon(Icons.sort, size: 15, color: textMuted),
+                          ),
                           items: IssueSortField.values.map((f) {
                             return DropdownMenuItem(
                               value: f,
@@ -197,85 +285,115 @@ class _BoardFilterToolbarState extends State<BoardFilterToolbar> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 4),
 
                     // Sort Order Toggle (Asc / Desc)
-                    IconButton(
-                      icon: Icon(
-                        filter.sortAscending ? Icons.arrow_upward : Icons.arrow_downward,
-                        size: 16,
+                    Container(
+                      height: 32,
+                      width: 32,
+                      decoration: BoxDecoration(
+                        color: surface2Color,
+                        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                        border: Border.all(color: borderColor),
                       ),
-                      tooltip: filter.sortAscending ? 'Ascending' : 'Descending',
-                      onPressed: () {
-                        widget.onFilterChanged(
-                          filter.copyWith(sortAscending: !filter.sortAscending),
-                        );
-                      },
-                      visualDensity: VisualDensity.compact,
+                      child: IconButton(
+                        icon: Icon(
+                          filter.sortAscending ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
+                          size: 15,
+                          color: textSecondary,
+                        ),
+                        tooltip: filter.sortAscending ? 'Ascending' : 'Descending',
+                        padding: EdgeInsets.zero,
+                        onPressed: () {
+                          widget.onFilterChanged(
+                            filter.copyWith(sortAscending: !filter.sortAscending),
+                          );
+                        },
+                      ),
                     ),
-                    const SizedBox(width: 4),
 
                     // Filter Expansion Toggle Button with Count Badge
-                    OutlinedButton.icon(
-                      onPressed: () => setState(() => _isExpanded = !_isExpanded),
-                      icon: Icon(
-                        _isExpanded ? Icons.tune : Icons.tune_outlined,
-                        size: 16,
-                        color: filter.hasActiveFilters
-                            ? AppColors.primary
-                            : (isDark ? Colors.white70 : Colors.black87),
-                      ),
-                      label: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('Filters', style: TextStyle(fontSize: 12)),
-                          if (filter.activeFilterCount > 0) ...[
-                            const SizedBox(width: 4),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                '${filter.activeFilterCount}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                    SizedBox(
+                      height: 32,
+                      child: OutlinedButton.icon(
+                        onPressed: () => setState(() => _isExpanded = !_isExpanded),
+                        icon: Icon(
+                          _isExpanded ? Icons.tune_rounded : Icons.tune_outlined,
+                          size: 14.5,
+                          color: filter.hasActiveFilters ? accentColor : textSecondary,
+                        ),
+                        label: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Filters',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: filter.hasActiveFilters ? accentColor : textPrimary,
                               ),
                             ),
+                            if (filter.activeFilterCount > 0) ...[
+                              const SizedBox(width: 5),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: accentSolid,
+                                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                                ),
+                                child: Text(
+                                  '${filter.activeFilterCount}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
-                        ],
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        side: BorderSide(
-                          color: filter.hasActiveFilters
-                              ? AppColors.primary
-                              : (isDark ? AppColors.borderDark : AppColors.borderLight),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: filter.hasActiveFilters ? accentSoft : surface2Color,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          minimumSize: const Size(0, 32),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                          ),
+                          side: BorderSide(
+                            color: filter.hasActiveFilters
+                                ? accentColor.withValues(alpha: 0.45)
+                                : borderColor,
+                          ),
                         ),
                       ),
                     ),
 
                     // Clear All Filters Button
-                    if (filter.hasActiveFilters) ...[
-                      const SizedBox(width: 6),
-                      TextButton.icon(
-                        onPressed: () {
-                          _searchController.clear();
-                          _debounceTimer?.cancel();
-                          widget.onFilterChanged(const IssueFilterState());
-                        },
-                        icon: const Icon(Icons.clear_all, size: 14),
-                        label: const Text('Clear', style: TextStyle(fontSize: 11)),
-                        style: TextButton.styleFrom(
-                          visualDensity: VisualDensity.compact,
-                          foregroundColor: AppColors.error,
+                    if (filter.hasActiveFilters)
+                      SizedBox(
+                        height: 32,
+                        child: TextButton.icon(
+                          onPressed: () {
+                            _searchController.clear();
+                            _debounceTimer?.cancel();
+                            widget.onFilterChanged(const IssueFilterState());
+                            setState(() {});
+                          },
+                          icon: Icon(Icons.clear_all_rounded, size: 15, color: errorColor),
+                          label: Text(
+                            'Clear',
+                            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: errorColor),
+                          ),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            minimumSize: const Size(0, 32),
+                            backgroundColor: AppColors.dangerSoftFor(isDark).withValues(alpha: 0.65),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                            ),
+                          ),
                         ),
                       ),
-                    ],
                   ],
                 ),
               ],
@@ -283,29 +401,47 @@ class _BoardFilterToolbarState extends State<BoardFilterToolbar> {
           ),
 
           // Collapsible Filter Chips Row: Multi-select Type, Multi-select Priority, Assignee
-          if (_isExpanded) ...[
-            const Divider(height: 1, thickness: 1),
+          if (_isExpanded)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: isDark ? AppColors.bgDark : Colors.grey.shade50,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+              decoration: BoxDecoration(
+                color: surfaceColor,
+                border: Border(top: BorderSide(color: borderSoftColor)),
+              ),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    // Type Group
-                    const Text(
+                    Text(
                       'Type:',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      style: AppTypography.eyebrow(isDark).copyWith(fontSize: 10.5, letterSpacing: 0.5),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     ...[IssueType.story, IssueType.task, IssueType.bug, IssueType.epic].map((type) {
                       final isSelected = filter.selectedTypes.contains(type);
+                      final typeColor = type.colorFor(brightness);
                       return Padding(
                         padding: const EdgeInsets.only(right: 6),
                         child: FilterChip(
-                          label: Text(type.label, style: const TextStyle(fontSize: 11)),
-                          avatar: Icon(type.icon, size: 12, color: type.color),
+                          label: Text(
+                            type.label,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w500,
+                              color: isSelected ? accentColor : textSecondary,
+                            ),
+                          ),
+                          avatar: Icon(type.icon, size: 13, color: typeColor),
                           selected: isSelected,
+                          showCheckmark: false,
+                          selectedColor: accentSoft,
+                          backgroundColor: surface2Color,
+                          side: BorderSide(
+                            color: isSelected ? accentColor.withValues(alpha: 0.4) : borderColor,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                          ),
                           onSelected: (_) {
                             final updated = Set.of(filter.selectedTypes);
                             if (isSelected) {
@@ -316,21 +452,21 @@ class _BoardFilterToolbarState extends State<BoardFilterToolbar> {
                             widget.onFilterChanged(filter.copyWith(selectedTypes: updated));
                           },
                           visualDensity: VisualDensity.compact,
-                          padding: EdgeInsets.zero,
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
                         ),
                       );
                     }),
 
                     const SizedBox(width: 10),
-                    Container(width: 1, height: 20, color: isDark ? Colors.white24 : Colors.grey.shade300),
-                    const SizedBox(width: 10),
+                    Container(width: 1, height: 18, color: borderColor),
+                    const SizedBox(width: 12),
 
-                    // Priority Group
-                    const Text(
+                    Text(
                       'Priority:',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      style: AppTypography.eyebrow(isDark).copyWith(fontSize: 10.5, letterSpacing: 0.5),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     ...[
                       IssuePriority.urgent,
                       IssuePriority.high,
@@ -339,12 +475,29 @@ class _BoardFilterToolbarState extends State<BoardFilterToolbar> {
                       IssuePriority.lowest,
                     ].map((p) {
                       final isSelected = filter.selectedPriorities.contains(p);
+                      final priorityColor = p.colorFor(brightness);
                       return Padding(
                         padding: const EdgeInsets.only(right: 6),
                         child: FilterChip(
-                          label: Text(p.label, style: const TextStyle(fontSize: 11)),
-                          avatar: Icon(p.icon, size: 12, color: p.color),
+                          label: Text(
+                            p.label,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w500,
+                              color: isSelected ? accentColor : textSecondary,
+                            ),
+                          ),
+                          avatar: Icon(p.icon, size: 13, color: priorityColor),
                           selected: isSelected,
+                          showCheckmark: false,
+                          selectedColor: accentSoft,
+                          backgroundColor: surface2Color,
+                          side: BorderSide(
+                            color: isSelected ? accentColor.withValues(alpha: 0.4) : borderColor,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                          ),
                           onSelected: (_) {
                             final updated = Set.of(filter.selectedPriorities);
                             if (isSelected) {
@@ -355,53 +508,59 @@ class _BoardFilterToolbarState extends State<BoardFilterToolbar> {
                             widget.onFilterChanged(filter.copyWith(selectedPriorities: updated));
                           },
                           visualDensity: VisualDensity.compact,
-                          padding: EdgeInsets.zero,
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
                         ),
                       );
                     }),
 
-                    // Optional Project Members Dropdown
                     if (widget.members.isNotEmpty) ...[
                       const SizedBox(width: 10),
-                      Container(width: 1, height: 20, color: isDark ? Colors.white24 : Colors.grey.shade300),
-                      const SizedBox(width: 10),
-                      const Text(
+                      Container(width: 1, height: 18, color: borderColor),
+                      const SizedBox(width: 12),
+                      Text(
                         'Assignee:',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                        style: AppTypography.eyebrow(isDark).copyWith(fontSize: 10.5, letterSpacing: 0.5),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 8),
                       PopupMenuButton<String?>(
                         tooltip: 'Select assignee',
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                           decoration: BoxDecoration(
                             color: filter.selectedAssigneeId != null && filter.selectedAssigneeId != 'me'
-                                ? AppColors.primary.withAlpha(25)
-                                : (isDark ? Colors.white12 : Colors.grey.shade200),
-                            borderRadius: BorderRadius.circular(12),
+                                ? accentSoft
+                                : surface2Color,
+                            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                            border: Border.all(
+                              color: filter.selectedAssigneeId != null && filter.selectedAssigneeId != 'me'
+                                  ? accentColor.withValues(alpha: 0.4)
+                                  : borderColor,
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                Icons.person_outline,
+                                Icons.person_outline_rounded,
                                 size: 14,
                                 color: filter.selectedAssigneeId != null && filter.selectedAssigneeId != 'me'
-                                    ? AppColors.primary
-                                    : (isDark ? Colors.white70 : Colors.black87),
+                                    ? accentColor
+                                    : textSecondary,
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 5),
                               Text(
                                 _getAssigneeLabel(filter.selectedAssigneeId),
                                 style: TextStyle(
-                                  fontSize: 11,
+                                  fontSize: 11.5,
                                   fontWeight: FontWeight.w500,
                                   color: filter.selectedAssigneeId != null && filter.selectedAssigneeId != 'me'
-                                      ? AppColors.primary
-                                      : (isDark ? Colors.white70 : Colors.black87),
+                                      ? accentColor
+                                      : textPrimary,
                                 ),
                               ),
-                              const Icon(Icons.arrow_drop_down, size: 16),
+                              const SizedBox(width: 2),
+                              Icon(Icons.keyboard_arrow_down_rounded, size: 15, color: textMuted),
                             ],
                           ),
                         ),
@@ -409,17 +568,17 @@ class _BoardFilterToolbarState extends State<BoardFilterToolbar> {
                           return [
                             const PopupMenuItem<String?>(
                               value: null,
-                              child: Text('All Assignees', style: TextStyle(fontSize: 12)),
+                              child: Text('All Assignees', style: TextStyle(fontSize: 12.5)),
                             ),
                             const PopupMenuItem<String?>(
                               value: 'unassigned',
-                              child: Text('Unassigned', style: TextStyle(fontSize: 12)),
+                              child: Text('Unassigned', style: TextStyle(fontSize: 12.5)),
                             ),
                             ...widget.members.map((m) {
                               final name = m.user?.fullName ?? m.user?.email ?? m.userId;
                               return PopupMenuItem<String?>(
                                 value: m.userId,
-                                child: Text(name, style: const TextStyle(fontSize: 12)),
+                                child: Text(name, style: const TextStyle(fontSize: 12.5)),
                               );
                             }),
                           ];
@@ -438,7 +597,6 @@ class _BoardFilterToolbarState extends State<BoardFilterToolbar> {
                 ),
               ),
             ),
-          ],
         ],
       ),
     );
