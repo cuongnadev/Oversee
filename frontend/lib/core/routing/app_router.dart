@@ -9,6 +9,7 @@ import 'package:frontend/features/auth/presentation/login_screen.dart';
 import 'package:frontend/features/auth/presentation/register_screen.dart';
 import 'package:frontend/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:frontend/features/issue/presentation/backlog_screen.dart';
+import 'package:frontend/features/issue/presentation/timeline_screen.dart';
 import 'package:frontend/features/project/presentation/create_project_screen.dart';
 import 'package:frontend/features/project/presentation/project_feature_empty_screen.dart';
 import 'package:frontend/features/project/presentation/project_list_screen.dart';
@@ -362,21 +363,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               final projectId = state.pathParameters['projectId']!;
               return _innerPage(
                 state,
-                ProjectFeatureEmptyScreen(
-                  workspaceId: workspaceId,
-                  projectId: projectId,
-                  routeKey: 'timeline',
-                  sectionEyebrow: 'Planning',
-                  title: 'Timeline',
-                  subtitle: 'Gantt-style schedule of dependencies, sprint windows, and delivery spans.',
-                  icon: Icons.timeline_outlined,
-                  emptyTitle: 'Timeline is Empty',
-                  emptyDescription:
-                      'Scheduled epics and sprint durations will render along a horizontal timeline here.',
-                  primaryActionLabel: 'Open Sprint Planning',
-                  primaryActionIcon: Icons.timer_outlined,
-                  primaryActionPath: AppRoutes.projectSprintPlanningPath(workspaceId, projectId),
-                ),
+                TimelineScreen(workspaceId: workspaceId, projectId: projectId),
               );
             },
           ),
