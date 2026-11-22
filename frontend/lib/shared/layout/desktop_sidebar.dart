@@ -7,6 +7,8 @@ import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/core/theme/app_typography.dart';
 import 'package:frontend/core/theme/theme_provider.dart';
 import 'package:frontend/features/auth/application/auth_provider.dart';
+import 'package:frontend/features/project/application/project_list_provider.dart';
+import 'package:frontend/features/project/domain/project_model.dart';
 import 'package:frontend/features/project/presentation/widgets/create_project_dialog.dart';
 import 'package:frontend/features/workspace/application/workspace_provider.dart';
 import 'package:frontend/shared/layout/nav_item.dart';
@@ -39,33 +41,16 @@ class DesktopSidebar extends ConsumerStatefulWidget {
 }
 
 class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
-  static const _workspaceKeys = {'overview', 'dashboard'};
-  static const _planningKeys = {'board', 'backlog', 'sprints', 'planning'};
-  static const _configKeys = {'team', 'settings'};
-
   final Set<String> _closedGroups = <String>{};
 
-  String _buildRoute(String keyName) {
-    switch (keyName) {
-      case 'overview':
-        return AppRoutes.projectOverviewPath(widget.workspaceId, widget.projectId);
-      case 'backlog':
-        return AppRoutes.projectBacklogPath(widget.workspaceId, widget.projectId);
-      case 'board':
-        return AppRoutes.projectBoardPath(widget.workspaceId, widget.projectId);
-      case 'sprints':
-        return AppRoutes.projectSprintsPath(widget.workspaceId, widget.projectId);
-      case 'planning':
-        return AppRoutes.projectSprintPlanningPath(widget.workspaceId, widget.projectId);
-      case 'dashboard':
-        return AppRoutes.projectDashboardPath(widget.workspaceId, widget.projectId);
-      case 'team':
-        return AppRoutes.workspaceSettingsPath(widget.workspaceId);
-      case 'settings':
-        return AppRoutes.projectSettingsPath(widget.workspaceId, widget.projectId);
-      default:
-        return AppRoutes.projectOverviewPath(widget.workspaceId, widget.projectId);
-    }
+  String _buildRoute(String keyName) =>
+      NavItem.routeFor(keyName, widget.workspaceId, widget.projectId);
+
+  bool _isItemSelected(String keyName) {
+    if (widget.currentRoute == keyName) return true;
+    if (keyName == 'overview' && widget.currentRoute == 'dashboard') return true;
+    if (keyName == 'sprints' && widget.currentRoute == 'planning') return true;
+    return false;
   }
 
   void _toggleGroup(String title) {
@@ -82,6 +67,7 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
     BuildContext context, {
     required String projectLabel,
     required String workspaceLabel,
+    required List<ProjectModel> workspaceProjects,
   }) {
     AppAdaptiveDialog.show<void>(
       context,
@@ -92,9 +78,15 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
         projectId: widget.projectId,
         projectLabel: projectLabel,
         workspaceLabel: workspaceLabel,
+        projects: workspaceProjects,
         onCreateProject: () {
           Navigator.of(context).pop();
-          CreateProjectDialog.show(context, workspaceId: widget.workspaceId);
+          final router = GoRouter.maybeOf(context);
+          if (router != null) {
+            router.go(AppRoutes.workspaceProjectCreatePath(widget.workspaceId));
+          } else {
+            CreateProjectDialog.show(context, workspaceId: widget.workspaceId);
+          }
         },
       ),
     );
@@ -110,7 +102,14 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
           projectId: widget.projectId,
           buildRoute: _buildRoute,
           onToggleTheme: () => ref.read(themeModeProvider.notifier).toggleTheme(),
-          onCreateProject: () => CreateProjectDialog.show(context, workspaceId: widget.workspaceId),
+          onCreateProject: () {
+            final router = GoRouter.maybeOf(context);
+            if (router != null) {
+              router.go(AppRoutes.workspaceProjectCreatePath(widget.workspaceId));
+            } else {
+              CreateProjectDialog.show(context, workspaceId: widget.workspaceId);
+            }
+          },
         );
       },
     );
@@ -121,6 +120,9 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
     final bool isExpanded = ref.watch(sidebarExpandedProvider);
     final authState = ref.watch(authNotifierProvider);
     final workspaceState = ref.watch(workspaceNotifierProvider);
+    final List<ProjectModel> workspaceProjects = authState.isAuthenticated
+        ? ref.watch(projectListNotifierProvider(widget.workspaceId)).projects
+        : const [];
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     final Color bgColor = AppColors.sidebarFor(isDark);
@@ -144,27 +146,18 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
     final String workspaceLabel = activeWorkspace?.name ?? 'Engineering workspace';
     final String userRoleLabel = activeWorkspace?.userRole.label ?? userEmail;
 
+    final ProjectModel? matchedProject =
+        workspaceProjects.where((p) => p.id == widget.projectId).firstOrNull;
     final String projectLabel =
         (widget.projectName != null && widget.projectName!.trim().isNotEmpty)
             ? widget.projectName!.trim()
-            : widget.projectId;
+            : (matchedProject?.name.trim().isNotEmpty == true
+                ? matchedProject!.name.trim()
+                : widget.projectId);
     final String projectInitial =
         projectLabel.trim().isNotEmpty ? projectLabel.trim()[0].toUpperCase() : 'P';
 
-    final groups = <(String, List<NavItem>)>[
-      (
-        'WORKSPACE',
-        NavItem.projectNavItems.where((i) => _workspaceKeys.contains(i.keyName)).toList(),
-      ),
-      (
-        'PLANNING',
-        NavItem.projectNavItems.where((i) => _planningKeys.contains(i.keyName)).toList(),
-      ),
-      (
-        'CONFIGURATION',
-        NavItem.projectNavItems.where((i) => _configKeys.contains(i.keyName)).toList(),
-      ),
-    ];
+    const groups = NavItem.navGroups;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
@@ -269,6 +262,7 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                     context,
                     projectLabel: projectLabel,
                     workspaceLabel: workspaceLabel,
+                    workspaceProjects: workspaceProjects,
                   ),
                 ),
               ),
@@ -300,7 +294,7 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                         for (final item in items)
                           _SidebarNavItem(
                             item: item,
-                            isSelected: widget.currentRoute == item.keyName,
+                            isSelected: _isItemSelected(item.keyName),
                             isExpanded: isExpanded,
                             isDark: isDark,
                             onTap: () {
@@ -315,7 +309,7 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                 ),
               ),
 
-              // 5. Bottom utility section & user footer (Figma .sidebar-bottom)
+              // 5. Bottom utility section & user footer (Figma .sidebar-bottom 1:273)
               Container(
                 padding: const EdgeInsets.fromLTRB(10.0, 8.0, 10.0, 0.0),
                 decoration: BoxDecoration(
@@ -326,23 +320,21 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _SidebarUtilityItem(
-                      icon: FigmaIconType.bookOpen,
-                      label: 'All Projects',
-                      tooltip: 'All Projects',
-                      isExpanded: isExpanded,
-                      isDark: isDark,
-                      onTap: () => context.go(AppRoutes.workspaceDetailPath(widget.workspaceId)),
-                    ),
-                    _SidebarUtilityItem(
-                      icon: FigmaIconType.terminal,
-                      label: 'All Workspaces',
-                      tooltip: 'All Workspaces',
-                      badgeText: 'WS',
-                      isExpanded: isExpanded,
-                      isDark: isDark,
-                      onTap: () => context.go(AppRoutes.workspaces),
-                    ),
+                    for (final utilItem in NavItem.utilityRouteItems)
+                      _SidebarUtilityItem(
+                        icon: utilItem.figmaIcon,
+                        label: utilItem.label,
+                        tooltip: utilItem.label,
+                        badgeText: utilItem.badgeText,
+                        isSelected: widget.currentRoute == utilItem.keyName,
+                        isExpanded: isExpanded,
+                        isDark: isDark,
+                        onTap: () {
+                          if (widget.currentRoute != utilItem.keyName) {
+                            context.go(_buildRoute(utilItem.keyName));
+                          }
+                        },
+                      ),
                     _SidebarUtilityItem(
                       icon: isExpanded
                           ? FigmaIconType.panelLeftClose
@@ -423,6 +415,9 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                                           AppRoutes.workspaceDetailPath(widget.workspaceId),
                                         );
                                         break;
+                                      case 'workspaces':
+                                        context.go(AppRoutes.workspaces);
+                                        break;
                                       case 'ws-settings':
                                         context.go(
                                           AppRoutes.workspaceSettingsPath(widget.workspaceId),
@@ -450,6 +445,10 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                                     const PopupMenuItem(
                                       value: 'projects',
                                       child: Text('Workspace Projects'),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'workspaces',
+                                      child: Text('All Workspaces'),
                                     ),
                                     const PopupMenuItem(
                                       value: 'ws-settings',
@@ -869,7 +868,32 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (widget.item.shortcut != null)
+                          if (widget.item.badgeText != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 1.0),
+                              decoration: BoxDecoration(
+                                color: widget.item.isAccentBadge
+                                    ? Colors.transparent
+                                    : AppColors.surface3For(widget.isDark),
+                                borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                                border: widget.item.isAccentBadge
+                                    ? Border.all(
+                                        color: accentColor.withValues(alpha: 0.24),
+                                        width: 0.8,
+                                      )
+                                    : null,
+                              ),
+                              child: Text(
+                                widget.item.badgeText!,
+                                style: TextStyle(
+                                  fontSize: widget.item.isAccentBadge ? 7.5 : 9.0,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: widget.item.isAccentBadge ? 0.6 : 0.0,
+                                  color: widget.item.isAccentBadge ? accentColor : textSecondary,
+                                ),
+                              ),
+                            )
+                          else if (widget.item.shortcut != null)
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
                               child: Text(
@@ -917,6 +941,7 @@ class _SidebarUtilityItem extends StatefulWidget {
   final String tooltip;
   final String? shortcut;
   final String? badgeText;
+  final bool isSelected;
   final bool isExpanded;
   final bool isDark;
   final VoidCallback onTap;
@@ -927,6 +952,7 @@ class _SidebarUtilityItem extends StatefulWidget {
     required this.tooltip,
     this.shortcut,
     this.badgeText,
+    this.isSelected = false,
     required this.isExpanded,
     required this.isDark,
     required this.onTap,
@@ -941,89 +967,119 @@ class _SidebarUtilityItemState extends State<_SidebarUtilityItem> {
 
   @override
   Widget build(BuildContext context) {
+    final accentColor = AppColors.accentFor(widget.isDark);
+    final accentSoft = AppColors.accentSoftFor(widget.isDark);
     final textPrimary = AppColors.textPrimaryFor(widget.isDark);
     final textSecondary = AppColors.textSecondaryFor(widget.isDark);
     final textMuted = AppColors.textMutedFor(widget.isDark);
 
+    final bgColor = widget.isSelected
+        ? accentSoft
+        : (_isHovered ? AppColors.hoverFor(widget.isDark) : Colors.transparent);
+    final iconColor = widget.isSelected
+        ? accentColor
+        : (_isHovered ? textPrimary : textMuted);
+    final labelColor = widget.isSelected
+        ? textPrimary
+        : (_isHovered ? textPrimary : textSecondary);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 2.0),
-      child: Tooltip(
-        message: widget.tooltip,
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          onEnter: (_) => setState(() => _isHovered = true),
-          onExit: (_) => setState(() => _isHovered = false),
-          child: GestureDetector(
-            onTap: widget.onTap,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              height: widget.isExpanded ? 28.0 : 35.0,
-              padding: EdgeInsets.symmetric(horizontal: widget.isExpanded ? 10.0 : 0.0),
-              decoration: BoxDecoration(
-                color: _isHovered ? AppColors.hoverFor(widget.isDark) : Colors.transparent,
-                borderRadius: BorderRadius.circular(AppColors.radiusMd),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          if (widget.isSelected)
+            Positioned(
+              left: -10.0,
+              top: 6.0,
+              bottom: 6.0,
+              child: Container(
+                width: 2.0,
+                decoration: BoxDecoration(
+                  color: accentColor,
+                  borderRadius: BorderRadius.circular(99.0),
+                ),
               ),
-              child: widget.isExpanded
-                  ? Row(
-                      children: [
-                        FigmaSidebarIcon(
-                          widget.icon,
-                          size: 15.0,
-                          color: _isHovered ? textPrimary : textMuted,
-                        ),
-                        const SizedBox(width: 10.0),
-                        Expanded(
-                          child: Text(
-                            widget.label,
-                            style: TextStyle(
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.w500,
-                              color: _isHovered ? textPrimary : textSecondary,
+            ),
+          Tooltip(
+            message: widget.tooltip,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              onEnter: (_) => setState(() => _isHovered = true),
+              onExit: (_) => setState(() => _isHovered = false),
+              child: GestureDetector(
+                onTap: widget.onTap,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 160),
+                  height: widget.isExpanded ? 28.0 : 35.0,
+                  padding: EdgeInsets.symmetric(horizontal: widget.isExpanded ? 10.0 : 0.0),
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                  ),
+                  child: widget.isExpanded
+                      ? Row(
+                          children: [
+                            FigmaSidebarIcon(
+                              widget.icon,
+                              size: 15.0,
+                              color: iconColor,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (widget.badgeText != null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 1.0),
-                            decoration: BoxDecoration(
-                              color: AppColors.surface3For(widget.isDark),
-                              borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                            ),
-                            child: Text(
-                              widget.badgeText!,
-                              style: TextStyle(
-                                fontSize: 9.0,
-                                fontWeight: FontWeight.w500,
-                                color: textSecondary,
+                            const SizedBox(width: 10.0),
+                            Expanded(
+                              child: Text(
+                                widget.label,
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w500,
+                                  color: labelColor,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                          )
-                        else if (widget.shortcut != null)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
-                            child: Text(
-                              widget.shortcut!,
-                              style: TextStyle(
-                                fontSize: 8.0,
-                                fontWeight: FontWeight.w500,
-                                color: textMuted,
+                            if (widget.badgeText != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 1.0),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface3For(widget.isDark),
+                                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                                ),
+                                child: Text(
+                                  widget.badgeText!,
+                                  style: TextStyle(
+                                    fontSize: 9.0,
+                                    fontWeight: FontWeight.w500,
+                                    color: textSecondary,
+                                  ),
+                                ),
+                              )
+                            else if (widget.shortcut != null)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 3.0, vertical: 1.0),
+                                child: Text(
+                                  widget.shortcut!,
+                                  style: TextStyle(
+                                    fontSize: 8.0,
+                                    fontWeight: FontWeight.w500,
+                                    color: textMuted,
+                                  ),
+                                ),
                               ),
-                            ),
+                          ],
+                        )
+                      : Center(
+                          child: FigmaSidebarIcon(
+                            widget.icon,
+                            size: 15.0,
+                            color: iconColor,
                           ),
-                      ],
-                    )
-                  : Center(
-                      child: FigmaSidebarIcon(
-                        widget.icon,
-                        size: 15.0,
-                        color: _isHovered ? textPrimary : textMuted,
-                      ),
-                    ),
+                        ),
+                ),
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -1035,6 +1091,7 @@ class _SidebarProjectPickerModal extends StatefulWidget {
   final String projectId;
   final String projectLabel;
   final String workspaceLabel;
+  final List<ProjectModel> projects;
   final VoidCallback onCreateProject;
 
   const _SidebarProjectPickerModal({
@@ -1042,6 +1099,7 @@ class _SidebarProjectPickerModal extends StatefulWidget {
     required this.projectId,
     required this.projectLabel,
     required this.workspaceLabel,
+    required this.projects,
     required this.onCreateProject,
   });
 
@@ -1062,12 +1120,18 @@ class _SidebarProjectPickerModalState extends State<_SidebarProjectPickerModal> 
     final textSecondary = AppColors.textSecondaryFor(isDark);
     final textMuted = AppColors.textMutedFor(isDark);
 
+    final query = _search.trim().toLowerCase();
+    final filteredProjects = widget.projects.where((p) {
+      if (query.isEmpty) return true;
+      return p.name.toLowerCase().contains(query) || p.key.toLowerCase().contains(query);
+    }).toList();
+
     final initial = widget.projectLabel.trim().isNotEmpty
         ? widget.projectLabel.trim()[0].toUpperCase()
         : 'P';
 
-    final showCurrent =
-        _search.trim().isEmpty || widget.projectLabel.toLowerCase().contains(_search.toLowerCase());
+    final showFallbackCurrent = widget.projects.isEmpty &&
+        (query.isEmpty || widget.projectLabel.toLowerCase().contains(query));
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -1089,7 +1153,100 @@ class _SidebarProjectPickerModalState extends State<_SidebarProjectPickerModal> 
           ),
         ),
         const SizedBox(height: 10.0),
-        if (showCurrent)
+        if (filteredProjects.isNotEmpty)
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 220.0),
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: filteredProjects.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 4.0),
+              itemBuilder: (ctx, index) {
+                final project = filteredProjects[index];
+                final isCurrent = project.id == widget.projectId;
+                final projInit = project.name.trim().isNotEmpty
+                    ? project.name.trim()[0].toUpperCase()
+                    : (project.key.isNotEmpty ? project.key[0].toUpperCase() : 'P');
+
+                return InkWell(
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                  hoverColor: AppColors.hoverFor(isDark),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    if (!isCurrent) {
+                      context.go(AppRoutes.projectOverviewPath(widget.workspaceId, project.id));
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                    decoration: BoxDecoration(
+                      color: isCurrent ? accentSoft : Colors.transparent,
+                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 24.0,
+                          height: 24.0,
+                          decoration: BoxDecoration(
+                            color: isCurrent ? AppColors.surfaceFor(isDark) : accentSoft,
+                            borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                            border: Border.all(color: accentColor.withValues(alpha: 0.2)),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            projInit,
+                            style: TextStyle(
+                              fontSize: 10.0,
+                              fontWeight: FontWeight.w600,
+                              color: accentColor,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 9.0),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                project.name,
+                                style: TextStyle(
+                                  fontSize: 12.0,
+                                  fontWeight: isCurrent ? FontWeight.w600 : FontWeight.w500,
+                                  color: textPrimary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                project.key,
+                                style: AppTypography.mono(isDark, fontSize: 9.5, color: textMuted),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (isCurrent)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceFor(isDark),
+                              borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                            ),
+                            child: Text(
+                              'Current',
+                              style: TextStyle(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w600,
+                                color: accentColor,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          )
+        else if (showFallbackCurrent)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
             decoration: BoxDecoration(
@@ -1132,6 +1289,16 @@ class _SidebarProjectPickerModalState extends State<_SidebarProjectPickerModal> 
                   ),
                 ),
               ],
+            ),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12.0),
+            child: Center(
+              child: Text(
+                'No matching projects.',
+                style: TextStyle(fontSize: 12.0, color: textMuted),
+              ),
             ),
           ),
         Padding(
@@ -1268,7 +1435,7 @@ class _SidebarCommandPaletteDialogState extends State<_SidebarCommandPaletteDial
           widget.onToggleTheme();
         },
       ),
-      for (final item in NavItem.projectNavItems)
+      for (final item in [...NavItem.projectNavItems, ...NavItem.utilityRouteItems])
         (
           'Pages',
           'Open ${item.label}',

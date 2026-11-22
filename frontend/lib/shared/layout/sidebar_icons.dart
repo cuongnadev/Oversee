@@ -6,10 +6,18 @@ enum FigmaIconType {
   layers3,
   layoutDashboard,
   inbox,
+  listChecks,
   folderKanban,
   timer,
+  flag,
+  gitBranch,
+  calendar,
   workflow,
+  fileText,
+  barChart,
+  sparkles,
   users,
+  bell,
   settings2,
   search,
   chevronsUpDown,
@@ -283,6 +291,124 @@ class _FigmaSidebarIconPainter extends CustomPainter {
       case FigmaIconType.plus:
         canvas.drawLine(const Offset(12, 5), const Offset(12, 19), paint);
         canvas.drawLine(const Offset(5, 12), const Offset(19, 12), paint);
+        break;
+
+      case FigmaIconType.listChecks:
+        // Checkmark 1
+        final c1 = Path()
+          ..moveTo(3, 6.5)
+          ..lineTo(4.8, 8.3)
+          ..lineTo(8, 5);
+        canvas.drawPath(c1, paint);
+        canvas.drawLine(const Offset(11.5, 6.5), const Offset(21, 6.5), paint);
+        // Checkmark 2
+        final c2 = Path()
+          ..moveTo(3, 12.5)
+          ..lineTo(4.8, 14.3)
+          ..lineTo(8, 11);
+        canvas.drawPath(c2, paint);
+        canvas.drawLine(const Offset(11.5, 12.5), const Offset(21, 12.5), paint);
+        // Line 3
+        canvas.drawLine(const Offset(3, 18.5), const Offset(7.5, 18.5), paint);
+        canvas.drawLine(const Offset(11.5, 18.5), const Offset(21, 18.5), paint);
+        break;
+
+      case FigmaIconType.flag:
+        canvas.drawLine(const Offset(4.5, 21), const Offset(4.5, 3.5), paint);
+        final flagPath = Path()
+          ..moveTo(4.5, 14.5)
+          ..quadraticBezierTo(8.5, 13, 12, 14.5)
+          ..quadraticBezierTo(15.5, 16, 19.5, 14.5)
+          ..lineTo(19.5, 4.5)
+          ..quadraticBezierTo(15.5, 6, 12, 4.5)
+          ..quadraticBezierTo(8.5, 3, 4.5, 4.5);
+        canvas.drawPath(flagPath, paint);
+        break;
+
+      case FigmaIconType.gitBranch:
+        canvas.drawLine(const Offset(6.5, 3.5), const Offset(6.5, 15.5), paint);
+        canvas.drawCircle(const Offset(17.5, 6.5), 2.8, paint);
+        canvas.drawCircle(const Offset(6.5, 18.2), 2.8, paint);
+        final branch = Path()
+          ..moveTo(17.5, 9.3)
+          ..quadraticBezierTo(17.5, 16.5, 9.3, 18.0);
+        canvas.drawPath(branch, paint);
+        break;
+
+      case FigmaIconType.calendar:
+        canvas.drawRRect(RRect.fromLTRBR(3, 5, 21, 21, const Radius.circular(2.5)), paint);
+        canvas.drawLine(const Offset(8, 2.5), const Offset(8, 6.5), paint);
+        canvas.drawLine(const Offset(16, 2.5), const Offset(16, 6.5), paint);
+        canvas.drawLine(const Offset(3, 10), const Offset(21, 10), paint);
+        canvas.drawCircle(const Offset(8, 14.5), 0.9, fillPaint);
+        canvas.drawCircle(const Offset(12, 14.5), 0.9, fillPaint);
+        canvas.drawCircle(const Offset(16, 14.5), 0.9, fillPaint);
+        break;
+
+      case FigmaIconType.fileText:
+        final doc = Path()
+          ..moveTo(14.5, 2.5)
+          ..lineTo(6, 2.5)
+          ..quadraticBezierTo(4.5, 2.5, 4.5, 4)
+          ..lineTo(4.5, 20)
+          ..quadraticBezierTo(4.5, 21.5, 6, 21.5)
+          ..lineTo(18, 21.5)
+          ..quadraticBezierTo(19.5, 21.5, 19.5, 20)
+          ..lineTo(19.5, 7.5)
+          ..close();
+        canvas.drawPath(doc, paint);
+        final fold = Path()
+          ..moveTo(14.5, 2.5)
+          ..lineTo(14.5, 7.5)
+          ..lineTo(19.5, 7.5);
+        canvas.drawPath(fold, paint);
+        canvas.drawLine(const Offset(8.5, 12.5), const Offset(15.5, 12.5), paint);
+        canvas.drawLine(const Offset(8.5, 16.5), const Offset(15.5, 16.5), paint);
+        break;
+
+      case FigmaIconType.barChart:
+        canvas.drawLine(const Offset(4.5, 20), const Offset(4.5, 14), paint);
+        canvas.drawLine(const Offset(9.5, 20), const Offset(9.5, 11), paint);
+        canvas.drawLine(const Offset(14.5, 20), const Offset(14.5, 13), paint);
+        canvas.drawLine(const Offset(19.5, 20), const Offset(19.5, 8.5), paint);
+        final trend = Path()
+          ..moveTo(4, 10.5)
+          ..lineTo(9.5, 7)
+          ..lineTo(14, 9.5)
+          ..lineTo(19.5, 4.5);
+        canvas.drawPath(trend, paint);
+        break;
+
+      case FigmaIconType.sparkles:
+        final mainStar = Path()
+          ..moveTo(11, 3)
+          ..quadraticBezierTo(11, 10.5, 18.5, 11)
+          ..quadraticBezierTo(11, 11.5, 11, 19)
+          ..quadraticBezierTo(11, 11.5, 3.5, 11)
+          ..quadraticBezierTo(11, 10.5, 11, 3)
+          ..close();
+        canvas.drawPath(mainStar, paint);
+        canvas.drawLine(const Offset(19, 16), const Offset(19, 20), paint);
+        canvas.drawLine(const Offset(17, 18), const Offset(21, 18), paint);
+        canvas.drawLine(const Offset(18.5, 3.5), const Offset(18.5, 6.5), paint);
+        canvas.drawLine(const Offset(17, 5), const Offset(20, 5), paint);
+        break;
+
+      case FigmaIconType.bell:
+        final bellBody = Path()
+          ..moveTo(6, 9.5)
+          ..quadraticBezierTo(6, 4, 12, 4)
+          ..quadraticBezierTo(18, 4, 18, 9.5)
+          ..lineTo(18, 14.5)
+          ..quadraticBezierTo(18, 16.5, 20, 17.5)
+          ..lineTo(4, 17.5)
+          ..quadraticBezierTo(6, 16.5, 6, 14.5)
+          ..close();
+        canvas.drawPath(bellBody, paint);
+        final clapper = Path()
+          ..moveTo(10, 20)
+          ..quadraticBezierTo(12, 21.8, 14, 20);
+        canvas.drawPath(clapper, paint);
         break;
     }
 

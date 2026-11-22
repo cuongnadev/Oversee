@@ -28,7 +28,12 @@ class ProjectListState extends Equatable {
   List<ProjectModel> get filteredProjects {
     if (searchQuery.trim().isEmpty) return projects;
     final q = searchQuery.trim().toLowerCase();
-    return projects.where((p) => p.name.toLowerCase().contains(q) || p.key.toLowerCase().contains(q)).toList();
+    return projects
+        .where((p) =>
+            p.name.toLowerCase().contains(q) ||
+            p.key.toLowerCase().contains(q) ||
+            (p.description?.toLowerCase().contains(q) ?? false))
+        .toList();
   }
 
   ProjectListState copyWith({
