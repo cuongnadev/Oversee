@@ -115,7 +115,7 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
     return ProjectScreenScaffold(
       workspaceId: widget.workspaceId,
       projectId: widget.projectId,
-      currentRoute: 'sprints',
+      currentRoute: 'planning',
       title: 'Sprint Planning',
       body: Column(
         children: [

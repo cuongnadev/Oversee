@@ -3,8 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/shared/layout/nav_item.dart';
+import 'package:frontend/shared/layout/sidebar_icons.dart';
 
-/// Navigation rail for tablet screens (600px - 1024px) aligned with Figma collapsed sidebar.
+/// Navigation rail for tablet screens (600px - 1024px) matching Figma collapsed `.sidebar.collapsed` (64px).
 class TabletNavRail extends StatelessWidget {
   final String workspaceId;
   final String projectId;
@@ -27,8 +28,12 @@ class TabletNavRail extends StatelessWidget {
         return AppRoutes.projectBoardPath(workspaceId, projectId);
       case 'sprints':
         return AppRoutes.projectSprintsPath(workspaceId, projectId);
+      case 'planning':
+        return AppRoutes.projectSprintPlanningPath(workspaceId, projectId);
       case 'dashboard':
         return AppRoutes.projectDashboardPath(workspaceId, projectId);
+      case 'team':
+        return AppRoutes.workspaceSettingsPath(workspaceId);
       case 'settings':
         return AppRoutes.projectSettingsPath(workspaceId, projectId);
       default:
@@ -57,11 +62,16 @@ class TabletNavRail extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Top brand mark (Figma collapsed .sidebar-brand)
+          // Top brand mark (Figma collapsed .sidebar-brand: height 64px)
           SizedBox(
-            height: 60.0,
+            height: 64.0,
             child: Center(
-              child: Icon(Icons.layers_rounded, color: accentColor, size: 19.0),
+              child: FigmaSidebarIcon(
+                FigmaIconType.layers3,
+                size: 19.0,
+                color: accentColor,
+                strokeWidth: 1.75,
+              ),
             ),
           ),
 
@@ -86,7 +96,7 @@ class TabletNavRail extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: accentSoftColor,
                       borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                      border: Border.all(color: accentColor.withValues(alpha: 0.2)),
+                      border: Border.all(color: accentColor.withValues(alpha: 0.18)),
                     ),
                     alignment: Alignment.center,
                     child: Text(
@@ -119,7 +129,7 @@ class TabletNavRail extends StatelessWidget {
                       }
                     },
                   ),
-                  const SizedBox(height: 4.0),
+                  const SizedBox(height: 2.0),
                 ],
               ],
             ),
@@ -133,14 +143,22 @@ class TabletNavRail extends StatelessWidget {
                 top: BorderSide(color: AppColors.borderSoftFor(isDark), width: 1.0),
               ),
             ),
-            child: IconButton(
-              tooltip: 'All Workspaces',
-              icon: Icon(
-                Icons.workspaces_outlined,
-                size: 18.0,
-                color: AppColors.textMutedFor(isDark),
+            child: Tooltip(
+              message: 'All Workspaces',
+              child: InkWell(
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                onTap: () => context.go(AppRoutes.workspaces),
+                child: SizedBox(
+                  height: 35.0,
+                  child: Center(
+                    child: FigmaSidebarIcon(
+                      FigmaIconType.terminal,
+                      size: 16.0,
+                      color: AppColors.textMutedFor(isDark),
+                    ),
+                  ),
+                ),
               ),
-              onPressed: () => context.go(AppRoutes.workspaces),
             ),
           ),
         ],
@@ -184,7 +202,9 @@ class _TabletRailItemState extends State<_TabletRailItem> {
         : (_isHovered ? textPrimary : textMuted);
 
     return Tooltip(
-      message: widget.item.label,
+      message: widget.item.shortcut != null
+          ? '${widget.item.label} · ${widget.item.shortcut}'
+          : widget.item.label,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -208,16 +228,16 @@ class _TabletRailItemState extends State<_TabletRailItem> {
             child: GestureDetector(
               onTap: widget.onTap,
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 140),
-                height: 38.0,
+                duration: const Duration(milliseconds: 160),
+                height: 35.0,
                 decoration: BoxDecoration(
                   color: bgColor,
                   borderRadius: BorderRadius.circular(AppColors.radiusMd),
                 ),
                 alignment: Alignment.center,
-                child: Icon(
-                  widget.isSelected ? widget.item.selectedIcon : widget.item.icon,
-                  size: 17.5,
+                child: FigmaSidebarIcon(
+                  widget.item.figmaIcon,
+                  size: 16.0,
                   color: iconColor,
                 ),
               ),
