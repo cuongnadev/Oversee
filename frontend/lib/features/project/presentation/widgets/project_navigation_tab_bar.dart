@@ -48,6 +48,27 @@ class ProjectNavigationTabBar extends StatelessWidget {
         path: AppRoutes.projectBacklogPath(workspaceId, projectId),
       ),
       _TabItem(
+        id: 'issues',
+        label: 'Issues',
+        icon: Icons.table_rows_outlined,
+        activeIcon: Icons.table_rows_rounded,
+        path: AppRoutes.projectIssuesPath(workspaceId, projectId),
+      ),
+      _TabItem(
+        id: 'timeline',
+        label: 'Timeline',
+        icon: Icons.timeline_outlined,
+        activeIcon: Icons.timeline_rounded,
+        path: AppRoutes.projectTimelinePath(workspaceId, projectId),
+      ),
+      _TabItem(
+        id: 'calendar',
+        label: 'Calendar',
+        icon: Icons.calendar_today_outlined,
+        activeIcon: Icons.calendar_today_rounded,
+        path: AppRoutes.projectCalendarPath(workspaceId, projectId),
+      ),
+      _TabItem(
         id: 'sprints',
         label: 'Sprint Planning',
         icon: Icons.timer_outlined,

@@ -70,6 +70,14 @@ class NavItem {
       shortcut: 'G L',
     ),
     NavItem(
+      keyName: 'issues',
+      label: 'Issues',
+      icon: Icons.table_rows_outlined,
+      selectedIcon: Icons.table_rows_rounded,
+      figmaIcon: FigmaIconType.listChecks,
+      shortcut: 'G I',
+    ),
+    NavItem(
       keyName: 'sprints',
       label: 'Sprints',
       icon: Icons.timer_outlined,
@@ -232,6 +240,8 @@ class NavItem {
         return AppRoutes.projectBoardPath(workspaceId, projectId);
       case 'backlog':
         return AppRoutes.projectBacklogPath(workspaceId, projectId);
+      case 'issues':
+        return AppRoutes.projectIssuesPath(workspaceId, projectId);
       case 'sprints':
         return AppRoutes.projectSprintsPath(workspaceId, projectId);
       case 'planning':
