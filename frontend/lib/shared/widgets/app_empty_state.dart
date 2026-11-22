@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/shared/widgets/app_buttons.dart';
 
-/// Reusable empty state view with illustration icon, title, description, and action button.
+/// Reusable empty state view aligned with Figma .empty-state styling.
 class AppEmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -16,7 +16,7 @@ class AppEmptyState extends StatelessWidget {
     required this.title,
     this.description,
     this.action,
-    this.iconSize = 56.0,
+    this.iconSize = 36.0,
   });
 
   /// Factory for empty projects list in a workspace.
@@ -130,55 +130,52 @@ class AppEmptyState extends StatelessWidget {
     return Center(
       child: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(20.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 32.0),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420.0),
+            constraints: const BoxConstraints(maxWidth: 380.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Container(
-                  width: iconSize * 1.6,
-                  height: iconSize * 1.6,
+                  padding: const EdgeInsets.all(14.0),
                   decoration: BoxDecoration(
-                    color: (isDark ? AppColors.surfaceDark : const Color(0xFFF1F5F9)),
-                    shape: BoxShape.circle,
+                    color: AppColors.surface2For(isDark),
+                    borderRadius: BorderRadius.circular(AppColors.radiusXl),
                     border: Border.all(
-                      color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                      color: AppColors.borderFor(isDark),
                       width: 1.0,
                     ),
                   ),
-                  child: Center(
-                    child: Icon(
-                      icon,
-                      size: iconSize,
-                      color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                    ),
+                  child: Icon(
+                    icon,
+                    size: iconSize,
+                    color: AppColors.textMutedFor(isDark),
                   ),
                 ),
-                const SizedBox(height: 20.0),
+                const SizedBox(height: 16.0),
                 Text(
                   title,
                   textAlign: TextAlign.center,
                   style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16.0,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimaryFor(isDark),
                   ),
                 ),
                 if (description != null) ...[
-                  const SizedBox(height: 8.0),
+                  const SizedBox(height: 6.0),
                   Text(
                     description!,
                     textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                      height: 1.4,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondaryFor(isDark),
+                      height: 1.5,
                     ),
                   ),
                 ],
                 if (action != null) ...[
-                  const SizedBox(height: 20.0),
+                  const SizedBox(height: 18.0),
                   action!,
                 ],
               ],

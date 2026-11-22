@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 
-/// Base button config and styling constants.
+/// Base button config and styling constants aligned with Figma .btn tokens.
 abstract class _AppButtonBase extends StatelessWidget {
   final String label;
   final VoidCallback? onPressed;
@@ -19,34 +19,34 @@ abstract class _AppButtonBase extends StatelessWidget {
     required this.onPressed,
     this.isLoading = false,
     this.isFullWidth = false,
-    this.height = 44.0,
+    this.height = 38.0,
     this.icon,
     this.leadingIcon,
     this.trailingIcon,
-    this.borderRadius = 8.0,
+    this.borderRadius = AppColors.radiusMd,
   });
 
   Widget _buildContent(BuildContext context, Color contentColor) {
     if (isLoading) {
       return SizedBox(
-        width: 20.0,
-        height: 20.0,
+        width: 18.0,
+        height: 18.0,
         child: CircularProgressIndicator(
-          strokeWidth: 2.2,
+          strokeWidth: 2.0,
           valueColor: AlwaysStoppedAnimation<Color>(contentColor),
         ),
       );
     }
 
-    final Widget? lead = leadingIcon ?? (icon != null ? Icon(icon, size: 18.0, color: contentColor) : null);
+    final Widget? lead = leadingIcon ?? (icon != null ? Icon(icon, size: 15.5, color: contentColor) : null);
     final Widget? trail = trailingIcon;
 
     if (lead == null && trail == null) {
       return Text(
         label,
         style: TextStyle(
-          fontSize: 14.0,
-          fontWeight: FontWeight.w600,
+          fontSize: 13.0,
+          fontWeight: FontWeight.w500,
           color: contentColor,
         ),
         maxLines: 1,
@@ -60,14 +60,14 @@ abstract class _AppButtonBase extends StatelessWidget {
       children: [
         if (lead != null) ...[
           lead,
-          const SizedBox(width: 8.0),
+          const SizedBox(width: 6.0),
         ],
         Flexible(
           child: Text(
             label,
             style: TextStyle(
-              fontSize: 14.0,
-              fontWeight: FontWeight.w600,
+              fontSize: 13.0,
+              fontWeight: FontWeight.w500,
               color: contentColor,
             ),
             maxLines: 1,
@@ -75,7 +75,7 @@ abstract class _AppButtonBase extends StatelessWidget {
           ),
         ),
         if (trail != null) ...[
-          const SizedBox(width: 8.0),
+          const SizedBox(width: 6.0),
           trail,
         ],
       ],
@@ -92,7 +92,7 @@ abstract class _AppButtonBase extends StatelessWidget {
     }
     return ConstrainedBox(
       constraints: BoxConstraints(
-        minWidth: 88.0,
+        minWidth: 78.0,
         minHeight: height,
         maxHeight: height,
       ),
@@ -101,7 +101,7 @@ abstract class _AppButtonBase extends StatelessWidget {
   }
 }
 
-/// Primary brand filled button (Indigo).
+/// Primary brand filled button (Figma .btn-primary violet solid).
 class AppPrimaryButton extends _AppButtonBase {
   const AppPrimaryButton({
     super.key,
@@ -118,19 +118,21 @@ class AppPrimaryButton extends _AppButtonBase {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isEnabled = onPressed != null && !isLoading;
+    final Color bg = AppColors.accentSolidFor(isDark);
     final Color contentColor = isEnabled ? Colors.white : Colors.white.withValues(alpha: 0.6);
 
     return _wrapDimensions(
       ElevatedButton(
         onPressed: isEnabled ? onPressed : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
+          backgroundColor: bg,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5),
+          disabledBackgroundColor: bg.withValues(alpha: 0.45),
           disabledForegroundColor: Colors.white.withValues(alpha: 0.6),
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 13.0),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(borderRadius),
           ),
@@ -141,7 +143,7 @@ class AppPrimaryButton extends _AppButtonBase {
   }
 }
 
-/// Secondary soft button (slate / sky tinted).
+/// Secondary soft button (Figma .btn surface-2 + border).
 class AppSecondaryButton extends _AppButtonBase {
   const AppSecondaryButton({
     super.key,
@@ -160,8 +162,9 @@ class AppSecondaryButton extends _AppButtonBase {
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isEnabled = onPressed != null && !isLoading;
-    final Color bgColor = isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9);
-    final Color textColor = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
+    final Color bgColor = AppColors.surface2For(isDark);
+    final Color borderColor = AppColors.borderFor(isDark);
+    final Color textColor = AppColors.textPrimaryFor(isDark);
     final Color contentColor = isEnabled ? textColor : textColor.withValues(alpha: 0.4);
 
     return _wrapDimensions(
@@ -173,7 +176,8 @@ class AppSecondaryButton extends _AppButtonBase {
           disabledBackgroundColor: bgColor.withValues(alpha: 0.4),
           disabledForegroundColor: textColor.withValues(alpha: 0.4),
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          side: BorderSide(color: borderColor, width: 1.0),
+          padding: const EdgeInsets.symmetric(horizontal: 13.0),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(borderRadius),
           ),
@@ -184,7 +188,7 @@ class AppSecondaryButton extends _AppButtonBase {
   }
 }
 
-/// Outlined button with clean 1px border.
+/// Outlined button with clean 1px Figma border.
 class AppOutlinedButton extends _AppButtonBase {
   final Color? borderColor;
   final Color? textColor;
@@ -208,21 +212,22 @@ class AppOutlinedButton extends _AppButtonBase {
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isEnabled = onPressed != null && !isLoading;
-    final Color effectiveBorder = borderColor ?? (isDark ? AppColors.borderDark : AppColors.borderLight);
-    final Color effectiveText = textColor ?? (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight);
+    final Color effectiveBorder = borderColor ?? AppColors.borderFor(isDark);
+    final Color effectiveText = textColor ?? AppColors.textPrimaryFor(isDark);
     final Color contentColor = isEnabled ? effectiveText : effectiveText.withValues(alpha: 0.4);
 
     return _wrapDimensions(
       OutlinedButton(
         onPressed: isEnabled ? onPressed : null,
         style: OutlinedButton.styleFrom(
+          backgroundColor: AppColors.surface2For(isDark),
           foregroundColor: effectiveText,
           disabledForegroundColor: effectiveText.withValues(alpha: 0.4),
           side: BorderSide(
             color: isEnabled ? effectiveBorder : effectiveBorder.withValues(alpha: 0.4),
             width: 1.0,
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          padding: const EdgeInsets.symmetric(horizontal: 13.0),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(borderRadius),
           ),
@@ -233,7 +238,7 @@ class AppOutlinedButton extends _AppButtonBase {
   }
 }
 
-/// Destructive action button (Red / Danger) for delete/terminate operations.
+/// Destructive action button (Figma .btn-danger soft or solid).
 class AppDestructiveButton extends _AppButtonBase {
   final bool isOutlined;
 
@@ -253,21 +258,25 @@ class AppDestructiveButton extends _AppButtonBase {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isEnabled = onPressed != null && !isLoading;
+    final Color dangerColor = AppColors.errorFor(isDark);
+    final Color dangerSoft = AppColors.dangerSoftFor(isDark);
 
     if (isOutlined) {
-      final Color contentColor = isEnabled ? AppColors.error : AppColors.error.withValues(alpha: 0.4);
+      final Color contentColor = isEnabled ? dangerColor : dangerColor.withValues(alpha: 0.4);
       return _wrapDimensions(
         OutlinedButton(
           onPressed: isEnabled ? onPressed : null,
           style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.error,
-            disabledForegroundColor: AppColors.error.withValues(alpha: 0.4),
+            backgroundColor: dangerSoft.withValues(alpha: 0.5),
+            foregroundColor: dangerColor,
+            disabledForegroundColor: dangerColor.withValues(alpha: 0.4),
             side: BorderSide(
-              color: isEnabled ? AppColors.error : AppColors.error.withValues(alpha: 0.4),
+              color: isEnabled ? dangerColor.withValues(alpha: 0.45) : dangerColor.withValues(alpha: 0.2),
               width: 1.0,
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 13.0),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(borderRadius),
             ),
@@ -277,17 +286,18 @@ class AppDestructiveButton extends _AppButtonBase {
       );
     }
 
-    final Color contentColor = isEnabled ? Colors.white : Colors.white.withValues(alpha: 0.6);
+    final Color contentColor = isEnabled ? dangerColor : dangerColor.withValues(alpha: 0.5);
     return _wrapDimensions(
       ElevatedButton(
         onPressed: isEnabled ? onPressed : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.error,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: AppColors.error.withValues(alpha: 0.4),
-          disabledForegroundColor: Colors.white.withValues(alpha: 0.6),
+          backgroundColor: dangerSoft,
+          foregroundColor: dangerColor,
+          disabledBackgroundColor: dangerSoft.withValues(alpha: 0.4),
+          disabledForegroundColor: dangerColor.withValues(alpha: 0.5),
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          side: BorderSide(color: dangerColor.withValues(alpha: 0.28)),
+          padding: const EdgeInsets.symmetric(horizontal: 13.0),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(borderRadius),
           ),
@@ -298,7 +308,7 @@ class AppDestructiveButton extends _AppButtonBase {
   }
 }
 
-/// Compact Icon Button with hover and tooltip support.
+/// Compact Icon Button aligned with Figma .icon-btn.
 class AppIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onPressed;
@@ -313,17 +323,19 @@ class AppIconButton extends StatelessWidget {
     required this.icon,
     required this.onPressed,
     this.tooltip,
-    this.size = 36.0,
+    this.size = 32.0,
     this.color,
     this.backgroundColor,
-    this.borderRadius = 8.0,
+    this.borderRadius = AppColors.radiusMd,
   });
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     Widget button = InkWell(
       onTap: onPressed,
       borderRadius: BorderRadius.circular(borderRadius),
+      hoverColor: AppColors.hoverFor(isDark),
       child: Container(
         width: size,
         height: size,
@@ -334,8 +346,8 @@ class AppIconButton extends StatelessWidget {
         child: Center(
           child: Icon(
             icon,
-            size: size * 0.55,
-            color: color ?? Theme.of(context).colorScheme.onSurfaceVariant,
+            size: size * 0.54,
+            color: color ?? AppColors.textSecondaryFor(isDark),
           ),
         ),
       ),
