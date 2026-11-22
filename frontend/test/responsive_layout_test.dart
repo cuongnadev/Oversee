@@ -132,16 +132,33 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byTooltip('Collapse Sidebar'), findsOneWidget);
 
-      // Figma sidebar elements: project selector, quick search, and collapsible nav groups
+      // Figma sidebar elements: project selector, quick search, 5 collapsible nav groups & utility actions
       expect(find.text('Search anything'), findsOneWidget);
+      expect(find.text('WORKSPACE'), findsOneWidget);
+      expect(find.text('Inbox'), findsOneWidget);
+      expect(find.text('My Tasks'), findsOneWidget);
+      expect(find.text('Overview'), findsOneWidget);
       expect(find.text('PLANNING'), findsOneWidget);
       expect(find.text('Board'), findsOneWidget);
-      expect(find.text('Planning'), findsOneWidget);
+      expect(find.text('Roadmap'), findsOneWidget);
+      expect(find.text('Timeline'), findsOneWidget);
+      expect(find.text('Calendar'), findsOneWidget);
+      expect(find.text('Initiatives & Epics'), findsOneWidget);
+      expect(find.text('API docs'), findsOneWidget);
+      expect(find.text('Developer / MCP'), findsOneWidget);
+      expect(find.text('DEV'), findsOneWidget);
 
-      // Collapse PLANNING group hides its items
+      // Collapse PLANNING group hides its items and brings lower Figma groups into view
       await tester.tap(find.text('PLANNING'));
       await tester.pumpAndSettle();
       expect(find.text('Board'), findsNothing);
+      expect(find.text('KNOWLEDGE'), findsOneWidget);
+      expect(find.text('Documents'), findsOneWidget);
+      expect(find.text('Reports'), findsOneWidget);
+      expect(find.text('AI TEAM'), findsOneWidget);
+      expect(find.text('AI Assistant'), findsOneWidget);
+      expect(find.text('BETA'), findsOneWidget);
+      expect(find.text('CONFIGURATION'), findsOneWidget);
 
       // Re-expand PLANNING group restores its items
       await tester.tap(find.text('PLANNING'));

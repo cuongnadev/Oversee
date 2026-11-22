@@ -210,32 +210,8 @@ class MobileAppDrawer extends ConsumerWidget {
     required this.currentRoute,
   });
 
-  static const _workspaceKeys = {'overview', 'dashboard'};
-  static const _planningKeys = {'board', 'backlog', 'sprints', 'planning'};
-  static const _configKeys = {'team', 'settings'};
-
-  String _buildRoute(String keyName) {
-    switch (keyName) {
-      case 'overview':
-        return AppRoutes.projectOverviewPath(workspaceId, projectId);
-      case 'backlog':
-        return AppRoutes.projectBacklogPath(workspaceId, projectId);
-      case 'board':
-        return AppRoutes.projectBoardPath(workspaceId, projectId);
-      case 'sprints':
-        return AppRoutes.projectSprintsPath(workspaceId, projectId);
-      case 'planning':
-        return AppRoutes.projectSprintPlanningPath(workspaceId, projectId);
-      case 'dashboard':
-        return AppRoutes.projectDashboardPath(workspaceId, projectId);
-      case 'team':
-        return AppRoutes.workspaceSettingsPath(workspaceId);
-      case 'settings':
-        return AppRoutes.projectSettingsPath(workspaceId, projectId);
-      default:
-        return AppRoutes.projectOverviewPath(workspaceId, projectId);
-    }
-  }
+  String _buildRoute(String keyName) =>
+      NavItem.routeFor(keyName, workspaceId, projectId);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -255,20 +231,7 @@ class MobileAppDrawer extends ConsumerWidget {
         ? fullName
         : userEmail.split('@').first.replaceAll('.', ' ');
 
-    final groups = <(String, List<NavItem>)>[
-      (
-        'WORKSPACE',
-        NavItem.projectNavItems.where((i) => _workspaceKeys.contains(i.keyName)).toList(),
-      ),
-      (
-        'PLANNING',
-        NavItem.projectNavItems.where((i) => _planningKeys.contains(i.keyName)).toList(),
-      ),
-      (
-        'CONFIGURATION',
-        NavItem.projectNavItems.where((i) => _configKeys.contains(i.keyName)).toList(),
-      ),
-    ];
+    const groups = NavItem.navGroups;
 
     return Drawer(
       backgroundColor: AppColors.sidebarFor(isDark),
@@ -422,12 +385,20 @@ class MobileAppDrawer extends ConsumerWidget {
                     const SizedBox(height: 8.0),
                   ],
                   Divider(height: 20.0, color: borderSoftColor),
+                  for (final utilItem in NavItem.utilityRouteItems)
+                    _buildDrawerItem(
+                      context,
+                      item: utilItem,
+                      isSelected: currentRoute == utilItem.keyName,
+                      isDark: isDark,
+                    ),
+                  Divider(height: 20.0, color: borderSoftColor),
                   ListTile(
                     dense: true,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppColors.radiusMd),
                     ),
-                    leading: FigmaSidebarIcon(FigmaIconType.bookOpen, size: 16.0, color: textMuted),
+                    leading: FigmaSidebarIcon(FigmaIconType.folderKanban, size: 16.0, color: textMuted),
                     title: Text(
                       'All Projects',
                       style: TextStyle(fontSize: 12.0, color: textSecondary),
@@ -442,7 +413,7 @@ class MobileAppDrawer extends ConsumerWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppColors.radiusMd),
                     ),
-                    leading: FigmaSidebarIcon(FigmaIconType.terminal, size: 16.0, color: textMuted),
+                    leading: FigmaSidebarIcon(FigmaIconType.layers3, size: 16.0, color: textMuted),
                     title: Text(
                       'All Workspaces',
                       style: TextStyle(fontSize: 12.0, color: textSecondary),

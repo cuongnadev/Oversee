@@ -18,28 +18,8 @@ class TabletNavRail extends StatelessWidget {
     required this.currentRoute,
   });
 
-  String _buildRoute(String keyName) {
-    switch (keyName) {
-      case 'overview':
-        return AppRoutes.projectOverviewPath(workspaceId, projectId);
-      case 'backlog':
-        return AppRoutes.projectBacklogPath(workspaceId, projectId);
-      case 'board':
-        return AppRoutes.projectBoardPath(workspaceId, projectId);
-      case 'sprints':
-        return AppRoutes.projectSprintsPath(workspaceId, projectId);
-      case 'planning':
-        return AppRoutes.projectSprintPlanningPath(workspaceId, projectId);
-      case 'dashboard':
-        return AppRoutes.projectDashboardPath(workspaceId, projectId);
-      case 'team':
-        return AppRoutes.workspaceSettingsPath(workspaceId);
-      case 'settings':
-        return AppRoutes.projectSettingsPath(workspaceId, projectId);
-      default:
-        return AppRoutes.projectOverviewPath(workspaceId, projectId);
-    }
-  }
+  String _buildRoute(String keyName) =>
+      NavItem.routeFor(keyName, workspaceId, projectId);
 
   @override
   Widget build(BuildContext context) {
@@ -118,10 +98,12 @@ class TabletNavRail extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 10.0),
               children: [
-                for (final item in NavItem.projectNavItems) ...[
+                for (final item in [...NavItem.projectNavItems, ...NavItem.utilityRouteItems]) ...[
                   _TabletRailItem(
                     item: item,
-                    isSelected: currentRoute == item.keyName,
+                    isSelected: currentRoute == item.keyName ||
+                        (item.keyName == 'overview' && currentRoute == 'dashboard') ||
+                        (item.keyName == 'sprints' && currentRoute == 'planning'),
                     isDark: isDark,
                     onTap: () {
                       if (currentRoute != item.keyName) {
