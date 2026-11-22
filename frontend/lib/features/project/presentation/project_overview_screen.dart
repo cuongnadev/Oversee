@@ -446,7 +446,7 @@ class ProjectOverviewScreen extends ConsumerWidget {
                     ),
                     child: Text(
                       '${members.length}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.primaryLight,
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
@@ -488,7 +488,7 @@ class ProjectOverviewScreen extends ConsumerWidget {
                     backgroundColor: AppColors.primaryLight.withValues(alpha: 0.15),
                     child: Text(
                       _getInitials(displayName),
-                      style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryLight),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryLight),
                     ),
                   ),
                   title: Text(displayName, style: const TextStyle(fontWeight: FontWeight.w600)),

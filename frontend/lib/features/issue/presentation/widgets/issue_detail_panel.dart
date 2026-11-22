@@ -291,7 +291,7 @@ class _IssueDetailPanelState extends ConsumerState<IssueDetailPanel> {
           // Body Content
           Expanded(
             child: state.isLoading
-                ? const Center(
+                ? Center(
                     child: CircularProgressIndicator(color: AppColors.primary),
                   )
                 : ListView(
@@ -417,8 +417,8 @@ class _IssueDetailPanelState extends ConsumerState<IssueDetailPanel> {
 
           // Saving indicator
           if (state.isSaving)
-            const Padding(
-              padding: EdgeInsets.only(right: 12),
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
               child: SizedBox(
                 width: 14,
                 height: 14,
@@ -604,7 +604,7 @@ class _IssueDetailPanelState extends ConsumerState<IssueDetailPanel> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(6),
-                    borderSide: const BorderSide(color: AppColors.primary),
+                    borderSide: BorderSide(color: AppColors.primary),
                   ),
                 ),
                 onSubmitted: (_) => _handleSaveEstimate(),
@@ -875,7 +875,7 @@ class _IssueDetailPanelState extends ConsumerState<IssueDetailPanel> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.primary),
+                    borderSide: BorderSide(color: AppColors.primary),
                   ),
                 ),
                 onChanged: (_) {
@@ -1040,7 +1040,7 @@ class _IssueDetailPanelState extends ConsumerState<IssueDetailPanel> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(6),
-                      borderSide: const BorderSide(color: AppColors.primary),
+                      borderSide: BorderSide(color: AppColors.primary),
                     ),
                   ),
                   onSubmitted: (_) => _handleCreateSubTask(),
@@ -1127,10 +1127,10 @@ class _IssueDetailPanelState extends ConsumerState<IssueDetailPanel> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const CircleAvatar(
+          CircleAvatar(
             radius: 12,
             backgroundColor: AppColors.primaryLight,
-            child: Icon(Icons.history_rounded, size: 14, color: Colors.white),
+            child: const Icon(Icons.history_rounded, size: 14, color: Colors.white),
           ),
           const SizedBox(width: 10),
           Expanded(

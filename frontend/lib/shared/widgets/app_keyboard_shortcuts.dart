@@ -156,7 +156,7 @@ class KeyboardShortcutsDialog extends StatelessWidget {
                           color: AppColors.primary.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.keyboard_outlined, color: AppColors.primary, size: 22),
+                        child: Icon(Icons.keyboard_outlined, color: AppColors.primary, size: 22),
                       ),
                       const SizedBox(width: 12),
                       Text(

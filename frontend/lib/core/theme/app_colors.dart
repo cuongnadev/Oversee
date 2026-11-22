@@ -1,18 +1,125 @@
 import 'package:flutter/material.dart';
 
+/// Derived light and dark accent tokens generated from a single app seed color.
+class SeedAccentPalette {
+  final Color seed;
+  final Color primary; // --accent-solid (dark)
+  final Color primaryLight; // --accent (dark)
+  final Color primaryDark; // --accent (light)
+  final Color primarySolidLight; // --accent-solid (light)
+  final Color primaryHoverDark; // --accent-hover (dark)
+  final Color primaryHoverLight; // --accent-hover (light)
+  final Color accentSoftDark; // --accent-soft (dark)
+  final Color accentSoftLight; // --accent-soft (light)
+
+  const SeedAccentPalette({
+    required this.seed,
+    required this.primary,
+    required this.primaryLight,
+    required this.primaryDark,
+    required this.primarySolidLight,
+    required this.primaryHoverDark,
+    required this.primaryHoverLight,
+    required this.accentSoftDark,
+    required this.accentSoftLight,
+  });
+
+  /// Exact Figma Violet default tokens.
+  static const SeedAccentPalette defaultViolet = SeedAccentPalette(
+    seed: Color(0xFF7253D5),
+    primary: Color(0xFF7860E8),
+    primaryLight: Color(0xFFA292FF),
+    primaryDark: Color(0xFF7054CF),
+    primarySolidLight: Color(0xFF7253D5),
+    primaryHoverDark: Color(0xFF8B73F0),
+    primaryHoverLight: Color(0xFF6443C7),
+    accentSoftDark: Color(0xFF29243E),
+    accentSoftLight: Color(0xFFEEE8FB),
+  );
+
+  /// Generates harmonious light/dark accent tokens from an arbitrary seed color.
+  factory SeedAccentPalette.fromSeed(Color seed) {
+    if (seed.toARGB32() == defaultViolet.seed.toARGB32()) {
+      return defaultViolet;
+    }
+
+    final hsl = HSLColor.fromColor(seed);
+    final sat = hsl.saturation;
+
+    final solidLight = hsl
+        .withLightness(hsl.lightness.clamp(0.38, 0.52))
+        .withSaturation(sat.clamp(0.18, 0.85))
+        .toColor();
+    final accentLight = hsl
+        .withLightness((hsl.lightness - 0.04).clamp(0.32, 0.46))
+        .withSaturation(sat.clamp(0.18, 0.88))
+        .toColor();
+    final hoverLight = hsl
+        .withLightness((hsl.lightness - 0.08).clamp(0.26, 0.42))
+        .toColor();
+
+    final solidDark = hsl
+        .withLightness(hsl.lightness.clamp(0.52, 0.64))
+        .withSaturation(sat.clamp(0.20, 0.85))
+        .toColor();
+    final accentDark = hsl
+        .withLightness((hsl.lightness + 0.16).clamp(0.66, 0.78))
+        .withSaturation((sat * 0.92).clamp(0.20, 0.90))
+        .toColor();
+    final hoverDark = hsl
+        .withLightness((hsl.lightness + 0.08).clamp(0.58, 0.72))
+        .toColor();
+
+    final softLight = Color.lerp(Colors.white, solidLight, 0.12)!;
+    final softDark = Color.lerp(const Color(0xFF19191F), solidDark, 0.22)!;
+
+    return SeedAccentPalette(
+      seed: seed,
+      primary: solidDark,
+      primaryLight: accentDark,
+      primaryDark: accentLight,
+      primarySolidLight: solidLight,
+      primaryHoverDark: hoverDark,
+      primaryHoverLight: hoverLight,
+      accentSoftDark: softDark,
+      accentSoftLight: softLight,
+    );
+  }
+}
+
 /// Oversee Design System Color Palette aligned with Figma tokens.css.
+/// Supports dynamic app-wide seed color updates via [applySeedColor].
 class AppColors {
   AppColors._();
 
-  // Primary Brand Colors (Figma Violet Accent)
-  static const Color primary = Color(0xFF7860E8); // --accent-solid (dark)
-  static const Color primaryLight = Color(0xFFA292FF); // --accent (dark)
-  static const Color primaryDark = Color(0xFF7054CF); // --accent (light)
-  static const Color primarySolidLight = Color(0xFF7253D5); // --accent-solid (light)
-  static const Color primaryHoverDark = Color(0xFF8B73F0); // --accent-hover (dark)
-  static const Color primaryHoverLight = Color(0xFF6443C7); // --accent-hover (light)
-  static const Color accentSoftDark = Color(0xFF29243E); // --accent-soft (dark)
-  static const Color accentSoftLight = Color(0xFFEEE8FB); // --accent-soft (light)
+  /// Default Figma violet seed color.
+  static const Color defaultSeedColor = Color(0xFF7253D5);
+
+  static SeedAccentPalette _activeAccent = SeedAccentPalette.defaultViolet;
+
+  /// Currently active seed color.
+  static Color get currentSeedColor => _activeAccent.seed;
+
+  /// Updates the global accent palette synchronously from the given [seed].
+  static void applySeedColor(Color seed) {
+    if (_activeAccent.seed.toARGB32() == seed.toARGB32()) return;
+    _activeAccent = SeedAccentPalette.fromSeed(seed);
+  }
+
+  /// Resets the global accent palette back to Figma Violet default.
+  static void resetSeedColor() {
+    _activeAccent = SeedAccentPalette.defaultViolet;
+  }
+
+  // Primary Brand Colors (Dynamic Seed-Derived Accent)
+  static Color get primary => _activeAccent.primary; // --accent-solid (dark)
+  static Color get primaryLight => _activeAccent.primaryLight; // --accent (dark)
+  static Color get primaryDark => _activeAccent.primaryDark; // --accent (light)
+  static Color get primarySolidLight => _activeAccent.primarySolidLight; // --accent-solid (light)
+  static Color get primaryHoverDark => _activeAccent.primaryHoverDark; // --accent-hover (dark)
+  static Color get primaryHoverLight => _activeAccent.primaryHoverLight; // --accent-hover (light)
+  static Color get accentSoftDark => _activeAccent.accentSoftDark; // --accent-soft (dark)
+  static Color get accentSoftLight => _activeAccent.accentSoftLight; // --accent-soft (light)
 
   // Secondary Accent Colors
   static const Color secondary = Color(0xFF81A9F9); // --status-review (dark)
@@ -124,6 +231,7 @@ class AppColors {
   static Color accentFor(bool isDark) => isDark ? primaryLight : primaryDark;
   static Color accentSolidFor(bool isDark) => isDark ? primary : primarySolidLight;
   static Color accentSoftFor(bool isDark) => isDark ? accentSoftDark : accentSoftLight;
+  static Color accentHoverFor(bool isDark) => isDark ? primaryHoverDark : primaryHoverLight;
 
   static Color successFor(bool isDark) => isDark ? successDark : success;
   static Color greenSoftFor(bool isDark) => isDark ? greenSoftDark : successLight;
