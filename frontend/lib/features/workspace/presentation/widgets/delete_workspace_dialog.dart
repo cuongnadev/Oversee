@@ -132,7 +132,7 @@ class _DeleteWorkspaceDialogState extends ConsumerState<DeleteWorkspaceDialog> {
               const TextSpan(text: 'Please type '),
               TextSpan(
                 text: widget.workspaceName,
-                style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),
+                style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),
               ),
               const TextSpan(text: ' to confirm deletion:'),
             ],

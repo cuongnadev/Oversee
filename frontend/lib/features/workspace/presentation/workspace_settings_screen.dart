@@ -235,7 +235,7 @@ class _WorkspaceSettingsScreenState extends ConsumerState<WorkspaceSettingsScree
                             children: [
                               Row(
                                 children: [
-                                  const Icon(Icons.tune_rounded, size: 20.0, color: AppColors.primary),
+                                  Icon(Icons.tune_rounded, size: 20.0, color: AppColors.accentFor(isDark)),
                                   const SizedBox(width: 8.0),
                                   Text(
                                     'General Information',
@@ -312,6 +312,36 @@ class _WorkspaceSettingsScreenState extends ConsumerState<WorkspaceSettingsScree
                       ),
                       const SizedBox(height: 24.0),
 
+                      // Section 1.5: Appearance & App Seed Color
+                      AppCard(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.palette_outlined, size: 20.0, color: AppColors.accentFor(isDark)),
+                                const SizedBox(width: 8.0),
+                                Text(
+                                  'Appearance & Seed Color',
+                                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4.0),
+                            Text(
+                              'Customize the primary brand color across the entire application.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                              ),
+                            ),
+                            const Divider(height: 24.0),
+                            const SeedColorSelector(),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24.0),
+
                       // Section 2: Members & RBAC Management
                       AppCard(
                         padding: const EdgeInsets.all(20.0),
@@ -323,7 +353,7 @@ class _WorkspaceSettingsScreenState extends ConsumerState<WorkspaceSettingsScree
                               children: [
                                 Row(
                                   children: [
-                                    const Icon(Icons.people_alt_outlined, size: 20.0, color: AppColors.primary),
+                                    Icon(Icons.people_alt_outlined, size: 20.0, color: AppColors.accentFor(isDark)),
                                     const SizedBox(width: 8.0),
                                     Text(
                                       'Workspace Members (${state.members.length})',
@@ -403,11 +433,11 @@ class _WorkspaceSettingsScreenState extends ConsumerState<WorkspaceSettingsScree
                                                       color: AppColors.primary.withValues(alpha: 0.1),
                                                       borderRadius: BorderRadius.circular(4.0),
                                                     ),
-                                                    child: const Text(
+                                                    child: Text(
                                                       'You',
                                                       style: TextStyle(
                                                         fontSize: 10.0,
-                                                        color: AppColors.primary,
+                                                        color: AppColors.accentFor(isDark),
                                                         fontWeight: FontWeight.w600,
                                                       ),
                                                     ),

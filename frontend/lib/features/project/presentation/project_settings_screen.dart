@@ -383,7 +383,7 @@ class _ProjectSettingsScreenState extends ConsumerState<ProjectSettingsScreen> {
                           ),
                           child: Text(
                             '${state.members.length}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: AppColors.primaryLight,
                               fontWeight: FontWeight.bold,
                               fontSize: 12,
@@ -444,7 +444,7 @@ class _ProjectSettingsScreenState extends ConsumerState<ProjectSettingsScreen> {
                     backgroundColor: AppColors.primaryLight.withValues(alpha: 0.15),
                     child: Text(
                       _getInitials(displayName),
-                      style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryLight),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primaryLight),
                     ),
                   ),
                   title: Row(
