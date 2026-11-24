@@ -84,6 +84,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppColors.radiusLg),
           side: const BorderSide(color: AppColors.borderLight),
         ),
+        menuPadding: const EdgeInsets.symmetric(vertical: 6),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        clipBehavior: Clip.antiAlias,
       ),
       tooltipTheme: TooltipThemeData(
         decoration: BoxDecoration(
@@ -227,6 +231,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppColors.radiusLg),
           side: const BorderSide(color: AppColors.borderDark),
         ),
+        menuPadding: const EdgeInsets.symmetric(vertical: 6),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        clipBehavior: Clip.antiAlias,
       ),
       tooltipTheme: TooltipThemeData(
         decoration: BoxDecoration(
