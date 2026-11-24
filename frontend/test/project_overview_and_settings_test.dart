@@ -455,8 +455,11 @@ void main() {
       expect(find.text('Sprint Velocity'), findsOneWidget);
       expect(find.text('Recent Activity'), findsOneWidget);
       expect(find.text('Team Members'), findsWidgets);
-      expect(find.text('Alice Owner'), findsOneWidget);
-      expect(find.text('Bob Dev'), findsOneWidget);
+      expect(find.text('My Ongoing Jobs'), findsOneWidget);
+      expect(find.text('Upcoming Jobs'), findsOneWidget);
+      expect(find.text('Project Participant Workloads'), findsOneWidget);
+      expect(find.text('Alice Owner'), findsWidgets);
+      expect(find.text('Bob Dev'), findsWidgets);
     });
 
     testWidgets('ProjectOverviewScreen displays archived banner when project is archived', (tester) async {
