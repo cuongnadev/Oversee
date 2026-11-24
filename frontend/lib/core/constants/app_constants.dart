@@ -14,6 +14,8 @@ class AppConstants {
   static const String seedColorKey = 'oversee_seed_color';
   static const String sidebarExpandedKey = 'oversee_sidebar_expanded';
   static const String localeKey = 'oversee_locale';
+  static const String appFontScalePercentKey = 'oversee_app_font_scale_percent';
+  static const String contentFontScalePercentKey = 'oversee_content_font_scale_percent';
 
   // Pagination defaults
   static const int defaultPage = 1;
