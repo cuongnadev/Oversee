@@ -599,7 +599,7 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
 
     if (!context.mounted) return;
 
-    final result = await showDialog<SprintCompleteModel>(
+    final result = await showAnimatedDialog<SprintCompleteModel>(
       context: context,
       builder: (ctx) => CompleteSprintDialog(
         sprint: sprint,

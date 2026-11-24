@@ -3,6 +3,54 @@ import 'package:frontend/core/constants/app_constants.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/shared/widgets/app_buttons.dart';
 
+/// Standard 150ms popup display/vanish duration across Oversee modals and menus.
+const Duration kAppPopupAnimationDuration = Duration(milliseconds: 150);
+
+/// Standard 150ms AnimationStyle for bottom sheets and popup menus.
+const AnimationStyle kAppPopupAnimationStyle = AnimationStyle(
+  duration: kAppPopupAnimationDuration,
+  reverseDuration: kAppPopupAnimationDuration,
+);
+
+/// Displays a dialog with a crisp 150ms fade + subtle scale display/vanish animation.
+Future<T?> showAnimatedDialog<T>({
+  required BuildContext context,
+  required WidgetBuilder builder,
+  bool barrierDismissible = true,
+  Color? barrierColor,
+  String? barrierLabel,
+  bool useRootNavigator = true,
+}) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  return showGeneralDialog<T>(
+    context: context,
+    barrierDismissible: barrierDismissible,
+    barrierLabel: barrierLabel ?? MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    barrierColor: barrierColor ?? Colors.black.withValues(alpha: isDark ? 0.58 : 0.42),
+    transitionDuration: kAppPopupAnimationDuration,
+    useRootNavigator: useRootNavigator,
+    pageBuilder: (dialogContext, animation, secondaryAnimation) {
+      return SafeArea(
+        child: Builder(builder: (ctx) => builder(ctx)),
+      );
+    },
+    transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return FadeTransition(
+        opacity: curved,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.95, end: 1.0).animate(curved),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
 /// Confirmation Dialog aligned with Figma Modal styling.
 class AppConfirmationDialog extends StatelessWidget {
   final String title;
@@ -38,7 +86,7 @@ class AppConfirmationDialog extends StatelessWidget {
     String cancelText = 'Cancel',
     bool isDestructive = false,
   }) {
-    return showDialog<bool>(
+    return showAnimatedDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) => AppConfirmationDialog(
@@ -201,6 +249,7 @@ class AppAdaptiveDialog extends StatelessWidget {
         isScrollControlled: true,
         isDismissible: isDismissible,
         backgroundColor: Colors.transparent,
+        sheetAnimationStyle: kAppPopupAnimationStyle,
         builder: (BuildContext sheetContext) {
           final ThemeData theme = Theme.of(sheetContext);
           final bool isDark = theme.brightness == Brightness.dark;
@@ -263,7 +312,7 @@ class AppAdaptiveDialog extends StatelessWidget {
       );
     }
 
-    return showDialog<T>(
+    return showAnimatedDialog<T>(
       context: context,
       barrierDismissible: isDismissible,
       builder: (BuildContext dialogContext) {

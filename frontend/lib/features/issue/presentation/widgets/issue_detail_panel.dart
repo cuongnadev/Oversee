@@ -11,6 +11,7 @@ import 'package:frontend/features/issue/application/project_issues_provider.dart
 import 'package:frontend/features/issue/domain/issue_activity_model.dart';
 import 'package:frontend/features/issue/domain/issue_model.dart';
 import 'package:frontend/features/sprint/application/kanban_board_provider.dart';
+import 'package:frontend/shared/widgets/app_dialog.dart';
 
 /// Comprehensive responsive issue detail panel supporting both Light and Dark themes:
 /// - Desktop/Web slide-in right drawer & Mobile modal sheet
@@ -49,6 +50,7 @@ class IssueDetailPanel extends ConsumerStatefulWidget {
         context: context,
         isScrollControlled: true,
         useSafeArea: true,
+        sheetAnimationStyle: kAppPopupAnimationStyle,
         backgroundColor: AppColors.surfaceFor(isDark),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -69,7 +71,7 @@ class IssueDetailPanel extends ConsumerStatefulWidget {
         barrierDismissible: true,
         barrierLabel: 'Issue Details',
         barrierColor: Colors.black.withValues(alpha: isDark ? 0.55 : 0.35),
-        transitionDuration: const Duration(milliseconds: 260),
+        transitionDuration: kAppPopupAnimationDuration,
         pageBuilder: (ctx, anim1, anim2) {
           return Align(
             alignment: Alignment.centerRight,

@@ -41,6 +41,7 @@ class WorkspaceSwitcherDropdown extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      sheetAnimationStyle: kAppPopupAnimationStyle,
       builder: (BuildContext sheetContext) {
         String searchQuery = '';
         return StatefulBuilder(

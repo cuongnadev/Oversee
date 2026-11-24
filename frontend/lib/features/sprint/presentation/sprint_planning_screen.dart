@@ -75,7 +75,7 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
     final hasActiveSprint = state.sprints.any((s) => s.status == SprintStatus.active);
     final sprintRepo = ref.read(sprintRepositoryProvider);
 
-    showDialog<bool>(
+    showAnimatedDialog<bool>(
       context: context,
       builder: (ctx) => StartSprintDialog(
         sprint: sprint,

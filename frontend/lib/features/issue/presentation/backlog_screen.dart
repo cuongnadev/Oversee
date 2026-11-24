@@ -120,7 +120,7 @@ class _BacklogScreenState extends ConsumerState<BacklogScreen> {
 
   Future<void> _openStartSprintDialog(SprintModel sprint, BacklogNotifier notifier) async {
     final sprintRepo = ref.read(sprintRepositoryProvider);
-    final started = await showDialog<bool>(
+    final started = await showAnimatedDialog<bool>(
       context: context,
       builder: (ctx) => StartSprintDialog(
         sprint: sprint,
@@ -166,7 +166,7 @@ class _BacklogScreenState extends ConsumerState<BacklogScreen> {
           : 0,
     );
 
-    final result = await showDialog<SprintCompleteModel>(
+    final result = await showAnimatedDialog<SprintCompleteModel>(
       context: context,
       builder: (ctx) => CompleteSprintDialog(
         sprint: group.sprint,

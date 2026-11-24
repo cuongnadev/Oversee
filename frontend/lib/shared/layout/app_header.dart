@@ -30,7 +30,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(64.0);
 
   void _openQuickCommand(BuildContext context) {
-    showDialog<void>(
+    showAnimatedDialog<void>(
       context: context,
       barrierColor: const Color(0x8808080C),
       builder: (dialogContext) {
@@ -375,6 +375,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
               // User Profile Dropdown Menu (Figma 1:404)
               PopupMenuButton<String>(
                 tooltip: 'User Profile',
+                popUpAnimationStyle: kAppPopupAnimationStyle,
                 offset: const Offset(0, 40),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppColors.radiusLg),
@@ -619,6 +620,7 @@ class _NotificationsPopupButtonState extends State<_NotificationsPopupButton> {
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
       tooltip: 'Notifications',
+      popUpAnimationStyle: kAppPopupAnimationStyle,
       offset: const Offset(0, 40),
       constraints: const BoxConstraints(minWidth: 320, maxWidth: 360),
       color: widget.surfaceColor,
@@ -841,6 +843,7 @@ class _QuickCreateMenuButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return PopupMenuButton<QuickCreateEntityType>(
       tooltip: 'Quick Create',
+      popUpAnimationStyle: kAppPopupAnimationStyle,
       offset: const Offset(0, 38),
       constraints: const BoxConstraints(minWidth: 210, maxWidth: 224),
       color: surfaceColor,

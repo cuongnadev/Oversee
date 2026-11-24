@@ -93,7 +93,7 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
   }
 
   void _openCommandPalette(BuildContext context) {
-    showDialog<void>(
+    showAnimatedDialog<void>(
       context: context,
       barrierColor: const Color(0x9908080C),
       builder: (dialogContext) {
@@ -401,6 +401,7 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                                 ),
                                 PopupMenuButton<String>(
                                   tooltip: 'Account Menu',
+                                  popUpAnimationStyle: kAppPopupAnimationStyle,
                                   padding: EdgeInsets.zero,
                                   constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
                                   icon: FigmaSidebarIcon(
