@@ -6,6 +6,8 @@ import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/core/theme/app_typography.dart';
 import 'package:frontend/features/auth/application/auth_provider.dart';
+import 'package:frontend/features/project/application/project_list_provider.dart';
+import 'package:frontend/features/project/domain/project_model.dart';
 import 'package:frontend/shared/layout/nav_item.dart';
 import 'package:frontend/shared/layout/sidebar_icons.dart';
 import 'package:frontend/shared/widgets/widgets.dart';
@@ -217,6 +219,14 @@ class MobileAppDrawer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final authState = ref.watch(authNotifierProvider);
+    final List<ProjectModel> workspaceProjects = authState.isAuthenticated
+        ? ref.watch(projectListNotifierProvider(workspaceId)).projects
+        : const <ProjectModel>[];
+    final matchedProject = workspaceProjects.where((p) => p.id == projectId).firstOrNull;
+    final String displayProjectLabel =
+        (matchedProject?.name.trim().isNotEmpty == true) ? matchedProject!.name.trim() : projectId;
+    final String displayProjectInitial =
+        displayProjectLabel.trim().isNotEmpty ? displayProjectLabel.trim()[0].toUpperCase() : 'P';
     final Color accentColor = AppColors.accentFor(isDark);
     final Color accentSoftColor = AppColors.accentSoftFor(isDark);
     final Color borderColor = AppColors.borderFor(isDark);
@@ -322,7 +332,7 @@ class MobileAppDrawer extends ConsumerWidget {
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        projectId.trim().isNotEmpty ? projectId.trim()[0].toUpperCase() : 'P',
+                        displayProjectInitial,
                         style: TextStyle(
                           color: accentColor,
                           fontSize: 12.0,
@@ -336,7 +346,7 @@ class MobileAppDrawer extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            projectId,
+                            displayProjectLabel,
                             style: TextStyle(
                               fontSize: 11.5,
                               fontWeight: FontWeight.w600,
