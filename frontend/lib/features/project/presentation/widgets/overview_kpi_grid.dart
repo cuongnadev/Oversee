@@ -88,31 +88,40 @@ class OverviewKpiGrid extends StatelessWidget {
         if (constraints.maxWidth < 1040) {
           return Column(
             children: [
-              Row(
-                children: [
-                  Expanded(child: cards[0]),
-                  const SizedBox(width: 14),
-                  Expanded(child: cards[1]),
-                ],
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: cards[0]),
+                    const SizedBox(width: 14),
+                    Expanded(child: cards[1]),
+                  ],
+                ),
               ),
               const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(child: cards[2]),
-                  const SizedBox(width: 14),
-                  Expanded(child: cards[3]),
-                ],
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: cards[2]),
+                    const SizedBox(width: 14),
+                    Expanded(child: cards[3]),
+                  ],
+                ),
               ),
             ],
           );
         }
-        return Row(
-          children: [
-            for (int i = 0; i < cards.length; i++) ...[
-              Expanded(child: cards[i]),
-              if (i < cards.length - 1) const SizedBox(width: 16),
+        return IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (int i = 0; i < cards.length; i++) ...[
+                Expanded(child: cards[i]),
+                if (i < cards.length - 1) const SizedBox(width: 16),
+              ],
             ],
-          ],
+          ),
         );
       },
     );

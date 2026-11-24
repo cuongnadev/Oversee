@@ -68,16 +68,18 @@ class OverviewWorkSectionsRow extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth >= 1024) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(flex: 1, child: ongoingCard),
-              const SizedBox(width: 18),
-              Expanded(flex: 1, child: upcomingCard),
-              const SizedBox(width: 18),
-              Expanded(flex: 1, child: workloadsCard),
-            ],
+        if (constraints.maxWidth >= 900) {
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(flex: 1, child: ongoingCard),
+                const SizedBox(width: 18),
+                Expanded(flex: 1, child: upcomingCard),
+                const SizedBox(width: 18),
+                Expanded(flex: 1, child: workloadsCard),
+              ],
+            ),
           );
         }
 
@@ -278,95 +280,99 @@ class _OngoingJobsCard extends StatelessWidget {
                 ),
               ),
             )
-          : ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: visible.length,
-              separatorBuilder: (_, _) => Divider(height: 1, color: borderSoftColor),
-              itemBuilder: (context, index) {
-                final issue = visible[index];
-                final statusColor = issue.status.colorFor(brightness);
-                final priorityColor = issue.priority.colorFor(brightness);
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (int index = 0; index < visible.length; index++) ...[
+                  if (index > 0) Divider(height: 1, color: borderSoftColor),
+                  Builder(
+                    builder: (context) {
+                      final issue = visible[index];
+                      final statusColor = issue.status.colorFor(brightness);
+                      final priorityColor = issue.priority.colorFor(brightness);
 
-                return InkWell(
-                  onTap: () => IssueDetailPanel.show(
-                    context,
-                    projectId: projectId,
-                    projectKey: projectKey,
-                    issue: issue,
-                    onIssueUpdated: onIssueUpdated,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 3),
-                          child: Icon(issue.status.icon, size: 15, color: statusColor),
+                      return InkWell(
+                        onTap: () => IssueDetailPanel.show(
+                          context,
+                          projectId: projectId,
+                          projectKey: projectKey,
+                          issue: issue,
+                          onIssueUpdated: onIssueUpdated,
                         ),
-                        const SizedBox(width: 9),
-                        Expanded(
-                          child: Column(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                          child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                issue.title,
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w500,
-                                  color: textPrimary,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              Padding(
+                                padding: const EdgeInsets.only(top: 3),
+                                child: Icon(issue.status.icon, size: 15, color: statusColor),
                               ),
-                              const SizedBox(height: 3),
-                              Row(
-                                children: [
-                                  Text(
-                                    issue.formattedKey(projectKey),
-                                    style: AppTypography.mono(isDark, fontSize: 10.5, color: textMuted),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    width: 6,
-                                    height: 6,
-                                    decoration: BoxDecoration(
-                                      color: priorityColor,
-                                      shape: BoxShape.circle,
+                              const SizedBox(width: 9),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      issue.title,
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w500,
+                                        color: textPrimary,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
+                                    const SizedBox(height: 3),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          issue.formattedKey(projectKey),
+                                          style: AppTypography.mono(isDark, fontSize: 10.5, color: textMuted),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          width: 6,
+                                          height: 6,
+                                          decoration: BoxDecoration(
+                                            color: priorityColor,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          l10n.priorityLabel(issue.priority),
+                                          style: TextStyle(fontSize: 10.5, color: textSecondary),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: statusColor.withValues(alpha: 0.14),
+                                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                                ),
+                                child: Text(
+                                  l10n.statusLabel(issue.status),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: statusColor,
                                   ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    l10n.priorityLabel(issue.priority),
-                                    style: TextStyle(fontSize: 10.5, color: textSecondary),
-                                  ),
-                                ],
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: statusColor.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                          ),
-                          child: Text(
-                            l10n.statusLabel(issue.status),
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: statusColor,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                );
-              },
+                ],
+              ],
             ),
     );
   }
@@ -436,92 +442,96 @@ class _UpcomingJobsCard extends StatelessWidget {
                 ),
               ),
             )
-          : ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: visible.length,
-              separatorBuilder: (_, _) => Divider(height: 1, color: borderSoftColor),
-              itemBuilder: (context, index) {
-                final issue = visible[index];
-                final sprintLabel = issue.sprintId != null ? sprintNames[issue.sprintId] : null;
-                final dateText = issue.startDate != null
-                    ? '${l10n.startsLabel} ${dateFmt.format(issue.startDate!)}'
-                    : (issue.endDate != null
-                        ? '${l10n.dueLabel} ${dateFmt.format(issue.endDate!)}'
-                        : (sprintLabel ?? l10n.statusLabel(issue.status)));
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (int index = 0; index < visible.length; index++) ...[
+                  if (index > 0) Divider(height: 1, color: borderSoftColor),
+                  Builder(
+                    builder: (context) {
+                      final issue = visible[index];
+                      final sprintLabel = issue.sprintId != null ? sprintNames[issue.sprintId] : null;
+                      final dateText = issue.startDate != null
+                          ? '${l10n.startsLabel} ${dateFmt.format(issue.startDate!)}'
+                          : (issue.endDate != null
+                              ? '${l10n.dueLabel} ${dateFmt.format(issue.endDate!)}'
+                              : (sprintLabel ?? l10n.statusLabel(issue.status)));
 
-                return InkWell(
-                  onTap: () => IssueDetailPanel.show(
-                    context,
-                    projectId: projectId,
-                    projectKey: projectKey,
-                    issue: issue,
-                    onIssueUpdated: onIssueUpdated,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Icon(Icons.calendar_today_outlined, size: 14, color: infoColor),
+                      return InkWell(
+                        onTap: () => IssueDetailPanel.show(
+                          context,
+                          projectId: projectId,
+                          projectKey: projectKey,
+                          issue: issue,
+                          onIssueUpdated: onIssueUpdated,
                         ),
-                        const SizedBox(width: 9),
-                        Expanded(
-                          child: Column(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                          child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                issue.title,
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w500,
-                                  color: textPrimary,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Icon(Icons.calendar_today_outlined, size: 14, color: infoColor),
                               ),
-                              const SizedBox(height: 3),
-                              Row(
-                                children: [
-                                  Text(
-                                    issue.formattedKey(projectKey),
-                                    style: AppTypography.mono(isDark, fontSize: 10.5, color: textMuted),
-                                  ),
-                                  if (sprintLabel != null) ...[
-                                    Text(' · ', style: TextStyle(fontSize: 10.5, color: textMuted)),
-                                    Flexible(
-                                      child: Text(
-                                        sprintLabel,
-                                        style: TextStyle(fontSize: 10.5, color: textSecondary),
-                                        overflow: TextOverflow.ellipsis,
+                              const SizedBox(width: 9),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      issue.title,
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w500,
+                                        color: textPrimary,
                                       ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          issue.formattedKey(projectKey),
+                                          style: AppTypography.mono(isDark, fontSize: 10.5, color: textMuted),
+                                        ),
+                                        if (sprintLabel != null) ...[
+                                          Text(' · ', style: TextStyle(fontSize: 10.5, color: textMuted)),
+                                          Flexible(
+                                            child: Text(
+                                              sprintLabel,
+                                              style: TextStyle(fontSize: 10.5, color: textSecondary),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
                                     ),
                                   ],
-                                ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface2For(isDark),
+                                  borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                                  border: Border.all(color: AppColors.borderFor(isDark)),
+                                ),
+                                child: Text(
+                                  dateText,
+                                  style: AppTypography.mono(isDark, fontSize: 10, color: textSecondary),
+                                ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface2For(isDark),
-                            borderRadius: BorderRadius.circular(AppColors.radiusSm),
-                            border: Border.all(color: AppColors.borderFor(isDark)),
-                          ),
-                          child: Text(
-                            dateText,
-                            style: AppTypography.mono(isDark, fontSize: 10, color: textSecondary),
-                          ),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
-                );
-              },
+                ],
+              ],
             ),
     );
   }
@@ -568,111 +578,115 @@ class _ParticipantWorkloadsCard extends StatelessWidget {
                 ),
               ),
             )
-          : ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: visible.length,
-              separatorBuilder: (_, _) => Divider(height: 1, color: borderSoftColor),
-              itemBuilder: (context, index) {
-                final item = visible[index];
-                final isUnassigned = item.userId == null;
-                final displayName = isUnassigned ? l10n.unassigned : item.name;
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (int index = 0; index < visible.length; index++) ...[
+                  if (index > 0) Divider(height: 1, color: borderSoftColor),
+                  Builder(
+                    builder: (context) {
+                      final item = visible[index];
+                      final isUnassigned = item.userId == null;
+                      final displayName = isUnassigned ? l10n.unassigned : item.name;
 
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          if (isUnassigned)
-                            Container(
-                              width: 26,
-                              height: 26,
-                              decoration: BoxDecoration(
-                                color: AppColors.surface3For(isDark),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: borderColor),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                '?',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: textMuted,
-                                ),
-                              ),
-                            )
-                          else
-                            UserAvatar(
-                              name: displayName,
-                              imageUrl: item.avatarUrl,
-                              size: UserAvatarSize.xs,
-                              showTooltip: false,
-                            ),
-                          const SizedBox(width: 9),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
-                                Text(
-                                  displayName,
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w600,
-                                    color: textPrimary,
+                                if (isUnassigned)
+                                  Container(
+                                    width: 26,
+                                    height: 26,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surface3For(isDark),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: borderColor),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      '?',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: textMuted,
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  UserAvatar(
+                                    name: displayName,
+                                    imageUrl: item.avatarUrl,
+                                    size: UserAvatarSize.xs,
+                                    showTooltip: false,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                const SizedBox(width: 9),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        displayName,
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: textPrimary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      Text(
+                                        l10n.issuesAndPoints(
+                                          item.totalIssues,
+                                          item.totalStoryPoints.round(),
+                                        ),
+                                        style: AppTypography.mono(isDark, fontSize: 10, color: textMuted),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                Text(
-                                  l10n.issuesAndPoints(
-                                    item.totalIssues,
-                                    item.totalStoryPoints.round(),
-                                  ),
-                                  style: AppTypography.mono(isDark, fontSize: 10, color: textMuted),
+                                const SizedBox(width: 8),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      '${item.completionPercentage}%',
+                                      style: AppTypography.mono(
+                                        isDark,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: item.completionRatio >= 1.0 ? successColor : textPrimary,
+                                      ),
+                                    ),
+                                    Text(
+                                      l10n.doneOfTotal(item.completedIssues, item.totalIssues),
+                                      style: TextStyle(fontSize: 10, color: textSecondary),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                '${item.completionPercentage}%',
-                                style: AppTypography.mono(
-                                  isDark,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: item.completionRatio >= 1.0 ? successColor : textPrimary,
+                            const SizedBox(height: 6),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(99),
+                              child: LinearProgressIndicator(
+                                value: item.completionRatio,
+                                minHeight: 4,
+                                backgroundColor: AppColors.surface3For(isDark),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  item.completionRatio >= 1.0 ? successColor : accentColor,
                                 ),
                               ),
-                              Text(
-                                l10n.doneOfTotal(item.completedIssues, item.totalIssues),
-                                style: TextStyle(fontSize: 10, color: textSecondary),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(99),
-                        child: LinearProgressIndicator(
-                          value: item.completionRatio,
-                          minHeight: 4,
-                          backgroundColor: AppColors.surface3For(isDark),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            item.completionRatio >= 1.0 ? successColor : accentColor,
-                          ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                );
-              },
+                ],
+              ],
             ),
     );
   }

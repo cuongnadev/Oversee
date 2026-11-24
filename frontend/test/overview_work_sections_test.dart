@@ -144,6 +144,8 @@ void main() {
       expect(upcomingBox.top, closeTo(workloadsBox.top, 1.0));
       expect(ongoingBox.width, closeTo(upcomingBox.width, 1.0));
       expect(upcomingBox.width, closeTo(workloadsBox.width, 1.0));
+      expect(ongoingBox.height, closeTo(upcomingBox.height, 1.0));
+      expect(upcomingBox.height, closeTo(workloadsBox.height, 1.0));
     });
   });
 }

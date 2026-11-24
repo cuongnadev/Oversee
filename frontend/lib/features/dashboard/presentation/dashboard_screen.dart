@@ -102,27 +102,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                             if (isWide) {
                                               return Column(
                                                 children: [
-                                                  // Row 1: Burndown (flex 4) + Status Donut (flex 2)
+                                                  // Row 1: Burndown (flex 4) + Status Donut (flex 2), equal height
                                                   if (state.progress != null) ...[
-                                                    Row(
-                                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                                      children: [
-                                                        Expanded(
-                                                          flex: 4,
-                                                          child: BurndownChartWidget(
-                                                            progress: state.progress!,
-                                                            isDark: isDark,
+                                                    IntrinsicHeight(
+                                                      child: Row(
+                                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                                        children: [
+                                                          Expanded(
+                                                            flex: 4,
+                                                            child: BurndownChartWidget(
+                                                              progress: state.progress!,
+                                                              isDark: isDark,
+                                                            ),
                                                           ),
-                                                        ),
-                                                        const SizedBox(width: 18),
-                                                        Expanded(
-                                                          flex: 2,
-                                                          child: StatusDistributionWidget(
-                                                            state: state,
-                                                            isDark: isDark,
+                                                          const SizedBox(width: 18),
+                                                          Expanded(
+                                                            flex: 2,
+                                                            child: StatusDistributionWidget(
+                                                              state: state,
+                                                              isDark: isDark,
+                                                            ),
                                                           ),
-                                                        ),
-                                                      ],
+                                                        ],
+                                                      ),
                                                     ),
                                                     const SizedBox(height: 18),
                                                   ] else ...[
@@ -133,24 +135,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                                     const SizedBox(height: 18),
                                                   ],
 
-                                                  // Row 2: Priority Breakdown Bar + Workload by Assignee
-                                                  Row(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    children: [
-                                                      Expanded(
-                                                        child: PriorityBreakdownWidget(
-                                                          state: state,
-                                                          isDark: isDark,
+                                                  // Row 2: Priority Breakdown Bar + Workload by Assignee, equal height
+                                                  IntrinsicHeight(
+                                                    child: Row(
+                                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                                      children: [
+                                                        Expanded(
+                                                          child: PriorityBreakdownWidget(
+                                                            state: state,
+                                                            isDark: isDark,
+                                                          ),
                                                         ),
-                                                      ),
-                                                      const SizedBox(width: 18),
-                                                      Expanded(
-                                                        child: WorkloadByAssigneeWidget(
-                                                          state: state,
-                                                          isDark: isDark,
+                                                        const SizedBox(width: 18),
+                                                        Expanded(
+                                                          child: WorkloadByAssigneeWidget(
+                                                            state: state,
+                                                            isDark: isDark,
+                                                          ),
                                                         ),
-                                                      ),
-                                                    ],
+                                                      ],
+                                                    ),
                                                   ),
                                                   const SizedBox(height: 18),
 

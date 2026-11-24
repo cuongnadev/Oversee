@@ -240,20 +240,7 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
                             OverviewKpiGrid(state: state, isDark: isDark),
                             const SizedBox(height: 20.0),
 
-                            // 4b. 3-Column Work Focus Row (My Ongoing Jobs | Upcoming Jobs | Participant Workloads)
-                            if (_showWorkSections) ...[
-                              OverviewWorkSectionsRow(
-                                state: state,
-                                workspaceId: widget.workspaceId,
-                                projectId: widget.projectId,
-                                currentUserId: authState.user?.id,
-                                isDark: isDark,
-                                onIssueUpdated: () => notifier.refresh(),
-                              ),
-                              const SizedBox(height: 20.0),
-                            ],
-
-                            // 5. Burndown + Status Donut Row (4:2 ratio on desktop)
+                            // 5. Burndown + Status Donut Row (4:2 ratio on desktop, equal height)
                             if (_showAnalytics) ...[
                               LayoutBuilder(
                                 builder: (context, constraints) {
@@ -270,13 +257,15 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
                                   );
 
                                   if (isWide) {
-                                    return Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Expanded(flex: 4, child: burndownWidget),
-                                        const SizedBox(width: 18),
-                                        Expanded(flex: 2, child: statusWidget),
-                                      ],
+                                    return IntrinsicHeight(
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          Expanded(flex: 4, child: burndownWidget),
+                                          const SizedBox(width: 18),
+                                          Expanded(flex: 2, child: statusWidget),
+                                        ],
+                                      ),
                                     );
                                   }
                                   return Column(
@@ -291,7 +280,7 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
                               const SizedBox(height: 20.0),
                             ],
 
-                            // 6. Velocity + Recent Activity Row (1:1 ratio on desktop)
+                            // 6. Velocity + Recent Activity Row (1:1 ratio on desktop, equal height)
                             if (_showVelocityAndActivity) ...[
                               LayoutBuilder(
                                 builder: (context, constraints) {
@@ -305,13 +294,15 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
                                   );
 
                                   if (isWide) {
-                                    return Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Expanded(child: velocityCard),
-                                        const SizedBox(width: 18),
-                                        Expanded(child: activityCard),
-                                      ],
+                                    return IntrinsicHeight(
+                                      child: Row(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          Expanded(child: velocityCard),
+                                          const SizedBox(width: 18),
+                                          Expanded(child: activityCard),
+                                        ],
+                                      ),
                                     );
                                   }
                                   return Column(
@@ -326,7 +317,20 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
                               const SizedBox(height: 20.0),
                             ],
 
-                            // 7. Team Members & Quick Navigation
+                            // 7. 3-Column Work Focus Row (My Ongoing Jobs | Upcoming Jobs | Participant Workloads)
+                            if (_showWorkSections) ...[
+                              OverviewWorkSectionsRow(
+                                state: state,
+                                workspaceId: widget.workspaceId,
+                                projectId: widget.projectId,
+                                currentUserId: authState.user?.id,
+                                isDark: isDark,
+                                onIssueUpdated: () => notifier.refresh(),
+                              ),
+                              const SizedBox(height: 20.0),
+                            ],
+
+                            // 8. Team Members & Quick Navigation
                             _buildTeamMembersCard(context, state.members, state.canEdit, isDark),
                             const SizedBox(height: 20.0),
                           ],
@@ -537,9 +541,10 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
   }
 
   Widget _buildEmptyBurndownPlaceholder(bool isDark) {
+    final l10n = context.l10n;
     return Container(
       width: double.infinity,
-      height: 310,
+      constraints: const BoxConstraints(minHeight: 310),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.surfaceFor(isDark),
@@ -548,21 +553,29 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'Sprint Burndown',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimaryFor(isDark),
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                l10n.sprintBurndown,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimaryFor(isDark),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                l10n.storyPointsRemaining,
+                style: TextStyle(fontSize: 11.5, color: AppColors.textMutedFor(isDark)),
+              ),
+            ],
           ),
-          const SizedBox(height: 2),
-          Text(
-            'Story points remaining over sprint duration',
-            style: TextStyle(fontSize: 11.5, color: AppColors.textMutedFor(isDark)),
-          ),
-          Expanded(
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 56),
             child: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -570,7 +583,7 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
                   Icon(Icons.show_chart_rounded, size: 30, color: AppColors.textMutedFor(isDark)),
                   const SizedBox(height: 8),
                   Text(
-                    'Start an active sprint to track daily burndown progress.',
+                    l10n.startActiveSprintHint,
                     style: TextStyle(fontSize: 12, color: AppColors.textSecondaryFor(isDark)),
                     textAlign: TextAlign.center,
                   ),
@@ -578,6 +591,7 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
               ),
             ),
           ),
+          const SizedBox.shrink(),
         ],
       ),
     );

@@ -545,6 +545,15 @@ void main() {
       expect(find.text('Priority Breakdown'), findsOneWidget);
       expect(find.textContaining('Workload by Assignee'), findsOneWidget);
 
+      // Equal height verification for widgets sharing the same row
+      final burndownRect = tester.getRect(find.byType(BurndownChartWidget));
+      final statusRect = tester.getRect(find.byType(StatusDistributionWidget));
+      expect(burndownRect.height, closeTo(statusRect.height, 1.0));
+
+      final priorityRect = tester.getRect(find.byType(PriorityBreakdownWidget));
+      final workloadRect = tester.getRect(find.byType(WorkloadByAssigneeWidget));
+      expect(priorityRect.height, closeTo(workloadRect.height, 1.0));
+
       // Risk Issues
       expect(find.text('Attention Required (1)'), findsOneWidget);
       expect(find.text('Database connection leak'), findsOneWidget);

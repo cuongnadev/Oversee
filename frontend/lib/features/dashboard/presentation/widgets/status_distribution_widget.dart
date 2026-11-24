@@ -134,10 +134,10 @@ class _StatusDistributionWidgetState extends State<StatusDistributionWidget> {
                 const SizedBox(height: 16),
 
                 // 2-Column Dot-Aligned Legend (Figma .donut-legend)
-                LayoutBuilder(
-                  builder: (context, constraints) {
+                Builder(
+                  builder: (context) {
                     final entries = statusCounts.entries.toList();
-                    final useTwoCols = constraints.maxWidth >= 230;
+                    final useTwoCols = MediaQuery.sizeOf(context).width >= 380;
                     if (!useTwoCols) {
                       return Column(
                         children: entries.map((e) => _buildLegendRow(e.key, e.value, totalIssues, brightness)).toList(),

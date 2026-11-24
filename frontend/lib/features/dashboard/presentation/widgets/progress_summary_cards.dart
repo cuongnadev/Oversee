@@ -109,35 +109,41 @@ class ProgressSummaryCards extends StatelessWidget {
         } else if (constraints.maxWidth < 1100) {
           return Column(
             children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: cards[0]),
-                  const SizedBox(width: 14),
-                  Expanded(child: cards[1]),
-                ],
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: cards[0]),
+                    const SizedBox(width: 14),
+                    Expanded(child: cards[1]),
+                  ],
+                ),
               ),
               const SizedBox(height: 14),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: cards[2]),
-                  const SizedBox(width: 14),
-                  Expanded(child: cards[3]),
-                ],
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Expanded(child: cards[2]),
+                    const SizedBox(width: 14),
+                    Expanded(child: cards[3]),
+                  ],
+                ),
               ),
             ],
           );
         }
 
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (int i = 0; i < cards.length; i++) ...[
-              Expanded(child: cards[i]),
-              if (i < cards.length - 1) const SizedBox(width: 16),
+        return IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (int i = 0; i < cards.length; i++) ...[
+                Expanded(child: cards[i]),
+                if (i < cards.length - 1) const SizedBox(width: 16),
+              ],
             ],
-          ],
+          ),
         );
       },
     );
