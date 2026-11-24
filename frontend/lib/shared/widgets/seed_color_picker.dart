@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/core/l10n/app_localizations.dart';
+import 'package:frontend/core/l10n/locale_provider.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/core/theme/app_typography.dart';
 import 'package:frontend/core/theme/theme_provider.dart';
@@ -223,7 +225,7 @@ class SeedColorPickerDialog extends ConsumerWidget {
   static Future<void> show(BuildContext context) {
     return AppAdaptiveDialog.show<void>(
       context,
-      title: 'Appearance & Accent Color',
+      title: context.l10n.appearanceAndSettings,
       maxWidth: 460,
       child: const SeedColorPickerDialog(),
     );
@@ -231,12 +233,57 @@ class SeedColorPickerDialog extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
     final themeMode = ref.watch(themeModeProvider);
+    final activeLocale = ref.watch(localeProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = AppColors.textPrimaryFor(isDark);
     final textSecondary = AppColors.textSecondaryFor(isDark);
     final accentColor = AppColors.accentFor(isDark);
     final accentSoft = AppColors.accentSoftFor(isDark);
     final borderColor = AppColors.borderFor(isDark);
+    final surface2 = AppColors.surface2For(isDark);
+
+    Widget languageChip(String label, String code, Locale locale) {
+      final selected = activeLocale.languageCode == locale.languageCode;
+      return Expanded(
+        child: InkWell(
+          onTap: () => ref.read(localeProvider.notifier).setLocale(locale),
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+            decoration: BoxDecoration(
+              color: selected ? accentSoft : surface2,
+              borderRadius: BorderRadius.circular(AppColors.radiusMd),
+              border: Border.all(color: selected ? accentColor : borderColor),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  code,
+                  style: AppTypography.mono(
+                    isDark,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: selected ? accentColor : textSecondary,
+                  ),
+                ),
+                const SizedBox(width: 7),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                    color: selected ? accentColor : textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     Widget modeChip(String label, IconData icon, ThemeMode mode) {
       final selected = themeMode == mode;
@@ -247,7 +294,7 @@ class SeedColorPickerDialog extends ConsumerWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
-              color: selected ? accentSoft : AppColors.surface2For(isDark),
+              color: selected ? accentSoft : surface2,
               borderRadius: BorderRadius.circular(AppColors.radiusMd),
               border: Border.all(color: selected ? accentColor : borderColor),
             ),
@@ -261,7 +308,7 @@ class SeedColorPickerDialog extends ConsumerWidget {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                    color: selected ? accentColor : AppColors.textPrimaryFor(isDark),
+                    color: selected ? accentColor : textPrimary,
                   ),
                 ),
               ],
@@ -276,27 +323,40 @@ class SeedColorPickerDialog extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Theme Mode',
+          l10n.language,
           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textSecondary),
         ),
         const SizedBox(height: 8),
         Row(
           children: [
-            modeChip('Light', Icons.light_mode_outlined, ThemeMode.light),
+            languageChip(l10n.english, 'EN', AppLocalizations.en),
             const SizedBox(width: 8),
-            modeChip('Dark', Icons.dark_mode_outlined, ThemeMode.dark),
+            languageChip(l10n.vietnamese, 'VI', AppLocalizations.vi),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Text(
+          l10n.themeMode,
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textSecondary),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            modeChip(l10n.light, Icons.light_mode_outlined, ThemeMode.light),
             const SizedBox(width: 8),
-            modeChip('System', Icons.brightness_auto_outlined, ThemeMode.system),
+            modeChip(l10n.dark, Icons.dark_mode_outlined, ThemeMode.dark),
+            const SizedBox(width: 8),
+            modeChip(l10n.system, Icons.brightness_auto_outlined, ThemeMode.system),
           ],
         ),
         const SizedBox(height: 18),
         Text(
-          'Seed Color',
+          l10n.seedColor,
           style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: textSecondary),
         ),
         const SizedBox(height: 4),
         Text(
-          'Applies synchronously across buttons, badges, charts, and active indicators.',
+          l10n.seedColorDescription,
           style: TextStyle(fontSize: 11.5, color: AppColors.textMutedFor(isDark)),
         ),
         const SizedBox(height: 12),
@@ -305,7 +365,7 @@ class SeedColorPickerDialog extends ConsumerWidget {
         Align(
           alignment: Alignment.centerRight,
           child: AppOutlinedButton(
-            label: 'Done',
+            label: l10n.done,
             onPressed: () => Navigator.of(context).pop(),
           ),
         ),

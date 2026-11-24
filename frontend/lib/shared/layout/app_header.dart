@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:frontend/core/l10n/app_localizations.dart';
+import 'package:frontend/core/l10n/locale_provider.dart';
 import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/core/theme/app_typography.dart';
@@ -50,6 +52,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
+    final l10n = context.l10n;
     final bool isDark = theme.brightness == Brightness.dark;
     final double screenWidth = MediaQuery.sizeOf(context).width;
     final bool isMobile = ResponsiveBreakpoints.isMobile(context);
@@ -59,6 +62,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
 
     final authState = ref.watch(authNotifierProvider);
     final activeSeedColor = ref.watch(seedColorProvider);
+    final activeLocale = ref.watch(localeProvider);
 
     String? resolvedProjectName = (projectName != null && projectName!.trim().isNotEmpty)
         ? projectName!.trim()
@@ -81,6 +85,8 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
     final String displayProjectInitial = displayProjectLabel.trim().isNotEmpty
         ? displayProjectLabel.trim()[0].toUpperCase()
         : 'P';
+    final String? localizedViewTitle =
+        currentViewTitle != null ? l10n.viewTitle(currentViewTitle!) : null;
 
     final String userEmail = authState.email ?? 'user@oversee.local';
     final String? fullName = authState.user?.fullName;
@@ -118,7 +124,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
             IconButton(
               icon: Icon(Icons.menu_rounded, color: textPrimary, size: 20.0),
               onPressed: onMenuToggle ?? () => Scaffold.of(context).openDrawer(),
-              tooltip: 'Navigation Menu',
+              tooltip: l10n.navigationMenu,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
             ),
@@ -177,8 +183,8 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                                 overflow: TextOverflow.ellipsis,
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   fontSize: 12.0,
-                                  fontWeight: currentViewTitle == null ? FontWeight.w600 : FontWeight.w500,
-                                  color: currentViewTitle == null ? accentColor : textSecondary,
+                                  fontWeight: localizedViewTitle == null ? FontWeight.w600 : FontWeight.w500,
+                                  color: localizedViewTitle == null ? accentColor : textSecondary,
                                 ),
                               ),
                             ),
@@ -187,7 +193,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                       ),
                     ),
                   ],
-                  if (currentViewTitle != null) ...[
+                  if (localizedViewTitle != null) ...[
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 6.0),
                       child: Icon(
@@ -199,7 +205,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
                       child: Text(
-                        currentViewTitle!,
+                        localizedViewTitle,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontSize: 12.0,
                           fontWeight: FontWeight.w600,
@@ -274,7 +280,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                           const SizedBox(width: 6.0),
                           Expanded(
                             child: Text(
-                              'Search or command...',
+                              l10n.searchOrCommand,
                               style: TextStyle(
                                 fontSize: 11.0,
                                 fontWeight: FontWeight.w500,
@@ -305,7 +311,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                 )
               else if (showSecondaryIcons)
                 _TopbarIconButton(
-                  tooltip: 'Search or command (⌘K)',
+                  tooltip: l10n.searchOrCommandTooltip,
                   icon: Icons.search_rounded,
                   iconColor: textSecondary,
                   onPressed: () => _openQuickCommand(context),
@@ -326,9 +332,9 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                 const SizedBox(width: 6.0),
               ],
 
-              // Seed Color Picker Trigger
+              // Seed Color & Appearance/Font/Language Settings Trigger
               Tooltip(
-                message: 'Seed Color & Theme',
+                message: l10n.seedColorAndThemeTooltip,
                 child: InkWell(
                   onTap: () => SeedColorPickerDialog.show(context),
                   borderRadius: BorderRadius.circular(AppColors.radiusMd),
@@ -381,7 +387,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                   const SizedBox(width: 2.0),
                   // Help / Shortcuts (Figma 1:390)
                   _TopbarIconButton(
-                    tooltip: 'Keyboard Shortcuts (?)',
+                    tooltip: l10n.keyboardShortcutsTooltip,
                     icon: Icons.help_outline_rounded,
                     iconColor: textSecondary,
                     onPressed: () => KeyboardShortcutsDialog.show(context),
@@ -389,11 +395,49 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                 ],
               ],
 
+              const SizedBox(width: 4.0),
+
+              // Language Switcher (EN / VI)
+              Tooltip(
+                message: l10n.switchLanguageTooltip,
+                child: InkWell(
+                  key: const Key('topbar_language_toggle'),
+                  onTap: () => ref.read(localeProvider.notifier).toggleLocale(),
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                  child: Container(
+                    height: 28.0,
+                    padding: const EdgeInsets.symmetric(horizontal: 7.0),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: surfaceColor,
+                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                      border: Border.all(color: borderColor),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.translate_rounded, size: 13.5, color: accentColor),
+                        const SizedBox(width: 4.0),
+                        Text(
+                          activeLocale.languageCode.toUpperCase(),
+                          style: AppTypography.mono(
+                            isDark,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                            color: textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
               const SizedBox(width: 2.0),
 
               // Theme mode toggle (Figma 1:395)
               _TopbarIconButton(
-                tooltip: 'Toggle Theme',
+                tooltip: l10n.toggleThemeTooltip,
                 icon: ref.watch(themeModeProvider) == ThemeMode.dark
                     ? Icons.light_mode_outlined
                     : Icons.dark_mode_outlined,
@@ -405,7 +449,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
 
               // User Profile Dropdown Menu (Figma 1:404)
               PopupMenuButton<String>(
-                tooltip: 'User Profile',
+                tooltip: l10n.userProfileTooltip,
                 popUpAnimationStyle: kAppPopupAnimationStyle,
                 offset: const Offset(0, 40),
                 shape: RoundedRectangleBorder(
@@ -444,33 +488,33 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                       ],
                     ),
                   ),
-                  const PopupMenuItem<String>(
+                  PopupMenuItem<String>(
                     value: 'seed_color',
                     child: Row(
                       children: [
-                        Icon(Icons.palette_outlined, size: 17.0),
-                        SizedBox(width: 10.0),
-                        Expanded(child: Text('Appearance & Seed Color')),
+                        const Icon(Icons.palette_outlined, size: 17.0),
+                        const SizedBox(width: 10.0),
+                        Expanded(child: Text(l10n.appearanceAndSettings)),
                       ],
                     ),
                   ),
-                  const PopupMenuItem<String>(
+                  PopupMenuItem<String>(
                     value: 'workspaces',
                     child: Row(
                       children: [
-                        Icon(Icons.hub_outlined, size: 17.0),
-                        SizedBox(width: 10.0),
-                        Expanded(child: Text('All Workspaces')),
+                        const Icon(Icons.hub_outlined, size: 17.0),
+                        const SizedBox(width: 10.0),
+                        Expanded(child: Text(l10n.allWorkspaces)),
                       ],
                     ),
                   ),
-                  const PopupMenuItem<String>(
+                  PopupMenuItem<String>(
                     value: 'workspace_settings',
                     child: Row(
                       children: [
-                        Icon(Icons.settings_outlined, size: 17.0),
-                        SizedBox(width: 10.0),
-                        Expanded(child: Text('Workspace Settings')),
+                        const Icon(Icons.settings_outlined, size: 17.0),
+                        const SizedBox(width: 10.0),
+                        Expanded(child: Text(l10n.workspaceSettings)),
                       ],
                     ),
                   ),
@@ -483,7 +527,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                         const SizedBox(width: 10.0),
                         Expanded(
                           child: Text(
-                            'Log Out',
+                            l10n.logOut,
                             style: TextStyle(color: errorColor, fontWeight: FontWeight.w500),
                           ),
                         ),
@@ -505,9 +549,10 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                     case 'logout':
                       final confirmed = await AppConfirmationDialog.show(
                         context,
-                        title: 'Log Out',
-                        message: 'Are you sure you want to log out of Oversee?',
-                        confirmText: 'Log Out',
+                        title: l10n.logOut,
+                        message: l10n.logOutConfirmMessage,
+                        confirmText: l10n.logOut,
+                        cancelText: l10n.cancel,
                         isDestructive: true,
                       );
                       if (confirmed == true) {
@@ -649,8 +694,9 @@ class _NotificationsPopupButtonState extends State<_NotificationsPopupButton> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return PopupMenuButton<String>(
-      tooltip: 'Notifications',
+      tooltip: l10n.notifications,
       popUpAnimationStyle: kAppPopupAnimationStyle,
       offset: const Offset(0, 40),
       constraints: const BoxConstraints(minWidth: 320, maxWidth: 360),
@@ -872,8 +918,9 @@ class _QuickCreateMenuButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return PopupMenuButton<QuickCreateEntityType>(
-      tooltip: 'Quick Create',
+      tooltip: l10n.quickCreateTooltip,
       popUpAnimationStyle: kAppPopupAnimationStyle,
       offset: const Offset(0, 38),
       constraints: const BoxConstraints(minWidth: 210, maxWidth: 224),
@@ -944,9 +991,9 @@ class _QuickCreateMenuButton extends StatelessWidget {
             const Icon(Icons.add_rounded, size: 15.0, color: Colors.white),
             if (!compact) ...[
               const SizedBox(width: 5.0),
-              const Text(
-                'Create',
-                style: TextStyle(
+              Text(
+                l10n.create,
+                style: const TextStyle(
                   fontSize: 11.5,
                   fontWeight: FontWeight.w600,
                   color: Colors.white,

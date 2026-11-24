@@ -13,6 +13,7 @@ class AppConstants {
   static const String themeModeKey = 'oversee_theme_mode';
   static const String seedColorKey = 'oversee_seed_color';
   static const String sidebarExpandedKey = 'oversee_sidebar_expanded';
+  static const String localeKey = 'oversee_locale';
 
   // Pagination defaults
   static const int defaultPage = 1;

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:frontend/core/l10n/app_localizations.dart';
 import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/core/theme/app_typography.dart';
@@ -147,7 +148,7 @@ class MobileBottomNav extends StatelessWidget {
             ),
             const SizedBox(height: 3.0),
             Text(
-              item.label,
+              context.l10n.navLabel(item.keyName, item.label),
               style: TextStyle(
                 fontSize: 10.0,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
@@ -219,6 +220,7 @@ class MobileAppDrawer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final authState = ref.watch(authNotifierProvider);
+    final l10n = context.l10n;
     final List<ProjectModel> workspaceProjects = authState.isAuthenticated
         ? ref.watch(projectListNotifierProvider(workspaceId)).projects
         : const <ProjectModel>[];
@@ -376,7 +378,7 @@ class MobileAppDrawer extends ConsumerWidget {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(10.0, 8.0, 10.0, 4.0),
                       child: Text(
-                        title,
+                        l10n.navGroupLabel(title),
                         style: TextStyle(
                           fontSize: 9.0,
                           fontWeight: FontWeight.w600,
@@ -547,7 +549,7 @@ class MobileAppDrawer extends ConsumerWidget {
                   const SizedBox(width: 10.0),
                   Expanded(
                     child: Text(
-                      item.label,
+                      context.l10n.navLabel(item.keyName, item.label),
                       style: TextStyle(
                         fontSize: 12.5,
                         fontWeight: FontWeight.w500,
