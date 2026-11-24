@@ -9,6 +9,7 @@ import 'package:frontend/core/l10n/locale_provider.dart';
 import 'package:frontend/core/routing/app_router.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/core/theme/app_theme.dart';
+import 'package:frontend/core/theme/font_scale_provider.dart';
 import 'package:frontend/core/theme/theme_provider.dart';
 
 void main() {
@@ -27,6 +28,7 @@ class OverseeApp extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
     final seedColor = ref.watch(seedColorProvider);
     final locale = ref.watch(localeProvider);
+    final fontScale = ref.watch(fontScaleProvider);
     AppColors.applySeedColor(seedColor);
     final router = ref.watch(appRouterProvider);
 
@@ -45,6 +47,15 @@ class OverseeApp extends ConsumerWidget {
       darkTheme: AppTheme.buildDarkTheme(seedColor),
       themeMode: themeMode,
       routerConfig: router,
+      builder: (context, child) {
+        final mediaQuery = MediaQuery.of(context);
+        return MediaQuery(
+          data: mediaQuery.copyWith(
+            textScaler: TextScaler.linear(fontScale.appScale),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
     );
   }
 }
