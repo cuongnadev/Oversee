@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:frontend/core/l10n/app_localizations.dart';
 import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/core/theme/app_typography.dart';
@@ -17,6 +18,7 @@ import 'package:frontend/features/project/domain/project_model.dart';
 import 'package:frontend/features/project/presentation/widgets/overview_kpi_grid.dart';
 import 'package:frontend/features/project/presentation/widgets/overview_sprint_hero.dart';
 import 'package:frontend/features/project/presentation/widgets/overview_velocity_and_activity.dart';
+import 'package:frontend/features/project/presentation/widgets/overview_work_sections_row.dart';
 import 'package:frontend/features/project/presentation/widgets/project_navigation_tab_bar.dart';
 import 'package:frontend/features/project/presentation/widgets/project_screen_scaffold.dart';
 import 'package:frontend/shared/widgets/widgets.dart';
@@ -37,14 +39,12 @@ class ProjectOverviewScreen extends ConsumerStatefulWidget {
 }
 
 class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
+  bool _showWorkSections = true;
   bool _showAnalytics = true;
   bool _showVelocityAndActivity = true;
 
-  String _greetingForNow() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
+  String _greetingForNow(BuildContext context) {
+    return context.l10n.greetingForHour(DateTime.now().hour);
   }
 
   String _firstName(String? fullName, String? email) {
@@ -58,19 +58,21 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
   }
 
   void _openCustomizeMenu(BuildContext context) {
+    final l10n = context.l10n;
     AppAdaptiveDialog.show<void>(
       context,
-      title: 'Customize Overview',
+      title: l10n.customizeOverview,
       maxWidth: 460,
       child: StatefulBuilder(
         builder: (ctx, setDialogState) {
           final isDark = Theme.of(ctx).brightness == Brightness.dark;
+          final dialogL10n = ctx.l10n;
           return Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Visible Sections',
+                dialogL10n.visibleSections,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -81,7 +83,17 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
               SwitchListTile.adaptive(
                 contentPadding: EdgeInsets.zero,
                 dense: true,
-                title: const Text('Sprint Burndown & Status Donut', style: TextStyle(fontSize: 13)),
+                title: Text(dialogL10n.workFocusSectionsToggle, style: const TextStyle(fontSize: 13)),
+                value: _showWorkSections,
+                onChanged: (v) {
+                  setState(() => _showWorkSections = v);
+                  setDialogState(() {});
+                },
+              ),
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                title: Text(dialogL10n.sprintBurndownAndDonut, style: const TextStyle(fontSize: 13)),
                 value: _showAnalytics,
                 onChanged: (v) {
                   setState(() => _showAnalytics = v);
@@ -91,7 +103,7 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
               SwitchListTile.adaptive(
                 contentPadding: EdgeInsets.zero,
                 dense: true,
-                title: const Text('Velocity & Recent Activity', style: TextStyle(fontSize: 13)),
+                title: Text(dialogL10n.velocityAndRecentActivity, style: const TextStyle(fontSize: 13)),
                 value: _showVelocityAndActivity,
                 onChanged: (v) {
                   setState(() => _showVelocityAndActivity = v);
@@ -100,7 +112,7 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
               ),
               const Divider(height: 22),
               Text(
-                'App Seed Color',
+                dialogL10n.appSeedColor,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -113,7 +125,7 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
               Align(
                 alignment: Alignment.centerRight,
                 child: AppOutlinedButton(
-                  label: 'Done',
+                  label: dialogL10n.done,
                   onPressed: () => Navigator.of(ctx).pop(),
                 ),
               ),
@@ -228,6 +240,19 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
                             OverviewKpiGrid(state: state, isDark: isDark),
                             const SizedBox(height: 20.0),
 
+                            // 4b. 3-Column Work Focus Row (My Ongoing Jobs | Upcoming Jobs | Participant Workloads)
+                            if (_showWorkSections) ...[
+                              OverviewWorkSectionsRow(
+                                state: state,
+                                workspaceId: widget.workspaceId,
+                                projectId: widget.projectId,
+                                currentUserId: authState.user?.id,
+                                isDark: isDark,
+                                onIssueUpdated: () => notifier.refresh(),
+                              ),
+                              const SizedBox(height: 20.0),
+                            ],
+
                             // 5. Burndown + Status Donut Row (4:2 ratio on desktop)
                             if (_showAnalytics) ...[
                               LayoutBuilder(
@@ -325,6 +350,7 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
     required String userName,
     required bool isDark,
   }) {
+    final l10n = context.l10n;
     final textPrimary = AppColors.textPrimaryFor(isDark);
     final textSecondary = AppColors.textSecondaryFor(isDark);
     final textMuted = AppColors.textMutedFor(isDark);
@@ -345,7 +371,7 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'WORKSPACE OVERVIEW',
+              l10n.workspaceOverviewEyebrow,
               style: AppTypography.eyebrow(isDark).copyWith(fontSize: 9.5, letterSpacing: 1.5),
             ),
             const SizedBox(height: 6),
@@ -355,7 +381,7 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 Text(
-                  '${_greetingForNow()}, $userName',
+                  '${_greetingForNow(context)}, $userName',
                   style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.w600,
@@ -381,14 +407,14 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
                     ),
                   ),
                 ),
-                _buildStatusBadge(project.isArchived, isDark),
+                _buildStatusBadge(context, project.isArchived, isDark),
               ],
             ),
             const SizedBox(height: 5),
             Text(
               project.description?.isNotEmpty == true
                   ? '${project.name} · ${project.description}'
-                  : '${project.name} · A fresh day to build something great with your team.',
+                  : '${project.name} · ${l10n.overviewSubtitleFallback}',
               style: TextStyle(fontSize: 12, color: textSecondary),
             ),
           ],
@@ -435,7 +461,7 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
                     Icon(Icons.tune_rounded, size: 13.5, color: textSecondary),
                     const SizedBox(width: 6),
                     Text(
-                      'Customize',
+                      l10n.customize,
                       style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: textPrimary),
                     ),
                     const SizedBox(width: 4),
@@ -462,7 +488,7 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
                       Icon(Icons.settings_outlined, size: 14, color: textSecondary),
                       const SizedBox(width: 5),
                       Text(
-                        'Settings',
+                        l10n.settings,
                         style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500, color: textPrimary),
                       ),
                     ],
@@ -476,6 +502,7 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
   }
 
   Widget _buildStatusMetaStrip(ProjectOverviewState state, bool isDark) {
+    final l10n = context.l10n;
     final blockers = state.blockerIssuesCount;
     final statusColor = blockers == 0 ? AppColors.successFor(isDark) : AppColors.warningFor(isDark);
     final textMuted = AppColors.textMutedFor(isDark);
@@ -496,15 +523,13 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
             ),
             const SizedBox(width: 5),
             Text(
-              blockers == 0
-                  ? '0 high-priority blocker issues in sprint'
-                  : '$blockers high-priority issue${blockers == 1 ? '' : 's'} needing attention',
+              l10n.blockersSummary(blockers),
               style: TextStyle(fontSize: 11, color: statusColor, fontWeight: FontWeight.w500),
             ),
           ],
         ),
         Text(
-          'Synced from live project data',
+          l10n.syncedFromLiveData,
           style: TextStyle(fontSize: 10.5, color: textMuted),
         ),
       ],
@@ -610,10 +635,11 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
     );
   }
 
-  Widget _buildStatusBadge(bool isArchived, bool isDark) {
+  Widget _buildStatusBadge(BuildContext context, bool isArchived, bool isDark) {
+    final l10n = context.l10n;
     final color = isArchived ? AppColors.warningFor(isDark) : AppColors.successFor(isDark);
     final softBg = isArchived ? AppColors.warningSoftFor(isDark) : AppColors.greenSoftFor(isDark);
-    final text = isArchived ? 'ARCHIVED' : 'ACTIVE';
+    final text = isArchived ? l10n.archivedBadge : l10n.activeBadge;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7.0, vertical: 2.5),
@@ -656,7 +682,7 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
               Row(
                 children: [
                   Text(
-                    'Team Members',
+                    context.l10n.teamMembers,
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: textPrimary),
                   ),
                   const SizedBox(width: 8.0),
@@ -683,7 +709,7 @@ class _ProjectOverviewScreenState extends ConsumerState<ProjectOverviewScreen> {
                   onPressed: () =>
                       context.go(AppRoutes.projectSettingsPath(widget.workspaceId, widget.projectId)),
                   icon: const Icon(Icons.manage_accounts_outlined, size: 16),
-                  label: const Text('Manage Members', style: TextStyle(fontSize: 12)),
+                  label: Text(context.l10n.manageMembers, style: const TextStyle(fontSize: 12)),
                 ),
             ],
           ),

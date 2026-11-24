@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/core/enums/app_enums.dart';
 import 'package:frontend/core/errors/app_exception.dart';
 import 'package:frontend/features/auth/application/auth_provider.dart';
+import 'package:frontend/features/issue/data/issue_repository.dart';
 import 'package:frontend/features/issue/domain/issue_model.dart';
 import 'package:frontend/features/project/application/project_overview_state.dart';
 import 'package:frontend/features/project/data/project_repository.dart';
@@ -19,6 +20,7 @@ final AutoDisposeStateNotifierProviderFamily<ProjectOverviewNotifier, ProjectOve
         (ref, projectId) {
   final repository = ref.watch(projectRepositoryProvider);
   final sprintRepository = ref.watch(sprintRepositoryProvider);
+  final issueRepository = ref.watch(issueRepositoryProvider);
   final authState = ref.watch(authNotifierProvider);
   final currentWorkspace = ref.watch(currentWorkspaceProvider);
 
@@ -26,6 +28,7 @@ final AutoDisposeStateNotifierProviderFamily<ProjectOverviewNotifier, ProjectOve
     projectId: projectId,
     repository: repository,
     sprintRepository: sprintRepository,
+    issueRepository: issueRepository,
     currentUserId: authState.user?.id,
     workspaceRole: currentWorkspace?.userRole,
   );
@@ -38,6 +41,7 @@ class ProjectOverviewNotifier extends StateNotifier<ProjectOverviewState> {
   final String projectId;
   final ProjectRepository _repository;
   final SprintRepository? _sprintRepository;
+  final IssueRepository? _issueRepository;
   final String? _currentUserId;
   final RoleType? _workspaceRole;
 
@@ -45,11 +49,13 @@ class ProjectOverviewNotifier extends StateNotifier<ProjectOverviewState> {
     required this.projectId,
     required ProjectRepository repository,
     SprintRepository? sprintRepository,
+    IssueRepository? issueRepository,
     String? currentUserId,
     RoleType? workspaceRole,
     ProjectOverviewState? initialState,
   })  : _repository = repository,
         _sprintRepository = sprintRepository,
+        _issueRepository = issueRepository,
         _currentUserId = currentUserId,
         _workspaceRole = workspaceRole,
         super(initialState ?? const ProjectOverviewState(isLoading: true));
@@ -64,11 +70,23 @@ class ProjectOverviewNotifier extends StateNotifier<ProjectOverviewState> {
               .listProjectSprints(projectId)
               .catchError((_) => <SprintModel>[])
           : Future.value(<SprintModel>[]);
+      final projectIssuesFuture = _issueRepository != null
+          ? _issueRepository
+              .listProjectIssues(projectId, pageSize: 100)
+              .then((page) => page.items)
+              .catchError((_) => <IssueModel>[])
+          : Future.value(<IssueModel>[]);
 
-      final results = await Future.wait([projectFuture, membersFuture, sprintsFuture]);
+      final results = await Future.wait([
+        projectFuture,
+        membersFuture,
+        sprintsFuture,
+        projectIssuesFuture,
+      ]);
       final project = results[0] as ProjectModel;
       final members = results[1] as List<ProjectMemberModel>;
       final sprints = results[2] as List<SprintModel>;
+      final projectIssues = results[3] as List<IssueModel>;
 
       RoleType detectedRole = RoleType.viewer;
       // Inherit workspace owner/admin privileges if applicable
@@ -117,6 +135,7 @@ class ProjectOverviewNotifier extends StateNotifier<ProjectOverviewState> {
         sprintProgress: sprintProgress,
         clearSprintProgress: sprintProgress == null,
         sprintIssues: sprintIssues,
+        projectIssues: projectIssues,
         isLoading: false,
         clearError: true,
       );
