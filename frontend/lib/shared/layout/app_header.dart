@@ -7,6 +7,9 @@ import 'package:frontend/core/theme/app_typography.dart';
 import 'package:frontend/core/theme/theme_provider.dart';
 import 'package:frontend/core/utils/responsive_breakpoints.dart';
 import 'package:frontend/features/auth/application/auth_provider.dart';
+import 'package:frontend/features/project/application/project_list_provider.dart';
+import 'package:frontend/features/project/application/project_overview_provider.dart';
+import 'package:frontend/features/project/domain/project_model.dart';
 import 'package:frontend/features/workspace/presentation/widgets/workspace_switcher_dropdown.dart';
 import 'package:frontend/shared/widgets/widgets.dart';
 
@@ -15,6 +18,7 @@ import 'package:frontend/shared/widgets/widgets.dart';
 class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
   final String workspaceId;
   final String? projectId;
+  final String? projectName;
   final String? currentViewTitle;
   final VoidCallback? onMenuToggle;
 
@@ -22,6 +26,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
     super.key,
     required this.workspaceId,
     this.projectId,
+    this.projectName,
     this.currentViewTitle,
     this.onMenuToggle,
   });
@@ -54,6 +59,28 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
 
     final authState = ref.watch(authNotifierProvider);
     final activeSeedColor = ref.watch(seedColorProvider);
+
+    String? resolvedProjectName = (projectName != null && projectName!.trim().isNotEmpty)
+        ? projectName!.trim()
+        : null;
+    if (resolvedProjectName == null && projectId != null && authState.isAuthenticated) {
+      final List<ProjectModel> workspaceProjects =
+          ref.watch(projectListNotifierProvider(workspaceId)).projects;
+      final matched = workspaceProjects.where((p) => p.id == projectId).firstOrNull;
+      if (matched != null && matched.name.trim().isNotEmpty) {
+        resolvedProjectName = matched.name.trim();
+      }
+      if (resolvedProjectName == null) {
+        final overviewProject = ref.watch(projectOverviewNotifierProvider(projectId!)).project;
+        if (overviewProject != null && overviewProject.name.trim().isNotEmpty) {
+          resolvedProjectName = overviewProject.name.trim();
+        }
+      }
+    }
+    final String displayProjectLabel = resolvedProjectName ?? (projectId ?? '');
+    final String displayProjectInitial = displayProjectLabel.trim().isNotEmpty
+        ? displayProjectLabel.trim()[0].toUpperCase()
+        : 'P';
 
     final String userEmail = authState.email ?? 'user@oversee.local';
     final String? fullName = authState.user?.fullName;
@@ -134,7 +161,7 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                                 ),
                               ),
                               child: Text(
-                                projectId!.isNotEmpty ? projectId![0].toUpperCase() : 'P',
+                                displayProjectInitial,
                                 style: TextStyle(
                                   fontSize: 10.0,
                                   fontWeight: FontWeight.w700,
@@ -143,12 +170,16 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                               ),
                             ),
                             const SizedBox(width: 7.0),
-                            Text(
-                              projectId!,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                fontSize: 12.0,
-                                fontWeight: currentViewTitle == null ? FontWeight.w600 : FontWeight.w500,
-                                color: currentViewTitle == null ? accentColor : textSecondary,
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 200.0),
+                              child: Text(
+                                displayProjectLabel,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontSize: 12.0,
+                                  fontWeight: currentViewTitle == null ? FontWeight.w600 : FontWeight.w500,
+                                  color: currentViewTitle == null ? accentColor : textSecondary,
+                                ),
                               ),
                             ),
                           ],
