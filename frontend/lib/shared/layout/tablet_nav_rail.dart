@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:frontend/core/l10n/app_localizations.dart';
 import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/shared/layout/nav_item.dart';
@@ -183,10 +184,11 @@ class _TabletRailItemState extends State<_TabletRailItem> {
         ? accentColor
         : (_isHovered ? textPrimary : textMuted);
 
+    final localizedLabel = context.l10n.navLabel(widget.item.keyName, widget.item.label);
     return Tooltip(
       message: widget.item.shortcut != null
-          ? '${widget.item.label} · ${widget.item.shortcut}'
-          : widget.item.label,
+          ? '$localizedLabel · ${widget.item.shortcut}'
+          : localizedLabel,
       child: Stack(
         clipBehavior: Clip.none,
         children: [

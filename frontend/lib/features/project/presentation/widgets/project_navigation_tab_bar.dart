@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:frontend/core/l10n/app_localizations.dart';
 import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 
@@ -132,7 +133,7 @@ class ProjectNavigationTabBar extends StatelessWidget {
                     ),
                     const SizedBox(width: 7.0),
                     Text(
-                      tab.label,
+                      context.l10n.tabLabel(tab.id, tab.label),
                       style: theme.textTheme.labelLarge?.copyWith(
                         fontSize: 12.5,
                         color: isActive ? activeTextColor : inactiveColor,

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:frontend/core/l10n/app_localizations.dart';
 import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/core/theme/app_typography.dart';
@@ -285,7 +286,7 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                     for (final (title, items) in groups) ...[
                       if (isExpanded)
                         _SidebarGroupHeading(
-                          title: title,
+                          title: context.l10n.navGroupLabel(title),
                           isClosed: _closedGroups.contains(title),
                           isDark: isDark,
                           onTap: () => _toggleGroup(title),
@@ -323,8 +324,8 @@ class _DesktopSidebarState extends ConsumerState<DesktopSidebar> {
                     for (final utilItem in NavItem.utilityRouteItems)
                       _SidebarUtilityItem(
                         icon: utilItem.figmaIcon,
-                        label: utilItem.label,
-                        tooltip: utilItem.label,
+                        label: context.l10n.navLabel(utilItem.keyName, utilItem.label),
+                        tooltip: context.l10n.navLabel(utilItem.keyName, utilItem.label),
                         badgeText: utilItem.badgeText,
                         isSelected: widget.currentRoute == utilItem.keyName,
                         isExpanded: isExpanded,
@@ -859,7 +860,7 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
                           const SizedBox(width: 10.0),
                           Expanded(
                             child: Text(
-                              widget.item.label,
+                              context.l10n.navLabel(widget.item.keyName, widget.item.label),
                               style: TextStyle(
                                 fontSize: 12.0,
                                 fontWeight: FontWeight.w500,
@@ -925,9 +926,10 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
     );
 
     if (!widget.isExpanded) {
+      final localizedLabel = context.l10n.navLabel(widget.item.keyName, widget.item.label);
       final tip = widget.item.shortcut != null
-          ? '${widget.item.label} · ${widget.item.shortcut}'
-          : widget.item.label;
+          ? '$localizedLabel · ${widget.item.shortcut}'
+          : localizedLabel;
       return Tooltip(message: tip, child: navRow);
     }
 
