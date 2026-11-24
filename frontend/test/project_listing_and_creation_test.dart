@@ -349,6 +349,57 @@ void main() {
       expect(find.text('Create Project'), findsWidgets);
       expect(find.text('Project Name'), findsOneWidget);
       expect(find.text('Project Key'), findsOneWidget);
+
+      // Live identity preview updates when typing project name
+      final nameField = find
+          .descendant(
+            of: find.byType(CreateProjectDialog),
+            matching: find.byType(TextFormField),
+          )
+          .first;
+      await tester.enterText(nameField, 'Platform Core');
+      await tester.pump();
+      expect(find.text('Issue prefix: PC-101 · Software project'), findsOneWidget);
+    });
+
+    testWidgets('switches between Grid view and List view cleanly', (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final notifier = ProjectListNotifier(workspaceId: 'ws-123', repository: fakeRepo);
+      await notifier.loadProjects();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            projectRepositoryProvider.overrideWithValue(fakeRepo),
+            workspaceRepositoryProvider.overrideWithValue(fakeWsRepo),
+            preferencesServiceProvider.overrideWithValue(PreferencesService()),
+            authNotifierProvider.overrideWith((ref) => AuthNotifier(
+                  SecureStorageService(),
+                  initialState: const AuthState(
+                    status: AuthStatus.authenticated,
+                    user: UserModel(id: 'user-1', email: 'user@oversee.local', fullName: 'Tester'),
+                  ),
+                )),
+            projectListNotifierProvider('ws-123').overrideWith((ref) => notifier),
+          ],
+          child: const MaterialApp(
+            home: ProjectListScreen(workspaceId: 'ws-123'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(GridView), findsOneWidget);
+
+      await tester.tap(find.byTooltip('List view'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(GridView), findsNothing);
+      expect(find.text('Oversee Mobile App'), findsOneWidget);
+      expect(find.text('Backend Core Service'), findsOneWidget);
     });
   });
 }

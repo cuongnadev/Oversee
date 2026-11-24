@@ -1,7 +1,9 @@
 import uuid
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import (
+    DateTime,
     Enum,
     Float,
     ForeignKey,
@@ -104,6 +106,18 @@ class Issue(BaseEntity):
         nullable=False,
         index=True,
         comment="Ordering position within the backlog",
+    )
+    start_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        default=None,
+        comment="Planned start date for timeline/calendar scheduling",
+    )
+    end_date: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        default=None,
+        comment="Planned due/end date for timeline/calendar scheduling",
     )
 
     def __init__(self, **kwargs: Any) -> None:

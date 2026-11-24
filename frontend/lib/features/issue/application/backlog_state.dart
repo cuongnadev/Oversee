@@ -1,12 +1,21 @@
 import 'package:equatable/equatable.dart';
 import 'package:frontend/core/enums/app_enums.dart';
+import 'package:frontend/features/issue/domain/backlog_grouped_model.dart';
 import 'package:frontend/features/issue/domain/issue_filter_state.dart';
 import 'package:frontend/features/issue/domain/issue_model.dart';
 import 'package:frontend/features/project/domain/project_member_model.dart';
 import 'package:frontend/features/project/domain/project_model.dart';
 
 class BacklogState extends Equatable {
+  /// Unassigned product backlog issues (`sprint_id == null`).
   final List<IssueModel> issues;
+
+  /// Sprint groups sorted by Active -> Planned -> Completed with per-sprint progress metrics.
+  final List<BacklogSprintGroupModel> sprintGroups;
+
+  /// Collapsed section IDs (sprint IDs or `'__backlog__'`).
+  final Set<String> collapsedGroupIds;
+
   final ProjectModel? project;
   final bool isLoading;
   final bool isCreating;
@@ -21,6 +30,8 @@ class BacklogState extends Equatable {
 
   const BacklogState({
     this.issues = const [],
+    this.sprintGroups = const [],
+    this.collapsedGroupIds = const {},
     this.project,
     this.isLoading = false,
     this.isCreating = false,
@@ -61,6 +72,7 @@ class BacklogState extends Equatable {
       effectiveFilter.selectedPriorities.isNotEmpty ? effectiveFilter.selectedPriorities.first : null;
   bool get hasActiveFilters => effectiveFilter.hasActiveFilters;
 
+  /// Filtered unassigned backlog issues.
   List<IssueModel> get filteredIssues {
     return effectiveFilter.apply(
       issues,
@@ -69,6 +81,26 @@ class BacklogState extends Equatable {
     );
   }
 
+  /// Sprint groups with their issues filtered according to [effectiveFilter].
+  List<BacklogSprintGroupModel> get filteredSprintGroups {
+    final key = project?.key ?? 'PROJ';
+    return sprintGroups.map((group) {
+      final matching = effectiveFilter.apply(
+        group.issues,
+        projectKey: key,
+        currentUserId: currentUserId,
+      );
+      return group.withIssues(matching);
+    }).toList();
+  }
+
+  /// Total count of all issues (sprints + backlog) after active filters.
+  int get totalAllIssuesCount {
+    final sprintTotal = filteredSprintGroups.fold<int>(0, (sum, g) => sum + g.issues.length);
+    return sprintTotal + filteredIssues.length;
+  }
+
+  /// Total story points across backlog issues (kept for backward compatibility).
   double get totalStoryPoints {
     return filteredIssues.fold<double>(
       0.0,
@@ -76,8 +108,16 @@ class BacklogState extends Equatable {
     );
   }
 
+  /// Total story points across all sprints + backlog.
+  double get totalAllStoryPoints {
+    final sprintPts = filteredSprintGroups.fold<double>(0.0, (sum, g) => sum + g.totalStoryPoints);
+    return sprintPts + totalStoryPoints;
+  }
+
   BacklogState copyWith({
     List<IssueModel>? issues,
+    List<BacklogSprintGroupModel>? sprintGroups,
+    Set<String>? collapsedGroupIds,
     ProjectModel? project,
     bool? isLoading,
     bool? isCreating,
@@ -109,6 +149,8 @@ class BacklogState extends Equatable {
 
     return BacklogState(
       issues: issues ?? this.issues,
+      sprintGroups: sprintGroups ?? this.sprintGroups,
+      collapsedGroupIds: collapsedGroupIds ?? this.collapsedGroupIds,
       project: project ?? this.project,
       isLoading: isLoading ?? this.isLoading,
       isCreating: isCreating ?? this.isCreating,
@@ -123,6 +165,8 @@ class BacklogState extends Equatable {
   @override
   List<Object?> get props => [
         issues,
+        sprintGroups,
+        collapsedGroupIds,
         project,
         isLoading,
         isCreating,

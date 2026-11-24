@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:frontend/core/l10n/app_localizations.dart';
 import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/shared/layout/nav_item.dart';
+import 'package:frontend/shared/layout/sidebar_icons.dart';
 
-/// Navigation rail for tablet screens (600px - 1024px) aligned with Figma collapsed sidebar.
+/// Navigation rail for tablet screens (600px - 1024px) matching Figma collapsed `.sidebar.collapsed` (64px).
 class TabletNavRail extends StatelessWidget {
   final String workspaceId;
   final String projectId;
@@ -17,36 +19,22 @@ class TabletNavRail extends StatelessWidget {
     required this.currentRoute,
   });
 
-  String _buildRoute(String keyName) {
-    switch (keyName) {
-      case 'overview':
-        return AppRoutes.projectOverviewPath(workspaceId, projectId);
-      case 'backlog':
-        return AppRoutes.projectBacklogPath(workspaceId, projectId);
-      case 'board':
-        return AppRoutes.projectBoardPath(workspaceId, projectId);
-      case 'sprints':
-        return AppRoutes.projectSprintsPath(workspaceId, projectId);
-      case 'dashboard':
-        return AppRoutes.projectDashboardPath(workspaceId, projectId);
-      case 'settings':
-        return AppRoutes.projectSettingsPath(workspaceId, projectId);
-      default:
-        return AppRoutes.projectOverviewPath(workspaceId, projectId);
-    }
-  }
+  String _buildRoute(String keyName) =>
+      NavItem.routeFor(keyName, workspaceId, projectId);
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final bool isDark = theme.brightness == Brightness.dark;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     final Color bgColor = AppColors.sidebarFor(isDark);
     final Color borderColor = AppColors.borderFor(isDark);
     final Color accentColor = AppColors.accentFor(isDark);
     final Color accentSoftColor = AppColors.accentSoftFor(isDark);
 
+    final String projectInitial =
+        projectId.trim().isNotEmpty ? projectId.trim()[0].toUpperCase() : 'P';
+
     return Container(
-      width: 68.0,
+      width: 64.0,
       decoration: BoxDecoration(
         color: bgColor,
         border: Border(
@@ -55,39 +43,76 @@ class TabletNavRail extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Top logo
-          Container(
-            height: 60.0,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: AppColors.borderSoftFor(isDark), width: 1.0),
+          // Top brand mark (Figma collapsed .sidebar-brand: height 64px)
+          SizedBox(
+            height: 64.0,
+            child: Center(
+              child: FigmaSidebarIcon(
+                FigmaIconType.layers3,
+                size: 19.0,
+                color: accentColor,
+                strokeWidth: 1.75,
               ),
-            ),
-            child: Container(
-              padding: const EdgeInsets.all(7.0),
-              decoration: BoxDecoration(
-                color: accentSoftColor,
-                borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                border: Border.all(color: accentColor.withValues(alpha: 0.22)),
-              ),
-              child: Icon(Icons.layers_rounded, color: accentColor, size: 19.0),
             ),
           ),
 
-          // Items
+          // Compact project monogram badge (Figma collapsed .project-button)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12.0, 0.0, 12.0, 10.0),
+            child: Tooltip(
+              message: 'Switch Project ($projectId)',
+              child: InkWell(
+                onTap: () => context.go(AppRoutes.workspaceDetailPath(workspaceId)),
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                child: Container(
+                  padding: const EdgeInsets.all(4.0),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceFor(isDark),
+                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: Container(
+                    width: 29.0,
+                    height: 29.0,
+                    decoration: BoxDecoration(
+                      color: accentSoftColor,
+                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                      border: Border.all(color: accentColor.withValues(alpha: 0.18)),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      projectInitial,
+                      style: TextStyle(
+                        color: accentColor,
+                        fontSize: 12.0,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Navigation items
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 8.0),
+              padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 10.0),
               children: [
-                for (final item in NavItem.projectNavItems) ...[
-                  _buildRailItem(
-                    context,
+                for (final item in [...NavItem.projectNavItems, ...NavItem.utilityRouteItems]) ...[
+                  _TabletRailItem(
                     item: item,
-                    isSelected: currentRoute == item.keyName,
+                    isSelected: currentRoute == item.keyName ||
+                        (item.keyName == 'overview' && currentRoute == 'dashboard') ||
+                        (item.keyName == 'sprints' && currentRoute == 'planning'),
                     isDark: isDark,
+                    onTap: () {
+                      if (currentRoute != item.keyName) {
+                        context.go(_buildRoute(item.keyName));
+                      }
+                    },
                   ),
-                  const SizedBox(height: 5.0),
+                  const SizedBox(height: 2.0),
                 ],
               ],
             ),
@@ -95,75 +120,114 @@ class TabletNavRail extends StatelessWidget {
 
           // Bottom back to workspaces
           Container(
-            padding: const EdgeInsets.all(8.0),
+            padding: const EdgeInsets.all(10.0),
             decoration: BoxDecoration(
               border: Border(
                 top: BorderSide(color: AppColors.borderSoftFor(isDark), width: 1.0),
               ),
             ),
-            child: IconButton(
-              tooltip: 'All Workspaces',
-              icon: Icon(
-                Icons.arrow_back_rounded,
-                size: 19.0,
-                color: AppColors.textMutedFor(isDark),
+            child: Tooltip(
+              message: 'All Workspaces',
+              child: InkWell(
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                onTap: () => context.go(AppRoutes.workspaces),
+                child: SizedBox(
+                  height: 35.0,
+                  child: Center(
+                    child: FigmaSidebarIcon(
+                      FigmaIconType.terminal,
+                      size: 16.0,
+                      color: AppColors.textMutedFor(isDark),
+                    ),
+                  ),
+                ),
               ),
-              onPressed: () => context.go(AppRoutes.workspaces),
             ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildRailItem(
-    BuildContext context, {
-    required NavItem item,
-    required bool isSelected,
-    required bool isDark,
-  }) {
-    final Color selectedBg = AppColors.accentSoftFor(isDark);
-    final Color selectedColor = AppColors.accentFor(isDark);
-    final Color unselectedColor = AppColors.textMutedFor(isDark);
+class _TabletRailItem extends StatefulWidget {
+  final NavItem item;
+  final bool isSelected;
+  final bool isDark;
+  final VoidCallback onTap;
 
+  const _TabletRailItem({
+    required this.item,
+    required this.isSelected,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  @override
+  State<_TabletRailItem> createState() => _TabletRailItemState();
+}
+
+class _TabletRailItemState extends State<_TabletRailItem> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final accentColor = AppColors.accentFor(widget.isDark);
+    final accentSoft = AppColors.accentSoftFor(widget.isDark);
+    final textPrimary = AppColors.textPrimaryFor(widget.isDark);
+    final textMuted = AppColors.textMutedFor(widget.isDark);
+
+    final bgColor = widget.isSelected
+        ? accentSoft
+        : (_isHovered ? AppColors.hoverFor(widget.isDark) : Colors.transparent);
+    final iconColor = widget.isSelected
+        ? accentColor
+        : (_isHovered ? textPrimary : textMuted);
+
+    final localizedLabel = context.l10n.navLabel(widget.item.keyName, widget.item.label);
     return Tooltip(
-      message: item.label,
-      child: InkWell(
-        onTap: () {
-          if (!isSelected) {
-            context.go(_buildRoute(item.keyName));
-          }
-        },
-        borderRadius: BorderRadius.circular(AppColors.radiusMd),
-        hoverColor: AppColors.hoverFor(isDark),
-        child: Container(
-          height: 46.0,
-          decoration: BoxDecoration(
-            color: isSelected ? selectedBg : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppColors.radiusMd),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                isSelected ? item.selectedIcon : item.icon,
-                size: 18.5,
-                color: isSelected ? selectedColor : unselectedColor,
-              ),
-              const SizedBox(height: 3.0),
-              Text(
-                item.label,
-                style: TextStyle(
-                  fontSize: 9.5,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected ? selectedColor : unselectedColor,
+      message: widget.item.shortcut != null
+          ? '$localizedLabel · ${widget.item.shortcut}'
+          : localizedLabel,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          if (widget.isSelected)
+            Positioned(
+              left: -10.0,
+              top: 8.0,
+              bottom: 8.0,
+              child: Container(
+                width: 2.0,
+                decoration: BoxDecoration(
+                  color: accentColor,
+                  borderRadius: BorderRadius.circular(99.0),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
-            ],
+            ),
+          MouseRegion(
+            cursor: SystemMouseCursors.click,
+            onEnter: (_) => setState(() => _isHovered = true),
+            onExit: (_) => setState(() => _isHovered = false),
+            child: GestureDetector(
+              onTap: widget.onTap,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                height: 35.0,
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                ),
+                alignment: Alignment.center,
+                child: FigmaSidebarIcon(
+                  widget.item.figmaIcon,
+                  size: 16.0,
+                  color: iconColor,
+                ),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

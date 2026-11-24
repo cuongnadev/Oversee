@@ -75,7 +75,7 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
     final hasActiveSprint = state.sprints.any((s) => s.status == SprintStatus.active);
     final sprintRepo = ref.read(sprintRepositoryProvider);
 
-    showDialog<bool>(
+    showAnimatedDialog<bool>(
       context: context,
       builder: (ctx) => StartSprintDialog(
         sprint: sprint,
@@ -115,7 +115,7 @@ class _SprintPlanningScreenState extends ConsumerState<SprintPlanningScreen> {
     return ProjectScreenScaffold(
       workspaceId: widget.workspaceId,
       projectId: widget.projectId,
-      currentRoute: 'sprints',
+      currentRoute: 'planning',
       title: 'Sprint Planning',
       body: Column(
         children: [

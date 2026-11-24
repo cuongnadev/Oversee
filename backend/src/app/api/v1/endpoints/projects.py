@@ -15,8 +15,13 @@ from app.models.enums import IssueType, Permission, RoleType, SprintStatus
 from app.models.membership import ProjectMember, WorkspaceMember
 from app.models.project import Project
 from app.models.user import User
+from app.schemas.document import (
+    DocumentCreate,
+    DocumentResponse,
+)
 from app.schemas.issue import (
     BacklogAddIssuesRequest,
+    BacklogOverviewResponse,
     BacklogReorderRequest,
     IssueCreate,
     IssuePageResponse,
@@ -35,9 +40,14 @@ from app.schemas.sprint import (
     SprintCreate,
     SprintResponse,
 )
+from app.services.document import (
+    create_document,
+    list_project_documents,
+)
 from app.services.issue import (
     add_issues_to_backlog,
     create_issue,
+    get_backlog_overview,
     list_backlog_issues,
     list_project_issues,
     parse_issue_priorities,
@@ -473,6 +483,62 @@ def list_backlog_endpoint(
     )
 
 
+@router.get(
+    "/{project_id}/backlog/grouped",
+    response_model=BacklogOverviewResponse,
+    status_code=status.HTTP_200_OK,
+    summary="List backlog and sprint issues grouped by sprint",
+    description=(
+        "Return all active project issues grouped by sprint (with completion counts and story points) "
+        "plus unassigned product backlog issues. Requires ISSUE_READ permission."
+    ),
+)
+def get_grouped_backlog_endpoint(
+    project_id: uuid.UUID,
+    member: Annotated[
+        ProjectMember, Depends(require_project_permission(Permission.ISSUE_READ))
+    ],
+    db: Annotated[Session, Depends(get_db)],
+    status_filter: Annotated[
+        list[str] | None,
+        Query(alias="status", description="Filter by issue status"),
+    ] = None,
+    assignee_id: Annotated[
+        uuid.UUID | None,
+        Query(description="Filter by assignee user ID"),
+    ] = None,
+    assignee: Annotated[
+        str | None,
+        Query(description="Filter by assignee ('unassigned' or user UUID string)"),
+    ] = None,
+    priority: Annotated[
+        list[str] | None,
+        Query(description="Filter by priority"),
+    ] = None,
+    type: Annotated[
+        IssueType | None,
+        Query(description="Filter by issue type"),
+    ] = None,
+    search: Annotated[
+        str | None,
+        Query(description="Search keyword in title or description"),
+    ] = None,
+) -> BacklogOverviewResponse:
+    """Retrieve issues grouped by sprint plus unassigned backlog."""
+    parsed_statuses = parse_issue_statuses(status_filter)
+    parsed_priorities = parse_issue_priorities(priority)
+    return get_backlog_overview(
+        db=db,
+        project_id=project_id,
+        statuses=parsed_statuses,
+        assignee_id=assignee_id,
+        assignee=assignee,
+        priorities=parsed_priorities,
+        issue_type=type,
+        search=search,
+    )
+
+
 @router.post(
     "/{project_id}/backlog/issues",
     response_model=list[IssueResponse],
@@ -611,3 +677,49 @@ def list_project_sprints_endpoint(
         project_id=project_id,
         status_filter=status_filter,
     )
+
+
+# ---------------------------------------------------------------------------
+# Document Endpoints (#181)
+# ---------------------------------------------------------------------------
+@router.post(
+    "/{project_id}/documents",
+    response_model=DocumentResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create document in project",
+    description="Create a new document under a project. Requires DOCUMENT_CREATE permission.",
+)
+def create_project_document_endpoint(
+    project_id: uuid.UUID,
+    data: DocumentCreate,
+    member: Annotated[
+        ProjectMember, Depends(require_project_permission(Permission.DOCUMENT_CREATE))
+    ],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> DocumentResponse:
+    """Create a new document in a project."""
+    return create_document(
+        db=db,
+        project_id=project_id,
+        actor=current_user,
+        data=data,
+    )
+
+
+@router.get(
+    "/{project_id}/documents",
+    response_model=list[DocumentResponse],
+    status_code=status.HTTP_200_OK,
+    summary="List documents for project",
+    description="Retrieve all non-deleted documents for a project ordered by updated_at desc. Requires DOCUMENT_READ permission.",
+)
+def list_project_documents_endpoint(
+    project_id: uuid.UUID,
+    member: Annotated[
+        ProjectMember, Depends(require_project_permission(Permission.DOCUMENT_READ))
+    ],
+    db: Annotated[Session, Depends(get_db)],
+) -> list[DocumentResponse]:
+    """Retrieve all documents for a project."""
+    return list_project_documents(db=db, project_id=project_id)

@@ -345,8 +345,12 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 50));
 
+      expect(find.text('Board'), findsWidgets);
       expect(find.text('Sprint 1'), findsOneWidget);
       expect(find.text('ACTIVE'), findsOneWidget);
+      expect(find.text('All'), findsOneWidget);
+      expect(find.text('Mine'), findsOneWidget);
+      expect(find.text('Open'), findsOneWidget);
       expect(find.text('To Do'), findsOneWidget);
       expect(find.text('In Progress'), findsOneWidget);
       expect(find.text('In Review'), findsOneWidget);
@@ -354,6 +358,7 @@ void main() {
 
       expect(find.text('Build backend API'), findsOneWidget);
       expect(find.text('Create Kanban UI'), findsOneWidget);
+      expect(find.text('Drag issues across columns to update status'), findsOneWidget);
     });
   });
 }

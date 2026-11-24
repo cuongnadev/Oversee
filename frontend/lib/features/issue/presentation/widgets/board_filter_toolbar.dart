@@ -1,18 +1,36 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:frontend/core/enums/app_enums.dart';
+import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/core/theme/app_typography.dart';
 import 'package:frontend/features/issue/domain/issue_filter_state.dart';
 import 'package:frontend/features/project/domain/project_member_model.dart';
 import 'package:frontend/shared/widgets/user_avatar.dart';
 
-/// Reusable filter and sorting toolbar aligned with Figma WorkToolbar.
+/// Saved view presets displayed in Figma WorkToolbar Row 1 (node 6:382).
+enum BoardSavedView {
+  all('All'),
+  mine('Mine'),
+  open('Open');
+
+  final String label;
+  const BoardSavedView(this.label);
+}
+
+/// Reusable filter and sorting toolbar aligned with Figma WorkToolbar (node 6:381 & 12:3668).
 class BoardFilterToolbar extends StatefulWidget {
   final IssueFilterState filter;
   final ValueChanged<IssueFilterState> onFilterChanged;
   final List<ProjectMemberModel> members;
   final String? currentUserId;
+  final int? totalCount;
+  final BoardSavedView? activeSavedView;
+  final ValueChanged<BoardSavedView>? onSavedViewChanged;
+  final String? workspaceId;
+  final String? projectId;
+  final String? activeView; // 'backlog' | 'board' | 'timeline' | 'calendar' | 'issues'
 
   const BoardFilterToolbar({
     super.key,
@@ -20,6 +38,12 @@ class BoardFilterToolbar extends StatefulWidget {
     required this.onFilterChanged,
     this.members = const [],
     this.currentUserId,
+    this.totalCount,
+    this.activeSavedView,
+    this.onSavedViewChanged,
+    this.workspaceId,
+    this.projectId,
+    this.activeView,
   });
 
   @override
@@ -92,6 +116,73 @@ class _BoardFilterToolbarState extends State<BoardFilterToolbar> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Optional Saved Views Strip (Figma WorkToolbar Row 1: node 6:382)
+          if (widget.onSavedViewChanged != null) ...[
+            Container(
+              height: 40,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: borderSoftColor)),
+              ),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: BoardSavedView.values.map((view) {
+                    final isSelected = (widget.activeSavedView ?? BoardSavedView.all) == view;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: InkWell(
+                        onTap: () => widget.onSavedViewChanged!(view),
+                        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                        child: Container(
+                          height: 26,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          decoration: BoxDecoration(
+                            color: isSelected ? accentSoft : Colors.transparent,
+                            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (view == BoardSavedView.all) ...[
+                                Icon(
+                                  Icons.view_kanban_outlined,
+                                  size: 13.5,
+                                  color: isSelected ? accentColor : textMuted,
+                                ),
+                                const SizedBox(width: 5),
+                              ],
+                              Text(
+                                view.label,
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                  color: isSelected ? textPrimary : textSecondary,
+                                ),
+                              ),
+                              if (view == BoardSavedView.all && widget.totalCount != null) ...[
+                                const SizedBox(width: 6),
+                                Text(
+                                  '${widget.totalCount}',
+                                  style: AppTypography.mono(
+                                    isDark,
+                                    fontSize: 10,
+                                    color: textMuted,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          ],
+
           // Main Toolbar Row (Figma .filters-row)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
@@ -394,6 +485,17 @@ class _BoardFilterToolbarState extends State<BoardFilterToolbar> {
                           ),
                         ),
                       ),
+
+                    // Figma 5-View Switcher (Backlog, Board, Timeline, Calendar, Issues Table)
+                    if (widget.workspaceId != null && widget.projectId != null) ...[
+                      Container(width: 1, height: 18, color: borderColor),
+                      _WorkViewSwitcher(
+                        workspaceId: widget.workspaceId!,
+                        projectId: widget.projectId!,
+                        activeView: widget.activeView ?? '',
+                        isDark: isDark,
+                      ),
+                    ],
                   ],
                 ),
               ],
@@ -616,5 +718,79 @@ class _BoardFilterToolbarState extends State<BoardFilterToolbar> {
       ),
     );
     return member.user?.fullName ?? member.user?.email ?? 'Member';
+  }
+}
+
+class _WorkViewSwitcher extends StatelessWidget {
+  final String workspaceId;
+  final String projectId;
+  final String activeView;
+  final bool isDark;
+
+  const _WorkViewSwitcher({
+    required this.workspaceId,
+    required this.projectId,
+    required this.activeView,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final surface2 = AppColors.surface2For(isDark);
+    final surface = AppColors.surfaceFor(isDark);
+    final border = AppColors.borderFor(isDark);
+    final accent = AppColors.accentFor(isDark);
+    final muted = AppColors.textMutedFor(isDark);
+
+    final items = <(String, String, IconData, String)>[
+      ('backlog', 'Backlog', Icons.layers_outlined, AppRoutes.projectBacklogPath(workspaceId, projectId)),
+      ('board', 'Board', Icons.view_kanban_outlined, AppRoutes.projectBoardPath(workspaceId, projectId)),
+      ('timeline', 'Timeline', Icons.timeline_outlined, AppRoutes.projectTimelinePath(workspaceId, projectId)),
+      ('calendar', 'Calendar', Icons.calendar_today_outlined, AppRoutes.projectCalendarPath(workspaceId, projectId)),
+      ('issues', 'Issues List', Icons.table_rows_outlined, AppRoutes.projectIssuesPath(workspaceId, projectId)),
+    ];
+
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        color: surface2,
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: items.map((entry) {
+          final (key, label, icon, path) = entry;
+          final selected = activeView == key;
+          return Tooltip(
+            message: label,
+            child: InkWell(
+              onTap: () {
+                if (!selected) {
+                  context.go(path);
+                }
+              },
+              borderRadius: BorderRadius.circular(AppColors.radiusSm + 1),
+              child: Container(
+                width: 28,
+                height: 26,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: selected ? surface : Colors.transparent,
+                  borderRadius: BorderRadius.circular(AppColors.radiusSm + 1),
+                  border: selected ? Border.all(color: border) : null,
+                ),
+                child: Icon(
+                  icon,
+                  size: 14.5,
+                  color: selected ? accent : muted,
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
   }
 }

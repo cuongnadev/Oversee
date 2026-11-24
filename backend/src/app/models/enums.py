@@ -39,6 +39,12 @@ class Permission(str, enum.Enum):
     ISSUE_DELETE = "issue:delete"
     ISSUE_COMMENT = "issue:comment"
 
+    # Document permissions
+    DOCUMENT_CREATE = "document:create"
+    DOCUMENT_READ = "document:read"
+    DOCUMENT_UPDATE = "document:update"
+    DOCUMENT_DELETE = "document:delete"
+
 
 class IssueType(str, enum.Enum):
     """Categorization types for Issues."""

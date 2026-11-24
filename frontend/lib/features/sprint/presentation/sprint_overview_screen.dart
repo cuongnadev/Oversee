@@ -15,6 +15,7 @@ import 'package:frontend/features/sprint/domain/sprint_progress_model.dart';
 import 'package:frontend/features/sprint/presentation/widgets/complete_sprint_dialog.dart';
 import 'package:frontend/features/sprint/presentation/widgets/create_sprint_dialog.dart';
 import 'package:frontend/features/sprint/presentation/widgets/start_sprint_dialog.dart';
+import 'package:frontend/shared/widgets/app_dialog.dart';
 
 /// Sprint overview screen aligned with Figma Sprints view.
 class SprintOverviewScreen extends ConsumerStatefulWidget {
@@ -802,7 +803,7 @@ class _SprintOverviewScreenState extends ConsumerState<SprintOverviewScreen> {
     bool hasActiveSprint,
     SprintOverviewNotifier notifier,
   ) {
-    showDialog<bool>(
+    showAnimatedDialog<bool>(
       context: context,
       builder: (ctx) => StartSprintDialog(
         sprint: sprint,
@@ -823,7 +824,7 @@ class _SprintOverviewScreenState extends ConsumerState<SprintOverviewScreen> {
     SprintOverviewState state,
     SprintOverviewNotifier notifier,
   ) {
-    showDialog<SprintCompleteModel>(
+    showAnimatedDialog<SprintCompleteModel>(
       context: context,
       builder: (ctx) => CompleteSprintDialog(
         sprint: sprint,

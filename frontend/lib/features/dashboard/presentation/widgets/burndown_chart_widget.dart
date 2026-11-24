@@ -31,7 +31,7 @@ class BurndownChartWidget extends StatelessWidget {
     if (burndown.isEmpty) {
       return Container(
         width: double.infinity,
-        height: 310,
+        constraints: const BoxConstraints(minHeight: 310),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: surfaceColor,

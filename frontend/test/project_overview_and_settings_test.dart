@@ -447,9 +447,29 @@ void main() {
       expect(find.text('Oversee Web App'), findsWidgets);
       expect(find.text('OVS'), findsWidgets);
       expect(find.text('ACTIVE'), findsWidgets);
+      expect(find.text('WORKSPACE OVERVIEW'), findsOneWidget);
+      expect(find.text('Total Issues'), findsOneWidget);
+      expect(find.text('In Progress'), findsWidgets);
+      expect(find.text('Completed'), findsWidgets);
+      expect(find.text('Story Points'), findsOneWidget);
+      expect(find.text('Sprint Velocity'), findsOneWidget);
+      expect(find.text('Recent Activity'), findsOneWidget);
       expect(find.text('Team Members'), findsWidgets);
-      expect(find.text('Alice Owner'), findsOneWidget);
-      expect(find.text('Bob Dev'), findsOneWidget);
+      expect(find.text('My Ongoing Jobs'), findsOneWidget);
+      expect(find.text('Upcoming Jobs'), findsOneWidget);
+      expect(find.text('Project Participant Workloads'), findsOneWidget);
+      expect(find.text('Alice Owner'), findsWidgets);
+      expect(find.text('Bob Dev'), findsWidgets);
+
+      // Verify My Ongoing Jobs section is positioned below Sprint Velocity
+      final velocityRect = tester.getRect(find.text('Sprint Velocity'));
+      final ongoingRect = tester.getRect(find.byKey(const Key('overview_section_ongoing_jobs')));
+      final upcomingRect = tester.getRect(find.byKey(const Key('overview_section_upcoming_jobs')));
+      final workloadsRect =
+          tester.getRect(find.byKey(const Key('overview_section_participant_workloads')));
+      expect(ongoingRect.top, greaterThan(velocityRect.bottom));
+      expect(ongoingRect.height, closeTo(upcomingRect.height, 1.0));
+      expect(upcomingRect.height, closeTo(workloadsRect.height, 1.0));
     });
 
     testWidgets('ProjectOverviewScreen displays archived banner when project is archived', (tester) async {

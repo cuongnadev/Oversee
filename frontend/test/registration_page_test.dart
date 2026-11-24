@@ -341,4 +341,24 @@ void main() {
       expect(find.text('Internal server error occurred.'), findsOneWidget);
     });
   });
+
+  group('Registration Modernist Layout & Responsive Tests', () {
+    testWidgets('Mobile viewport renders register screen cleanly without overflow',
+        (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      final fakeRepo = FakeRegisterAuthRepository();
+      await tester.pumpWidget(_buildRegisterScreen(fakeRepo: fakeRepo));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Built for structured delivery.'), findsOneWidget);
+      expect(find.text('Create an Account'), findsOneWidget);
+      expect(find.text('Min 8 chars with uppercase, lowercase & number'), findsOneWidget);
+    });
+  });
 }

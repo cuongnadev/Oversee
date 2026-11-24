@@ -221,12 +221,27 @@ class KanbanBoardNotifier extends StateNotifier<KanbanBoardState> {
     state = state.copyWith(clearErrorMessage: true);
   }
 
-  /// Updates an issue directly in local board state for instantaneous cross-component reflection.
+  /// Updates an issue directly in local board state for instantaneous cross-component reflection
+  /// without triggering a full-page refetch/reload.
   void updateIssueInState(IssueModel updatedIssue) {
-    final updatedList = state.allIssues.map((issue) {
-      return issue.id == updatedIssue.id ? updatedIssue : issue;
-    }).toList();
-    state = state.copyWith(allIssues: updatedList);
+    final activeSprintId = state.activeSprint?.id;
+    final exists = state.allIssues.any((i) => i.id == updatedIssue.id);
+    if (activeSprintId != null && updatedIssue.sprintId != activeSprintId) {
+      if (exists) {
+        state = state.copyWith(
+          allIssues: state.allIssues.where((i) => i.id != updatedIssue.id).toList(),
+        );
+      }
+      return;
+    }
+    if (exists) {
+      final updatedList = state.allIssues.map((issue) {
+        return issue.id == updatedIssue.id ? updatedIssue : issue;
+      }).toList();
+      state = state.copyWith(allIssues: updatedList);
+    } else if (activeSprintId != null && updatedIssue.sprintId == activeSprintId) {
+      state = state.copyWith(allIssues: [...state.allIssues, updatedIssue]);
+    }
   }
 
   /// Clears all active filters.

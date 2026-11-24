@@ -441,6 +441,7 @@ def list_sprint_issues(
             .options(
                 selectinload(Issue.parent),
                 selectinload(Issue.sub_issues),
+                selectinload(Issue.assignee),
             )
             .where(
                 Issue.sprint_id == sprint.id,

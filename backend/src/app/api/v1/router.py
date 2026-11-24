@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     auth,
+    documents,
     health,
     issues,
     projects,
@@ -19,3 +20,4 @@ api_router.include_router(workspaces.router, prefix="/workspaces", tags=["worksp
 api_router.include_router(projects.router, prefix="/projects", tags=["projects"])
 api_router.include_router(issues.router, prefix="/issues", tags=["issues"])
 api_router.include_router(sprints.router, prefix="/sprints", tags=["sprints"])
+api_router.include_router(documents.router, prefix="/documents", tags=["documents"])

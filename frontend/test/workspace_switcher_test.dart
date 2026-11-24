@@ -7,7 +7,10 @@ import 'package:frontend/core/storage/preferences_service.dart';
 import 'package:frontend/features/workspace/application/workspace_provider.dart';
 import 'package:frontend/features/workspace/data/workspace_repository.dart';
 import 'package:frontend/features/workspace/domain/workspace_model.dart';
+import 'package:frontend/features/workspace/presentation/create_workspace_screen.dart';
+import 'package:frontend/features/workspace/presentation/widgets/create_workspace_dialog.dart';
 import 'package:frontend/features/workspace/presentation/widgets/workspace_switcher_dropdown.dart';
+import 'package:frontend/features/workspace/presentation/workspace_list_screen.dart';
 
 class FakeWorkspaceRepository implements WorkspaceRepository {
   List<WorkspaceModel> workspaces = [];
@@ -295,6 +298,130 @@ void main() {
 
       // Create action
       expect(find.text('Create Workspace'), findsOneWidget);
+    });
+  });
+
+  group('CreateWorkspaceDialog Tests', () {
+    test('generateSlug and computeInitials format workspace inputs safely', () {
+      expect(CreateWorkspaceDialog.generateSlug('  Engineering & Core!!  '), 'engineering-core');
+      expect(CreateWorkspaceDialog.generateSlug('Mobile---App'), 'mobile-app');
+      expect(CreateWorkspaceDialog.computeInitials('Engineering Team'), 'ET');
+      expect(CreateWorkspaceDialog.computeInitials('Oversee'), 'OV');
+      expect(CreateWorkspaceDialog.computeInitials('   '), 'W');
+    });
+
+    testWidgets('updates live identity preview and slug as workspace name is typed',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: CreateWorkspaceDialog(),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('oversee.app/w/workspace-slug'), findsOneWidget);
+
+      await tester.enterText(find.byType(TextFormField).first, 'Platform Engineering');
+      await tester.pump();
+
+      expect(find.text('PE'), findsOneWidget);
+      expect(find.text('oversee.app/w/platform-engineering'), findsOneWidget);
+    });
+  });
+
+  group('WorkspaceListScreen & CreateWorkspaceScreen Tests', () {
+    testWidgets('filters workspaces by search and role chips and switches Grid/List view',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final fakeRepo = FakeWorkspaceRepository()
+        ..workspaces = [
+          const WorkspaceModel(
+            id: 'ws-1',
+            name: 'Engineering Core',
+            slug: 'eng-core',
+            description: 'Platform engineering space',
+            ownerId: 'user-1',
+            userRole: RoleType.owner,
+          ),
+          const WorkspaceModel(
+            id: 'ws-2',
+            name: 'Design Guild',
+            slug: 'design-guild',
+            description: 'UI tokens and research',
+            ownerId: 'user-2',
+            userRole: RoleType.admin,
+          ),
+        ];
+      final prefsService = PreferencesService();
+      final notifier = WorkspaceNotifier(
+        repository: fakeRepo,
+        prefsService: prefsService,
+        currentUserId: 'user-1',
+      );
+      await notifier.loadWorkspaces();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            workspaceRepositoryProvider.overrideWithValue(fakeRepo),
+            preferencesServiceProvider.overrideWithValue(prefsService),
+            workspaceNotifierProvider.overrideWith((ref) => notifier),
+          ],
+          child: const MaterialApp(home: WorkspaceListScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Total Workspaces'), findsOneWidget);
+      expect(find.text('Engineering Core'), findsWidgets);
+      expect(find.text('Design Guild'), findsOneWidget);
+
+      // Filter by Admin role chip
+      await tester.tap(find.text('Admin').first);
+      await tester.pumpAndSettle();
+      expect(find.text('Design Guild'), findsOneWidget);
+      expect(find.text('1 of 2'), findsOneWidget);
+
+      // Reset to All and switch to List view
+      await tester.tap(find.text('All').first);
+      await tester.pumpAndSettle();
+      expect(find.byType(GridView), findsOneWidget);
+
+      await tester.tap(find.byTooltip('List view'));
+      await tester.pumpAndSettle();
+      expect(find.byType(GridView), findsNothing);
+    });
+
+    testWidgets('CreateWorkspaceScreen applies quick starter template and updates live preview',
+        (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1280, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+
+      await tester.pumpWidget(
+        const ProviderScope(
+          child: MaterialApp(home: CreateWorkspaceScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Create a Workspace'), findsOneWidget);
+      await tester.tap(find.text('Product Studio'));
+      await tester.pump();
+
+      expect(find.text('oversee.app/w/product-studio'), findsOneWidget);
+      expect(find.text('PS'), findsOneWidget);
     });
   });
 }

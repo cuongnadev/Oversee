@@ -20,7 +20,7 @@ import 'package:frontend/features/sprint/presentation/widgets/complete_sprint_di
 import 'package:frontend/features/sprint/presentation/widgets/kanban_column_widget.dart';
 import 'package:frontend/shared/widgets/widgets.dart';
 
-/// Screen displaying the multi-column Kanban board aligned with Figma Board.
+/// Screen displaying the multi-column Kanban board aligned with Figma Board Page (node 6:2).
 class KanbanBoardScreen extends ConsumerStatefulWidget {
   final String workspaceId;
   final String projectId;
@@ -36,6 +36,9 @@ class KanbanBoardScreen extends ConsumerStatefulWidget {
 }
 
 class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
+  BoardSavedView _activeSavedView = BoardSavedView.all;
+  final ScrollController _horizontalController = ScrollController();
+
   @override
   void initState() {
     super.initState();
@@ -53,6 +56,12 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    _horizontalController.dispose();
+    super.dispose();
+  }
+
   void _updateUrlWithFilters(IssueFilterState filter) {
     try {
       final queryParams = filter.toQueryParams();
@@ -63,6 +72,40 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
       context.go(uri.toString());
     } catch (_) {
       // In tests without full router integration
+    }
+  }
+
+  void _handleSavedViewChanged(
+    BoardSavedView view,
+    KanbanBoardState state,
+    KanbanBoardNotifier notifier,
+  ) {
+    setState(() => _activeSavedView = view);
+    if (view == BoardSavedView.mine) {
+      final next = state.filter.copyWith(selectedAssigneeId: 'me');
+      notifier.setFilter(next);
+      _updateUrlWithFilters(next);
+    } else if (state.filter.selectedAssigneeId == 'me') {
+      final next = state.filter.copyWith(clearAssigneeId: true);
+      notifier.setFilter(next);
+      _updateUrlWithFilters(next);
+    }
+  }
+
+  Future<void> _openQuickCreateIssue(
+    KanbanBoardNotifier notifier, {
+    IssueStatus? initialStatus,
+    String? initialSprintId,
+  }) async {
+    final created = await QuickCreateDialog.show(
+      context,
+      projectId: widget.projectId,
+      initialType: QuickCreateEntityType.issue,
+      initialStatus: initialStatus,
+      initialSprintId: initialSprintId,
+    );
+    if (created == true && mounted) {
+      await notifier.refresh();
     }
   }
 
@@ -100,55 +143,70 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
       }
     });
 
-    return ProjectScreenScaffold(
-      workspaceId: widget.workspaceId,
-      projectId: widget.projectId,
-      currentRoute: 'board',
-      title: 'Kanban Board',
-      body: Column(
-        children: [
-          ProjectNavigationTabBar(
-            workspaceId: widget.workspaceId,
-            projectId: widget.projectId,
-            activeTab: 'board',
-          ),
-
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: () => notifier.refresh(),
-              child: state.isLoading
-                  ? const KanbanBoardSkeleton()
-                  : !state.hasActiveSprint
-                      ? _buildNoActiveSprintEmptyState(context)
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // Reusable Filter & Sorting Toolbar (Figma .work-toolbar)
-                            BoardFilterToolbar(
-                              filter: state.filter,
-                              members: state.members,
-                              currentUserId: state.currentUserId,
-                              onFilterChanged: (newFilter) {
-                                notifier.setFilter(newFilter);
-                                _updateUrlWithFilters(newFilter);
-                              },
-                            ),
-
-                            // Board Heading Bar (Figma .board-heading)
-                            _buildSprintHeader(context, state, notifier, isDark),
-
-                            // Multi-column Kanban Board View
-                            Expanded(
-                              child: _buildColumnsView(context, state, notifier),
-                            ),
-
-                            // Subtle Board Hint Footer (Figma .board-hint)
-                            if (!isMobile) _buildBoardHintFooter(isDark),
-                          ],
-                        ),
+    return AppKeyboardShortcuts(
+      onRefresh: () => notifier.refresh(),
+      onNewIssue: () => _openQuickCreateIssue(notifier),
+      child: ProjectScreenScaffold(
+        workspaceId: widget.workspaceId,
+        projectId: widget.projectId,
+        currentRoute: 'board',
+        title: 'Board',
+        body: Column(
+          children: [
+            ProjectNavigationTabBar(
+              workspaceId: widget.workspaceId,
+              projectId: widget.projectId,
+              activeTab: 'board',
             ),
-          ),
-        ],
+
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () => notifier.refresh(),
+                child: state.isLoading
+                    ? const KanbanBoardSkeleton()
+                    : !state.hasActiveSprint
+                        ? _buildNoActiveSprintEmptyState(context)
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // WorkToolbar (Figma node 6:381: Saved Views + Filter/Search Row)
+                              BoardFilterToolbar(
+                                filter: state.filter,
+                                members: state.members,
+                                currentUserId: state.currentUserId,
+                                totalCount: state.totalIssues,
+                                activeSavedView: _activeSavedView,
+                                workspaceId: widget.workspaceId,
+                                projectId: widget.projectId,
+                                activeView: 'board',
+                                onSavedViewChanged: (view) =>
+                                    _handleSavedViewChanged(view, state, notifier),
+                                onFilterChanged: (newFilter) {
+                                  if (newFilter.selectedAssigneeId != 'me' &&
+                                      _activeSavedView == BoardSavedView.mine) {
+                                    setState(() => _activeSavedView = BoardSavedView.all);
+                                  }
+                                  notifier.setFilter(newFilter);
+                                  _updateUrlWithFilters(newFilter);
+                                },
+                              ),
+
+                              // Board Heading Bar (Figma node 6:516)
+                              _buildSprintHeader(context, state, notifier, isDark),
+
+                              // Smooth Multi-column Kanban Board View (Figma node 6:565)
+                              Expanded(
+                                child: _buildColumnsView(context, state, notifier),
+                              ),
+
+                              // Figma Board Footer Hint Bar (node 6:1650)
+                              if (!isMobile) _buildBoardHintFooter(isDark),
+                            ],
+                          ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -196,15 +254,15 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
         .toList();
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(22, 16, 22, 12),
+      padding: const EdgeInsets.fromLTRB(24, 18, 24, 14),
       color: AppColors.bgFor(isDark),
       child: Wrap(
-        spacing: 12,
+        spacing: 14,
         runSpacing: 10,
         alignment: WrapAlignment.spaceBetween,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          // Left: Sprint Name, ACTIVE Badge, Date Range
+          // Left (Figma 6:517): Board + Sprint Name + ACTIVE badge + Subtitle
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -215,16 +273,31 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   Text(
-                    sprint.name,
+                    'Board',
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: 22,
                       fontWeight: FontWeight.w600,
-                      letterSpacing: -0.5,
+                      letterSpacing: -0.6,
                       color: textPrimary,
                     ),
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                    decoration: BoxDecoration(
+                      color: accentSoft,
+                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                    ),
+                    child: Text(
+                      sprint.name,
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w600,
+                        color: accentColor,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6.5, vertical: 2),
                     decoration: BoxDecoration(
                       color: accentSoft,
                       borderRadius: BorderRadius.circular(AppColors.radiusSm),
@@ -234,20 +307,20 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          width: 5,
-                          height: 5,
+                          width: 4.5,
+                          height: 4.5,
                           decoration: BoxDecoration(
                             color: accentColor,
                             shape: BoxShape.circle,
                           ),
                         ),
-                        const SizedBox(width: 5),
+                        const SizedBox(width: 4.5),
                         Text(
                           'ACTIVE',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 9.5,
                             fontWeight: FontWeight.w700,
-                            letterSpacing: 0.6,
+                            letterSpacing: 0.5,
                             color: accentColor,
                           ),
                         ),
@@ -256,7 +329,7 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
                   ),
                   if (sprint.daysRemaining != null)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                      padding: const EdgeInsets.symmetric(horizontal: 6.5, vertical: 2),
                       decoration: BoxDecoration(
                         color: AppColors.surface3For(isDark),
                         borderRadius: BorderRadius.circular(AppColors.radiusSm),
@@ -265,7 +338,7 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
                         '${sprint.daysRemaining}d left',
                         style: AppTypography.mono(
                           isDark,
-                          fontSize: 10.5,
+                          fontSize: 10,
                           color: textSecondary,
                           fontWeight: FontWeight.w600,
                         ),
@@ -273,15 +346,15 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
                     ),
                 ],
               ),
-              const SizedBox(height: 3),
+              const SizedBox(height: 4),
               Text(
-                sprint.dateRangeText,
+                'From plan to done. Moving forward together · ${sprint.dateRangeText}',
                 style: TextStyle(fontSize: 11.5, color: textMuted),
               ),
             ],
           ),
 
-          // Right: Team avatars, Metrics badges, Complete Sprint, Refresh
+          // Right (Figma 6:528): Member avatars + count, issues/pts pills, Complete Sprint, Refresh
           Wrap(
             spacing: 8,
             runSpacing: 6,
@@ -292,6 +365,10 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
                   names: memberNames,
                   size: UserAvatarSize.xs,
                   maxVisible: 4,
+                ),
+                Text(
+                  '${state.members.length} ${state.members.length == 1 ? 'member' : 'members'}',
+                  style: TextStyle(fontSize: 11, color: textSecondary),
                 ),
                 const SizedBox(width: 2),
               ],
@@ -306,7 +383,7 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
                   '$totalIssues issues',
                   style: AppTypography.mono(
                     isDark,
-                    fontSize: 11,
+                    fontSize: 10.5,
                     color: textSecondary,
                     fontWeight: FontWeight.w600,
                   ),
@@ -324,25 +401,25 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
                       : '$totalStoryPoints pts',
                   style: AppTypography.mono(
                     isDark,
-                    fontSize: 11,
+                    fontSize: 10.5,
                     color: accentColor,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
               ElevatedButton.icon(
-                icon: Icon(Icons.check_circle_outline_rounded, size: 15, color: successColor),
+                icon: Icon(Icons.check_circle_outline_rounded, size: 14.5, color: successColor),
                 label: Text(
                   'Complete Sprint',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: successColor),
+                  style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: successColor),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: greenSoft,
                   foregroundColor: successColor,
                   elevation: 0,
                   side: BorderSide(color: successColor.withValues(alpha: 0.35)),
-                  padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-                  minimumSize: const Size(0, 32),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  minimumSize: const Size(0, 30),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(AppColors.radiusMd),
                   ),
@@ -352,7 +429,7 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
               AppIconButton(
                 icon: Icons.refresh_rounded,
                 tooltip: 'Refresh board',
-                size: 32,
+                size: 30,
                 backgroundColor: AppColors.surface2For(isDark),
                 onPressed: () => notifier.refresh(),
               ),
@@ -368,39 +445,59 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
     KanbanBoardState state,
     KanbanBoardNotifier notifier,
   ) {
-    const columns = [
-      IssueStatus.todo,
-      IssueStatus.inProgress,
-      IssueStatus.inReview,
-      IssueStatus.done,
-    ];
+    final columns = _activeSavedView == BoardSavedView.open
+        ? const [
+            IssueStatus.todo,
+            IssueStatus.inProgress,
+            IssueStatus.inReview,
+          ]
+        : const [
+            IssueStatus.todo,
+            IssueStatus.inProgress,
+            IssueStatus.inReview,
+            IssueStatus.done,
+          ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 4),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: constraints.maxWidth - 30),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: columns.map((status) {
-                final statusIssues = state.issuesForStatus(status);
-                final statusStoryPoints = state.storyPointsForStatus(status);
+        final availableWidth = constraints.maxWidth - 36;
+        final computedWidth =
+            ((availableWidth - (columns.length * 12)) / columns.length).clamp(288.0, 360.0);
 
-                return KanbanColumnWidget(
-                  status: status,
-                  issues: statusIssues,
-                  totalStoryPoints: statusStoryPoints,
-                  projectKey: state.projectKey,
-                  onIssueDropped: (issue) {
-                    notifier.updateIssueStatus(issue.id, status);
-                  },
-                  onCardUpdated: () {
-                    notifier.refresh();
-                  },
-                );
-              }).toList(),
+        return Scrollbar(
+          controller: _horizontalController,
+          thumbVisibility: false,
+          child: SingleChildScrollView(
+            controller: _horizontalController,
+            scrollDirection: Axis.horizontal,
+            physics: const ClampingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(18, 0, 18, 4),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: availableWidth > 0 ? availableWidth : 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: columns.map((status) {
+                  final statusIssues = state.issuesForStatus(status);
+                  final statusStoryPoints = state.storyPointsForStatus(status);
+
+                  return KanbanColumnWidget(
+                    key: ValueKey('col-${status.value}'),
+                    status: status,
+                    issues: statusIssues,
+                    totalStoryPoints: statusStoryPoints,
+                    projectKey: state.projectKey,
+                    width: computedWidth,
+                    onIssueDropped: (issue) {
+                      notifier.updateIssueStatus(issue.id, status);
+                    },
+                    onAddIssue: () => _openQuickCreateIssue(
+                      notifier,
+                      initialStatus: status,
+                      initialSprintId: state.activeSprint?.id,
+                    ),
+                  );
+                }).toList(),
+              ),
             ),
           ),
         );
@@ -410,9 +507,27 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
 
   Widget _buildBoardHintFooter(bool isDark) {
     final textMuted = AppColors.textMutedFor(isDark);
+    final borderColor = AppColors.borderFor(isDark);
+    final surface2 = AppColors.surface2For(isDark);
+
+    Widget kbd(String keyLabel) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 5.5, vertical: 1.5),
+        decoration: BoxDecoration(
+          color: surface2,
+          borderRadius: BorderRadius.circular(AppColors.radiusSm),
+          border: Border.all(color: borderColor),
+        ),
+        child: Text(
+          keyLabel,
+          style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: textMuted),
+        ),
+      );
+    }
+
     return Container(
-      height: 28,
-      padding: const EdgeInsets.symmetric(horizontal: 22),
+      height: 30,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
       decoration: BoxDecoration(
         color: AppColors.bgFor(isDark),
         border: Border(top: BorderSide(color: AppColors.borderSoftFor(isDark))),
@@ -420,13 +535,27 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'Drag and drop issue cards across columns to update workflow status',
-            style: TextStyle(fontSize: 10.5, color: textMuted),
+          Flexible(
+            child: Text(
+              'Drag issues across columns to update status',
+              style: TextStyle(fontSize: 10, color: textMuted),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-          Text(
-            'Click any card to inspect details',
-            style: TextStyle(fontSize: 10.5, color: textMuted),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              kbd('C'),
+              const SizedBox(width: 5),
+              Text('create issue', style: TextStyle(fontSize: 10, color: textMuted)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 7),
+                child: Text('·', style: TextStyle(fontSize: 10, color: textMuted)),
+              ),
+              kbd('⌘ K'),
+              const SizedBox(width: 5),
+              Text('quick search', style: TextStyle(fontSize: 10, color: textMuted)),
+            ],
           ),
         ],
       ),
@@ -470,7 +599,7 @@ class _KanbanBoardScreenState extends ConsumerState<KanbanBoardScreen> {
 
     if (!context.mounted) return;
 
-    final result = await showDialog<SprintCompleteModel>(
+    final result = await showAnimatedDialog<SprintCompleteModel>(
       context: context,
       builder: (ctx) => CompleteSprintDialog(
         sprint: sprint,

@@ -9,4 +9,6 @@ export 'app_keyboard_shortcuts.dart';
 export 'app_skeleton.dart';
 export 'app_text_field.dart';
 export 'loading_indicator.dart';
+export 'quick_create_dialog.dart';
+export 'seed_color_picker.dart';
 export 'user_avatar.dart';

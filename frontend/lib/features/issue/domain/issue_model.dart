@@ -19,6 +19,8 @@ class IssueModel extends Equatable {
   final String? parentId;
   final String? sprintId;
   final bool isBacklog;
+  final DateTime? startDate;
+  final DateTime? endDate;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? deletedAt;
@@ -42,6 +44,8 @@ class IssueModel extends Equatable {
     this.parentId,
     this.sprintId,
     this.isBacklog = true,
+    this.startDate,
+    this.endDate,
     this.createdAt,
     this.updatedAt,
     this.deletedAt,
@@ -83,6 +87,8 @@ class IssueModel extends Equatable {
       parentId: json['parent_id'] as String?,
       sprintId: json['sprint_id'] as String?,
       isBacklog: (json['is_backlog'] as bool?) ?? true,
+      startDate: json['start_date'] != null ? DateTime.tryParse(json['start_date'] as String) : null,
+      endDate: json['end_date'] != null ? DateTime.tryParse(json['end_date'] as String) : null,
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
       updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
       deletedAt: json['deleted_at'] != null ? DateTime.tryParse(json['deleted_at'] as String) : null,
@@ -109,6 +115,8 @@ class IssueModel extends Equatable {
       'parent_id': parentId,
       'sprint_id': sprintId,
       'is_backlog': isBacklog,
+      'start_date': startDate?.toIso8601String(),
+      'end_date': endDate?.toIso8601String(),
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
       'deleted_at': deletedAt?.toIso8601String(),
@@ -129,9 +137,15 @@ class IssueModel extends Equatable {
     double? backlogRank,
     String? reporterId,
     String? assigneeId,
+    bool clearAssignee = false,
     String? parentId,
     String? sprintId,
+    bool clearSprint = false,
     bool? isBacklog,
+    DateTime? startDate,
+    bool clearStartDate = false,
+    DateTime? endDate,
+    bool clearEndDate = false,
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? deletedAt,
@@ -151,14 +165,16 @@ class IssueModel extends Equatable {
       estimate: estimate ?? this.estimate,
       backlogRank: backlogRank ?? this.backlogRank,
       reporterId: reporterId ?? this.reporterId,
-      assigneeId: assigneeId ?? this.assigneeId,
+      assigneeId: clearAssignee ? null : (assigneeId ?? this.assigneeId),
       parentId: parentId ?? this.parentId,
-      sprintId: sprintId ?? this.sprintId,
-      isBacklog: isBacklog ?? this.isBacklog,
+      sprintId: clearSprint ? null : (sprintId ?? this.sprintId),
+      isBacklog: clearSprint ? true : (isBacklog ?? this.isBacklog),
+      startDate: clearStartDate ? null : (startDate ?? this.startDate),
+      endDate: clearEndDate ? null : (endDate ?? this.endDate),
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
-      assignee: assignee ?? this.assignee,
+      assignee: clearAssignee ? null : (assignee ?? this.assignee),
       subIssueCount: subIssueCount ?? this.subIssueCount,
       completedSubIssueCount: completedSubIssueCount ?? this.completedSubIssueCount,
     );
@@ -181,6 +197,8 @@ class IssueModel extends Equatable {
         parentId,
         sprintId,
         isBacklog,
+        startDate,
+        endDate,
         createdAt,
         updatedAt,
         deletedAt,

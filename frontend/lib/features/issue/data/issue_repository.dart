@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:frontend/core/constants/api_constants.dart';
 import 'package:frontend/core/enums/app_enums.dart';
 import 'package:frontend/core/network/api_client.dart';
+import 'package:frontend/features/issue/domain/backlog_grouped_model.dart';
 import 'package:frontend/features/issue/domain/issue_activity_model.dart';
 import 'package:frontend/features/issue/domain/issue_model.dart';
 
@@ -15,6 +16,54 @@ class IssueRepository {
   final ApiClient _client;
 
   IssueRepository(this._client);
+
+  /// Lists all non-deleted issues for a project (`GET /api/v1/projects/{project_id}/issues`).
+  Future<IssuePageModel> listProjectIssues(
+    String projectId, {
+    int page = 1,
+    int pageSize = 100,
+    String? search,
+    IssuePriority? priority,
+    IssueType? type,
+    IssueStatus? status,
+    String? sort,
+  }) async {
+    final queryParams = <String, dynamic>{
+      'page': page,
+      'page_size': pageSize,
+      if (sort != null && sort.isNotEmpty) 'sort': sort,
+      if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+      if (priority != null) 'priority': priority.value,
+      if (type != null) 'type': type.value,
+      if (status != null) 'status': status.value,
+    };
+
+    final response = await _client.get<Map<String, dynamic>>(
+      '${ApiConstants.projects}/$projectId/issues',
+      queryParameters: queryParams,
+    );
+    return IssuePageModel.fromJson(response.data!);
+  }
+
+  /// Retrieves sprint-grouped backlog overview (`GET /api/v1/projects/{project_id}/backlog/grouped`).
+  Future<BacklogOverviewModel> getGroupedBacklog(
+    String projectId, {
+    String? search,
+    IssuePriority? priority,
+    IssueType? type,
+  }) async {
+    final queryParams = <String, dynamic>{
+      if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+      if (priority != null) 'priority': priority.value,
+      if (type != null) 'type': type.value,
+    };
+
+    final response = await _client.get<Map<String, dynamic>>(
+      '${ApiConstants.projects}/$projectId/backlog/grouped',
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    );
+    return BacklogOverviewModel.fromJson(response.data!);
+  }
 
   /// Lists active product backlog issues for a project (`GET /api/v1/projects/{project_id}/backlog`).
   Future<IssuePageModel> listBacklogIssues(
@@ -47,17 +96,25 @@ class IssueRepository {
     required String title,
     String? description,
     IssueType type = IssueType.task,
+    IssueStatus? status,
     IssuePriority priority = IssuePriority.medium,
     double? estimate,
     String? assigneeId,
+    String? sprintId,
+    DateTime? startDate,
+    DateTime? endDate,
   }) async {
     final payload = <String, dynamic>{
       'title': title.trim(),
       'type': type.value,
       'priority': priority.value,
+      if (status != null) 'status': status.value,
       if (description != null && description.trim().isNotEmpty) 'description': description.trim(),
       if (estimate != null) 'estimate': estimate,
-      if (assigneeId != null) 'assignee_id': assigneeId,
+      if (assigneeId != null && assigneeId.isNotEmpty) 'assignee_id': assigneeId,
+      if (sprintId != null && sprintId.isNotEmpty) 'sprint_id': sprintId,
+      if (startDate != null) 'start_date': startDate.toUtc().toIso8601String(),
+      if (endDate != null) 'end_date': endDate.toUtc().toIso8601String(),
     };
 
     final response = await _client.post<Map<String, dynamic>>(
@@ -67,7 +124,7 @@ class IssueRepository {
     return IssueModel.fromJson(response.data!);
   }
 
-  /// Reorders an issue in the product backlog (`POST /api/v1/projects/{project_id}/backlog/reorder`).
+  /// Reorders an issue in the product backlog (`PATCH /api/v1/projects/{project_id}/backlog/reorder`).
   Future<IssueModel> reorderBacklog(
     String projectId, {
     required String issueId,
@@ -84,17 +141,17 @@ class IssueRepository {
       if (position != null) 'position': position,
     };
 
-    final response = await _client.post<Map<String, dynamic>>(
+    final response = await _client.patch<Map<String, dynamic>>(
       '${ApiConstants.projects}/$projectId/backlog/reorder',
       data: payload,
     );
     return IssueModel.fromJson(response.data!);
   }
 
-  /// Adds/moves an existing issue to the product backlog (`POST /api/v1/projects/{project_id}/backlog/add`).
+  /// Adds/moves an existing issue to the product backlog (`POST /api/v1/projects/{project_id}/backlog/issues`).
   Future<void> addIssueToBacklog(String projectId, {required String issueId}) async {
     await _client.post<dynamic>(
-      '${ApiConstants.projects}/$projectId/backlog/add',
+      '${ApiConstants.projects}/$projectId/backlog/issues',
       data: {'issue_id': issueId},
     );
   }
@@ -117,6 +174,12 @@ class IssueRepository {
     IssuePriority? priority,
     double? estimate,
     String? assigneeId,
+    String? sprintId,
+    bool clearSprint = false,
+    DateTime? startDate,
+    bool clearStartDate = false,
+    DateTime? endDate,
+    bool clearEndDate = false,
   }) async {
     final payload = <String, dynamic>{
       if (title != null) 'title': title.trim(),
@@ -126,6 +189,18 @@ class IssueRepository {
       if (priority != null) 'priority': priority.value,
       if (estimate != null) 'estimate': estimate,
       if (assigneeId != null) 'assignee_id': assigneeId,
+      if (clearSprint)
+        'sprint_id': null
+      else if (sprintId != null)
+        'sprint_id': sprintId,
+      if (clearStartDate)
+        'start_date': null
+      else if (startDate != null)
+        'start_date': startDate.toUtc().toIso8601String(),
+      if (clearEndDate)
+        'end_date': null
+      else if (endDate != null)
+        'end_date': endDate.toUtc().toIso8601String(),
     };
 
     final response = await _client.patch<Map<String, dynamic>>(

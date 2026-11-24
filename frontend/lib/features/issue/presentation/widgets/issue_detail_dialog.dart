@@ -3,6 +3,7 @@ import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/core/utils/responsive_breakpoints.dart';
 import 'package:frontend/features/issue/domain/issue_model.dart';
 import 'package:frontend/features/issue/presentation/widgets/issue_detail_panel.dart';
+import 'package:frontend/shared/widgets/app_dialog.dart';
 
 /// Modal / Side drawer for viewing and editing issue details.
 /// Wraps [IssueDetailPanel] for responsive desktop drawer / mobile bottom sheet.
@@ -29,13 +30,15 @@ class IssueDetailDialog extends StatelessWidget {
     VoidCallback? onIssueUpdated,
   }) {
     final isMobile = ResponsiveBreakpoints.isMobile(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (isMobile) {
       return showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,
         useSafeArea: true,
-        backgroundColor: AppColors.surfaceDark,
+        sheetAnimationStyle: kAppPopupAnimationStyle,
+        backgroundColor: AppColors.surfaceFor(isDark),
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
         ),
@@ -54,8 +57,8 @@ class IssueDetailDialog extends StatelessWidget {
         context: context,
         barrierDismissible: true,
         barrierLabel: 'Issue Details',
-        barrierColor: Colors.black.withValues(alpha: 0.55),
-        transitionDuration: const Duration(milliseconds: 280),
+        barrierColor: Colors.black.withValues(alpha: isDark ? 0.55 : 0.35),
+        transitionDuration: kAppPopupAnimationDuration,
         pageBuilder: (ctx, anim1, anim2) {
           return Align(
             alignment: Alignment.centerRight,

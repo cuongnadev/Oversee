@@ -2,12 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/core/theme/app_typography.dart';
 
-/// Oversee Material 3 Themes (Light & Dark) aligned with Figma Design System.
+/// Oversee Material 3 Themes (Light & Dark) aligned with Figma Design System
+/// and driven synchronously by the user's selected seed color.
 class AppTheme {
   AppTheme._();
 
-  /// Light Theme Definition
-  static ThemeData get lightTheme {
+  /// Default/current Light Theme getter for backwards compatibility.
+  static ThemeData get lightTheme => buildLightTheme(AppColors.currentSeedColor);
+
+  /// Default/current Dark Theme getter for backwards compatibility.
+  static ThemeData get darkTheme => buildDarkTheme(AppColors.currentSeedColor);
+
+  /// Builds Light Theme derived from [seedColor].
+  static ThemeData buildLightTheme(Color seedColor) {
+    final palette = SeedAccentPalette.fromSeed(seedColor);
     final textTheme = AppTypography.createTextTheme(
       primaryColor: AppColors.textPrimaryLight,
       secondaryColor: AppColors.textSecondaryLight,
@@ -17,16 +25,16 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.light,
       fontFamily: AppTypography.fontFamily,
-      primaryColor: AppColors.primarySolidLight,
-      focusColor: AppColors.primaryDark.withValues(alpha: 0.14),
+      primaryColor: palette.primarySolidLight,
+      focusColor: palette.primaryDark.withValues(alpha: 0.14),
       hoverColor: AppColors.hoverLight,
       scaffoldBackgroundColor: AppColors.bgLight,
       textTheme: textTheme,
-      colorScheme: const ColorScheme.light(
-        primary: AppColors.primarySolidLight,
+      colorScheme: ColorScheme.light(
+        primary: palette.primarySolidLight,
         onPrimary: Colors.white,
-        primaryContainer: AppColors.accentSoftLight,
-        onPrimaryContainer: AppColors.primaryDark,
+        primaryContainer: palette.accentSoftLight,
+        onPrimaryContainer: palette.primaryDark,
         secondary: AppColors.secondaryDark,
         onSecondary: Colors.white,
         error: AppColors.error,
@@ -76,6 +84,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppColors.radiusLg),
           side: const BorderSide(color: AppColors.borderLight),
         ),
+        menuPadding: const EdgeInsets.symmetric(vertical: 6),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        clipBehavior: Clip.antiAlias,
       ),
       tooltipTheme: TooltipThemeData(
         decoration: BoxDecoration(
@@ -86,7 +98,7 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primarySolidLight,
+          backgroundColor: palette.primarySolidLight,
           foregroundColor: Colors.white,
           minimumSize: const Size(84, 38),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -124,7 +136,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppColors.radiusMd),
-          borderSide: const BorderSide(color: AppColors.primaryDark, width: 1.5),
+          borderSide: BorderSide(color: palette.primaryDark, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppColors.radiusMd),
@@ -139,7 +151,7 @@ class AppTheme {
       ),
       checkboxTheme: CheckboxThemeData(
         fillColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return AppColors.primarySolidLight;
+          if (states.contains(WidgetState.selected)) return palette.primarySolidLight;
           return Colors.transparent;
         }),
         side: const BorderSide(color: AppColors.borderLight, width: 1.4),
@@ -148,8 +160,9 @@ class AppTheme {
     );
   }
 
-  /// Dark Theme Definition
-  static ThemeData get darkTheme {
+  /// Builds Dark Theme derived from [seedColor].
+  static ThemeData buildDarkTheme(Color seedColor) {
+    final palette = SeedAccentPalette.fromSeed(seedColor);
     final textTheme = AppTypography.createTextTheme(
       primaryColor: AppColors.textPrimaryDark,
       secondaryColor: AppColors.textSecondaryDark,
@@ -159,16 +172,16 @@ class AppTheme {
       useMaterial3: true,
       brightness: Brightness.dark,
       fontFamily: AppTypography.fontFamily,
-      primaryColor: AppColors.primaryLight,
-      focusColor: AppColors.primaryLight.withValues(alpha: 0.2),
+      primaryColor: palette.primaryLight,
+      focusColor: palette.primaryLight.withValues(alpha: 0.2),
       hoverColor: AppColors.hoverDark,
       scaffoldBackgroundColor: AppColors.bgDark,
       textTheme: textTheme,
-      colorScheme: const ColorScheme.dark(
-        primary: AppColors.primaryLight,
+      colorScheme: ColorScheme.dark(
+        primary: palette.primaryLight,
         onPrimary: Colors.white,
-        primaryContainer: AppColors.accentSoftDark,
-        onPrimaryContainer: AppColors.primaryLight,
+        primaryContainer: palette.accentSoftDark,
+        onPrimaryContainer: palette.primaryLight,
         secondary: AppColors.secondary,
         onSecondary: Colors.white,
         error: AppColors.errorDark,
@@ -218,6 +231,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppColors.radiusLg),
           side: const BorderSide(color: AppColors.borderDark),
         ),
+        menuPadding: const EdgeInsets.symmetric(vertical: 6),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        clipBehavior: Clip.antiAlias,
       ),
       tooltipTheme: TooltipThemeData(
         decoration: BoxDecoration(
@@ -229,7 +246,7 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
+          backgroundColor: palette.primary,
           foregroundColor: Colors.white,
           minimumSize: const Size(84, 38),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -267,7 +284,7 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppColors.radiusMd),
-          borderSide: const BorderSide(color: AppColors.primaryLight, width: 1.5),
+          borderSide: BorderSide(color: palette.primaryLight, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppColors.radiusMd),
@@ -282,7 +299,7 @@ class AppTheme {
       ),
       checkboxTheme: CheckboxThemeData(
         fillColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return AppColors.primary;
+          if (states.contains(WidgetState.selected)) return palette.primary;
           return Colors.transparent;
         }),
         side: const BorderSide(color: AppColors.borderDark, width: 1.4),

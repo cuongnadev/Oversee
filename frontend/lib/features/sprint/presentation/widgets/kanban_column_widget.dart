@@ -9,14 +9,16 @@ import 'package:frontend/features/sprint/presentation/widgets/kanban_issue_card.
 /// Callback when an issue is dropped or moved into this column.
 typedef IssueDropCallback = void Function(IssueModel issue);
 
-/// Single workflow column on the Kanban board aligned with Figma .kanban-column.
+/// Single workflow column on the Kanban board aligned with Figma Section/Header (node 6:568).
 class KanbanColumnWidget extends StatefulWidget {
   final IssueStatus status;
   final List<IssueModel> issues;
   final double totalStoryPoints;
   final String projectKey;
+  final double width;
   final IssueDropCallback? onIssueDropped;
   final VoidCallback? onCardUpdated;
+  final VoidCallback? onAddIssue;
 
   const KanbanColumnWidget({
     super.key,
@@ -24,8 +26,10 @@ class KanbanColumnWidget extends StatefulWidget {
     required this.issues,
     required this.totalStoryPoints,
     required this.projectKey,
+    this.width = 304,
     this.onIssueDropped,
     this.onCardUpdated,
+    this.onAddIssue,
   });
 
   @override
@@ -50,268 +54,294 @@ class _KanbanColumnWidgetState extends State<KanbanColumnWidget> {
     final statusColor = widget.status.colorFor(brightness);
 
     final columnBg = _isDragOver
-        ? accentSoft
-        : AppColors.surfaceFor(isDark).withValues(alpha: isDark ? 0.45 : 0.65);
-    final borderColor = _isDragOver ? accentColor : AppColors.borderSoftFor(isDark);
+        ? accentSoft.withValues(alpha: isDark ? 0.65 : 0.85)
+        : Colors.transparent;
+    final borderColor = _isDragOver ? accentColor : Colors.transparent;
 
-    return DragTarget<IssueModel>(
-      onWillAcceptWithDetails: (details) {
-        final willAccept = details.data.status != widget.status;
-        if (_isDragOver != willAccept) {
-          setState(() => _isDragOver = willAccept);
-        }
-        return willAccept;
-      },
-      onLeave: (_) {
-        if (_isDragOver) {
+    return RepaintBoundary(
+      child: DragTarget<IssueModel>(
+        onWillAcceptWithDetails: (details) {
+          final willAccept = details.data.status != widget.status;
+          if (_isDragOver != willAccept) {
+            setState(() => _isDragOver = willAccept);
+          }
+          return willAccept;
+        },
+        onLeave: (_) {
+          if (_isDragOver) {
+            setState(() => _isDragOver = false);
+          }
+        },
+        onAcceptWithDetails: (details) {
           setState(() => _isDragOver = false);
-        }
-      },
-      onAcceptWithDetails: (details) {
-        setState(() => _isDragOver = false);
-        if (widget.onIssueDropped != null) {
-          widget.onIssueDropped!(details.data);
-        }
-      },
-      builder: (context, candidateData, rejectedData) {
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeOut,
-          width: 292,
-          margin: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
-          decoration: BoxDecoration(
-            color: columnBg,
-            borderRadius: BorderRadius.circular(AppColors.radiusLg),
-            border: Border.all(
-              color: borderColor,
-              width: _isDragOver ? 1.6 : 1.0,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Column Header (Figma .column-heading)
-              _buildColumnHeader(context, isDark, statusColor),
-              Divider(height: 1, thickness: 1, color: AppColors.borderSoftFor(isDark)),
-
-              // Animated Drop Preview Banner when dragging over this column
-              AnimatedSize(
-                duration: const Duration(milliseconds: 150),
-                curve: Curves.easeOut,
-                child: _isDragOver
-                    ? Container(
-                        margin: const EdgeInsets.fromLTRB(10, 8, 10, 2),
-                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                        decoration: BoxDecoration(
-                          color: accentColor.withValues(alpha: isDark ? 0.16 : 0.12),
-                          borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                          border: Border.all(color: accentColor, width: 1.2),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.arrow_downward_rounded, size: 15, color: accentColor),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                'Drop to move to ${widget.status.label}',
-                                style: TextStyle(
-                                  color: accentColor,
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : const SizedBox.shrink(),
+          if (widget.onIssueDropped != null) {
+            widget.onIssueDropped!(details.data);
+          }
+        },
+        builder: (context, candidateData, rejectedData) {
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeOut,
+            width: widget.width,
+            margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            decoration: BoxDecoration(
+              color: columnBg,
+              borderRadius: BorderRadius.circular(AppColors.radiusLg),
+              border: Border.all(
+                color: borderColor,
+                width: _isDragOver ? 1.5 : 1.0,
               ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Column Header (Figma 6:569)
+                _buildColumnHeader(context, isDark, statusColor),
+                Divider(height: 1, thickness: 1, color: AppColors.borderSoftFor(isDark)),
 
-              // Scrollable Column Cards
-              Expanded(
-                child: widget.issues.isEmpty && !_isDragOver
-                    ? _buildEmptyColumnPlaceholder(context, isDark)
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
-                        itemCount: widget.issues.length,
-                        itemBuilder: (context, index) {
-                          final issue = widget.issues[index];
-                          final card = KanbanIssueCard(
-                            issue: issue,
-                            projectKey: widget.projectKey,
-                            onUpdated: widget.onCardUpdated,
-                          );
-
-                          final feedback = Material(
-                            elevation: 12,
-                            shadowColor: Colors.black45,
-                            color: Colors.transparent,
+                // Animated Drop Preview Banner when dragging over this column
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 140),
+                  curve: Curves.easeOut,
+                  child: _isDragOver
+                      ? Container(
+                          margin: const EdgeInsets.fromLTRB(2, 8, 2, 2),
+                          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                          decoration: BoxDecoration(
+                            color: accentColor.withValues(alpha: isDark ? 0.16 : 0.12),
                             borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                            child: Transform.rotate(
-                              angle: 0.025,
-                              child: SizedBox(
-                                width: 274,
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: accentColor.withValues(alpha: 0.25),
-                                        blurRadius: 14,
-                                        spreadRadius: 1,
-                                      ),
-                                    ],
+                            border: Border.all(color: accentColor, width: 1.2),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.arrow_downward_rounded, size: 15, color: accentColor),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  'Drop to move to ${widget.status.label}',
+                                  style: TextStyle(
+                                    color: accentColor,
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                  child: Opacity(
-                                    opacity: 0.96,
-                                    child: KanbanIssueCard(
-                                      issue: issue,
-                                      projectKey: widget.projectKey,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+
+                // Scrollable Column Cards
+                Expanded(
+                  child: widget.issues.isEmpty && !_isDragOver
+                      ? _buildEmptyColumnPlaceholder(context, isDark)
+                      : ListView.builder(
+                          padding: const EdgeInsets.only(top: 10, bottom: 8),
+                          addAutomaticKeepAlives: false,
+                          itemCount: widget.issues.length + (widget.onAddIssue != null ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == widget.issues.length) {
+                              return _buildBottomAddButton(isDark);
+                            }
+
+                            final issue = widget.issues[index];
+                            final card = KanbanIssueCard(
+                              key: ValueKey(issue.id),
+                              issue: issue,
+                              projectKey: widget.projectKey,
+                              onUpdated: widget.onCardUpdated,
+                            );
+
+                            final feedback = Material(
+                              elevation: 10,
+                              shadowColor: Colors.black38,
+                              color: Colors.transparent,
+                              borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                              child: Transform.rotate(
+                                angle: 0.02,
+                                child: SizedBox(
+                                  width: (widget.width - 14).clamp(240.0, 340.0),
+                                  child: DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: accentColor.withValues(alpha: 0.22),
+                                          blurRadius: 14,
+                                          spreadRadius: 1,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Opacity(
+                                      opacity: 0.96,
+                                      child: KanbanIssueCard(
+                                        issue: issue,
+                                        projectKey: widget.projectKey,
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                          );
+                            );
 
-                          final childWhenDragging = Container(
-                            margin: const EdgeInsets.only(bottom: 9),
-                            height: 82,
-                            decoration: BoxDecoration(
-                              color: accentSoft.withValues(alpha: 0.45),
-                              borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                              border: Border.all(
-                                color: accentColor.withValues(alpha: 0.45),
-                                width: 1.2,
+                            final childWhenDragging = Container(
+                              margin: const EdgeInsets.only(bottom: 9),
+                              height: 92,
+                              decoration: BoxDecoration(
+                                color: accentSoft.withValues(alpha: 0.45),
+                                borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                                border: Border.all(
+                                  color: accentColor.withValues(alpha: 0.45),
+                                  width: 1.2,
+                                ),
                               ),
-                            ),
-                            child: Center(
-                              child: Icon(
-                                Icons.drag_indicator_rounded,
-                                size: 18,
-                                color: accentColor.withValues(alpha: 0.6),
+                              child: Center(
+                                child: Icon(
+                                  Icons.drag_indicator_rounded,
+                                  size: 18,
+                                  color: accentColor.withValues(alpha: 0.6),
+                                ),
                               ),
-                            ),
-                          );
+                            );
 
-                          return isMouseDevice
-                              ? Draggable<IssueModel>(
-                                  data: issue,
-                                  feedback: feedback,
-                                  childWhenDragging: childWhenDragging,
-                                  child: card,
-                                )
-                              : LongPressDraggable<IssueModel>(
-                                  data: issue,
-                                  delay: const Duration(milliseconds: 220),
-                                  hapticFeedbackOnStart: true,
-                                  feedback: feedback,
-                                  childWhenDragging: childWhenDragging,
-                                  child: card,
-                                );
-                        },
-                      ),
-              ),
-
-              // Column Footer (Figma .column-footer)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  border: Border(top: BorderSide(color: AppColors.borderSoftFor(isDark))),
+                            return isMouseDevice
+                                ? Draggable<IssueModel>(
+                                    data: issue,
+                                    feedback: feedback,
+                                    childWhenDragging: childWhenDragging,
+                                    child: card,
+                                  )
+                                : LongPressDraggable<IssueModel>(
+                                    data: issue,
+                                    delay: const Duration(milliseconds: 220),
+                                    hapticFeedbackOnStart: true,
+                                    feedback: feedback,
+                                    childWhenDragging: childWhenDragging,
+                                    child: card,
+                                  );
+                          },
+                        ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '${widget.issues.length} ${widget.issues.length == 1 ? 'Issue' : 'Issues'}',
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        color: AppColors.textMutedFor(isDark),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Icon(
-                      Icons.drag_indicator_rounded,
-                      size: 13,
-                      color: AppColors.textMutedFor(isDark).withValues(alpha: 0.55),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
   Widget _buildColumnHeader(BuildContext context, bool isDark, Color statusColor) {
     final accentColor = AppColors.accentFor(isDark);
     final accentSoft = AppColors.accentSoftFor(isDark);
+    final textPrimary = AppColors.textPrimaryFor(isDark);
+    final textMuted = AppColors.textMutedFor(isDark);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: const EdgeInsets.fromLTRB(4, 6, 2, 10),
       child: Row(
         children: [
-          Icon(widget.status.icon, size: 15, color: statusColor),
-          const SizedBox(width: 8),
-
-          // Column Title
+          // Maximized left cluster so the '+' button always anchors flush to the right edge
           Expanded(
-            child: Text(
-              widget.status.label,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: AppColors.textPrimaryFor(isDark),
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
+            child: Row(
+              children: [
+                Icon(widget.status.icon, size: 15, color: statusColor),
+                const SizedBox(width: 7),
 
-          // Card Count Badge
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6.5, vertical: 2),
-            decoration: BoxDecoration(
-              color: AppColors.surface3For(isDark),
-              borderRadius: BorderRadius.circular(AppColors.radiusSm),
-            ),
-            child: Text(
-              '${widget.issues.length}',
-              style: AppTypography.mono(
-                isDark,
-                fontSize: 10.5,
-                color: AppColors.textSecondaryFor(isDark),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-
-          // Story Points Badge
-          if (widget.totalStoryPoints > 0) ...[
-            const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6.5, vertical: 2),
-              decoration: BoxDecoration(
-                color: accentSoft,
-                borderRadius: BorderRadius.circular(AppColors.radiusSm),
-              ),
-              child: Text(
-                widget.totalStoryPoints % 1 == 0
-                    ? '${widget.totalStoryPoints.toInt()} pts'
-                    : '${widget.totalStoryPoints} pts',
-                style: AppTypography.mono(
-                  isDark,
-                  fontSize: 10.5,
-                  color: accentColor,
-                  fontWeight: FontWeight.w600,
+                // Column Title
+                Flexible(
+                  child: Text(
+                    widget.status.label,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12.5,
+                      color: textPrimary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
                 ),
+                const SizedBox(width: 7),
+
+                // Issue Count (Figma 6:584)
+                Text(
+                  '${widget.issues.length}',
+                  style: AppTypography.mono(
+                    isDark,
+                    fontSize: 11,
+                    color: textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+
+                // Story Points Pill
+                if (widget.totalStoryPoints > 0) ...[
+                  const SizedBox(width: 7),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                    decoration: BoxDecoration(
+                      color: accentSoft,
+                      borderRadius: BorderRadius.circular(AppColors.radiusSm),
+                    ),
+                    child: Text(
+                      widget.totalStoryPoints % 1 == 0
+                          ? '${widget.totalStoryPoints.toInt()} pts'
+                          : '${widget.totalStoryPoints} pts',
+                      style: AppTypography.mono(
+                        isDark,
+                        fontSize: 10,
+                        color: accentColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          if (widget.onAddIssue != null)
+            IconButton(
+              icon: Icon(Icons.add_rounded, size: 16, color: textMuted),
+              tooltip: 'Add issue to ${widget.status.label}',
+              padding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
+              style: IconButton.styleFrom(
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                minimumSize: const Size(26, 26),
+                maximumSize: const Size(26, 26),
+              ),
+              onPressed: widget.onAddIssue,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomAddButton(bool isDark) {
+    final textMuted = AppColors.textMutedFor(isDark);
+    return InkWell(
+      onTap: widget.onAddIssue,
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+        child: Row(
+          children: [
+            Icon(Icons.add_rounded, size: 14, color: textMuted),
+            const SizedBox(width: 6),
+            Text(
+              'Add issue',
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w500,
+                color: textMuted,
               ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -332,7 +362,7 @@ class _KanbanColumnWidgetState extends State<KanbanColumnWidget> {
               ),
               child: Icon(
                 Icons.inbox_outlined,
-                size: 22,
+                size: 20,
                 color: AppColors.textMutedFor(isDark).withValues(alpha: 0.7),
               ),
             ),
@@ -345,6 +375,14 @@ class _KanbanColumnWidgetState extends State<KanbanColumnWidget> {
               ),
               textAlign: TextAlign.center,
             ),
+            if (widget.onAddIssue != null) ...[
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: widget.onAddIssue,
+                icon: const Icon(Icons.add_rounded, size: 14),
+                label: const Text('Add issue', style: TextStyle(fontSize: 11.5)),
+              ),
+            ],
           ],
         ),
       ),

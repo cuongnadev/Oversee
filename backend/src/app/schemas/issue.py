@@ -4,7 +4,8 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.models.enums import IssuePriority, IssueStatus, IssueType
+from app.models.enums import IssuePriority, IssueStatus, IssueType, SprintStatus
+from app.schemas.user import UserResponse
 
 
 class IssueBase(BaseModel):
@@ -17,6 +18,8 @@ class IssueBase(BaseModel):
     priority: IssuePriority = IssuePriority.MEDIUM
     estimate: float | None = Field(default=None, ge=0)
     backlog_rank: float = 0.0
+    start_date: datetime | None = None
+    end_date: datetime | None = None
 
     @field_validator("title")
     @classmethod
@@ -25,6 +28,16 @@ class IssueBase(BaseModel):
         if not cleaned:
             raise ValueError("Issue title cannot be blank or contain only whitespace.")
         return cleaned
+
+    @model_validator(mode="after")
+    def validate_dates(self) -> Self:
+        if (
+            self.start_date is not None
+            and self.end_date is not None
+            and self.end_date < self.start_date
+        ):
+            raise ValueError("Issue end_date cannot be earlier than start_date.")
+        return self
 
 
 class IssueCreate(IssueBase):
@@ -54,6 +67,8 @@ class IssueUpdate(BaseModel):
     parent_id: uuid.UUID | None = None
     sprint_id: uuid.UUID | None = None
     backlog_rank: float | None = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
     allow_open_subissues: bool = False
 
     @field_validator("title")
@@ -65,6 +80,16 @@ class IssueUpdate(BaseModel):
         if not cleaned:
             raise ValueError("Issue title cannot be blank or contain only whitespace.")
         return cleaned
+
+    @model_validator(mode="after")
+    def validate_update_dates(self) -> Self:
+        if (
+            self.start_date is not None
+            and self.end_date is not None
+            and self.end_date < self.start_date
+        ):
+            raise ValueError("Issue end_date cannot be earlier than start_date.")
+        return self
 
 
 class IssueAssigneeUpdate(BaseModel):
@@ -202,6 +227,7 @@ class IssueResponse(IssueBase):
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None = None
+    assignee: UserResponse | None = None
     parent: IssueHierarchySummary | None = None
     sub_issues: list[IssueHierarchySummary] = Field(default_factory=list)
 
@@ -218,3 +244,43 @@ class IssuePageResponse(BaseModel):
     total_pages: int
     next_cursor: str | None = None
     has_more: bool = False
+
+
+class BacklogSprintSummary(BaseModel):
+    """Sprint metadata embedded in grouped backlog responses."""
+
+    id: uuid.UUID
+    project_id: uuid.UUID
+    name: str
+    goal: str | None = None
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+    capacity: float | None = None
+    status: SprintStatus
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BacklogSprintGroup(BaseModel):
+    """Sprint section in the grouped backlog view with completion metrics."""
+
+    sprint: BacklogSprintSummary
+    issues: list[IssueResponse]
+    total_issues: int
+    completed_issues: int
+    total_story_points: float
+    completed_story_points: float
+    completion_percentage: float
+
+
+class BacklogOverviewResponse(BaseModel):
+    """Full sprint-grouped backlog response containing sprint buckets and unassigned backlog."""
+
+    sprints: list[BacklogSprintGroup]
+    backlog_issues: list[IssueResponse]
+    total_issues: int
+    backlog_total_issues: int
+    backlog_completed_issues: int
+    backlog_story_points: float

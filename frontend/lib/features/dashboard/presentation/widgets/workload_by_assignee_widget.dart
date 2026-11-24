@@ -73,138 +73,139 @@ class WorkloadByAssigneeWidget extends StatelessWidget {
               ),
             )
           else
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: workloads.length,
-              separatorBuilder: (context, index) => Divider(height: 1, color: borderSoftColor),
-              itemBuilder: (context, index) {
-                final item = workloads[index];
-                final isUnassigned = item.userId == null;
+            Builder(
+              builder: (context) {
+                final isCompact = MediaQuery.sizeOf(context).width < 520;
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (int index = 0; index < workloads.length; index++) ...[
+                      if (index > 0) Divider(height: 1, color: borderSoftColor),
+                      Builder(
+                        builder: (context) {
+                          final item = workloads[index];
+                          final isUnassigned = item.userId == null;
 
-                return Semantics(
-                  label:
-                      'Workload for ${item.name}: ${item.totalIssues} issues, ${item.totalStoryPoints.toInt()} story points, ${item.completedIssues} of ${item.totalIssues} completed (${item.completionPercentage.toStringAsFixed(0)}%)',
-                  container: true,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final isCompact = constraints.maxWidth < 380;
-
-                        final avatar = isUnassigned
-                            ? Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  color: AppColors.surface3For(isDark),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: borderColor),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    '?',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: textMuted,
+                          final avatar = isUnassigned
+                              ? Container(
+                                  width: 28,
+                                  height: 28,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface3For(isDark),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: borderColor),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '?',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: textMuted,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              )
-                            : UserAvatar(
-                                name: item.name,
-                                imageUrl: item.avatarUrl,
-                                size: UserAvatarSize.sm,
-                                showTooltip: false,
-                              );
+                                )
+                              : UserAvatar(
+                                  name: item.name,
+                                  imageUrl: item.avatarUrl,
+                                  size: UserAvatarSize.sm,
+                                  showTooltip: false,
+                                );
 
-                        final nameColumn = Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.name,
-                              style: TextStyle(
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w600,
-                                color: textPrimary,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${item.totalIssues} issue${item.totalIssues == 1 ? '' : 's'} · ${item.totalStoryPoints.toInt()} pts',
-                              style: AppTypography.mono(isDark, fontSize: 10.5, color: textMuted),
-                            ),
-                          ],
-                        );
-
-                        final progressColumn = Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  '${item.completedIssues} of ${item.totalIssues} done',
-                                  style: TextStyle(fontSize: 11, color: textSecondary),
-                                ),
-                                Text(
-                                  '${item.completionPercentage.toStringAsFixed(0)}%',
-                                  style: AppTypography.mono(
-                                    isDark,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: item.completionRatio >= 1.0 ? successColor : textPrimary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(99),
-                              child: LinearProgressIndicator(
-                                value: item.completionRatio,
-                                minHeight: 4,
-                                backgroundColor: AppColors.surface3For(isDark),
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  item.completionRatio >= 1.0 ? successColor : accentColor,
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-
-                        if (isCompact) {
-                          return Column(
+                          final nameColumn = Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                children: [
-                                  avatar,
-                                  const SizedBox(width: 10),
-                                  Expanded(child: nameColumn),
-                                ],
+                              Text(
+                                item.name,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  color: textPrimary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(height: 8),
-                              progressColumn,
+                              const SizedBox(height: 2),
+                              Text(
+                                '${item.totalIssues} issue${item.totalIssues == 1 ? '' : 's'} · ${item.totalStoryPoints.toInt()} pts',
+                                style: AppTypography.mono(isDark, fontSize: 10.5, color: textMuted),
+                              ),
                             ],
                           );
-                        }
 
-                        return Row(
-                          children: [
-                            avatar,
-                            const SizedBox(width: 11),
-                            Expanded(flex: 3, child: nameColumn),
-                            const SizedBox(width: 14),
-                            Expanded(flex: 4, child: progressColumn),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
+                          final progressColumn = Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '${item.completedIssues} of ${item.totalIssues} done',
+                                    style: TextStyle(fontSize: 11, color: textSecondary),
+                                  ),
+                                  Text(
+                                    '${item.completionPercentage.toStringAsFixed(0)}%',
+                                    style: AppTypography.mono(
+                                      isDark,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: item.completionRatio >= 1.0 ? successColor : textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(99),
+                                child: LinearProgressIndicator(
+                                  value: item.completionRatio,
+                                  minHeight: 4,
+                                  backgroundColor: AppColors.surface3For(isDark),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    item.completionRatio >= 1.0 ? successColor : accentColor,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+
+                          return Semantics(
+                            label:
+                                'Workload for ${item.name}: ${item.totalIssues} issues, ${item.totalStoryPoints.toInt()} story points, ${item.completedIssues} of ${item.totalIssues} completed (${item.completionPercentage.toStringAsFixed(0)}%)',
+                            container: true,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                              child: isCompact
+                                  ? Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            avatar,
+                                            const SizedBox(width: 10),
+                                            Expanded(child: nameColumn),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        progressColumn,
+                                      ],
+                                    )
+                                  : Row(
+                                      children: [
+                                        avatar,
+                                        const SizedBox(width: 11),
+                                        Expanded(flex: 3, child: nameColumn),
+                                        const SizedBox(width: 14),
+                                        Expanded(flex: 4, child: progressColumn),
+                                      ],
+                                    ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ],
                 );
               },
             ),

@@ -55,6 +55,12 @@ class FakeDetailIssueRepository implements IssueRepository {
     IssuePriority? priority,
     double? estimate,
     String? assigneeId,
+    String? sprintId,
+    bool clearSprint = false,
+    DateTime? startDate,
+    bool clearStartDate = false,
+    DateTime? endDate,
+    bool clearEndDate = false,
   }) async {
     updateIssueCallCount++;
     if (shouldThrowOnUpdate) {

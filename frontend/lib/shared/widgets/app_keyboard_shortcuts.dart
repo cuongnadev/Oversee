@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:frontend/core/theme/app_colors.dart';
+import 'package:frontend/shared/widgets/app_dialog.dart';
 
 /// Intent for triggering a data refresh via keyboard.
 class RefreshIntent extends Intent {
@@ -112,7 +113,7 @@ class KeyboardShortcutsDialog extends StatelessWidget {
   const KeyboardShortcutsDialog({super.key});
 
   static Future<void> show(BuildContext context) {
-    return showDialog<void>(
+    return showAnimatedDialog<void>(
       context: context,
       barrierDismissible: true,
       builder: (context) => const KeyboardShortcutsDialog(),
@@ -156,7 +157,7 @@ class KeyboardShortcutsDialog extends StatelessWidget {
                           color: AppColors.primary.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.keyboard_outlined, color: AppColors.primary, size: 22),
+                        child: Icon(Icons.keyboard_outlined, color: AppColors.primary, size: 22),
                       ),
                       const SizedBox(width: 12),
                       Text(
