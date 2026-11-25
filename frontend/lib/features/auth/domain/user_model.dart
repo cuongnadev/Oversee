@@ -6,6 +6,7 @@ class UserModel extends Equatable {
   final String email;
   final String fullName;
   final String? avatarUrl;
+  final String? themeColor;
   final bool isActive;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -36,6 +37,7 @@ class UserModel extends Equatable {
       email: json['email'] as String,
       fullName: (json['full_name'] as String?) ?? '',
       avatarUrl: json['avatar_url'] as String?,
+      themeColor: json['theme_color'] as String?,
       isActive: (json['is_active'] as bool?) ?? true,
       createdAt: json['created_at'] != null ? DateTime.tryParse(json['created_at'] as String) : null,
       updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
@@ -48,6 +50,7 @@ class UserModel extends Equatable {
       'email': email,
       'full_name': fullName,
       'avatar_url': avatarUrl,
+      'theme_color': themeColor,
       'is_active': isActive,
       'created_at': createdAt?.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
@@ -59,6 +62,7 @@ class UserModel extends Equatable {
     String? email,
     String? fullName,
     String? avatarUrl,
+    String? themeColor,
     bool? isActive,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -68,6 +72,7 @@ class UserModel extends Equatable {
       email: email ?? this.email,
       fullName: fullName ?? this.fullName,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      themeColor: themeColor ?? this.themeColor,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -75,5 +80,5 @@ class UserModel extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, email, fullName, avatarUrl, isActive, createdAt, updatedAt];
+  List<Object?> get props => [id, email, fullName, avatarUrl, themeColor, isActive, createdAt, updatedAt];
 }

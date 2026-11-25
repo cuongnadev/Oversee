@@ -10,6 +10,7 @@ class UserBase(BaseModel):
     email: EmailStr
     full_name: str = Field(min_length=1, max_length=255)
     avatar_url: str | None = None
+    theme_color: str | None = Field(default=None, max_length=20, description="User's chosen app seed/accent color hex")
     is_active: bool = True
 
 
@@ -39,6 +40,9 @@ class UserProfileUpdate(BaseModel):
     )
     avatar_url: str | None = Field(
         default=None, max_length=1024, description="Updated avatar URL"
+    )
+    theme_color: str | None = Field(
+        default=None, max_length=20, description="Updated theme color"
     )
 
     @field_validator("full_name")
