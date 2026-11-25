@@ -347,6 +347,29 @@ class AppLocalizations {
   String get manageMembers => tr('Manage Members', 'Quản lý thành viên');
   String get noMembersFound => tr('No members found in this project.', 'Chưa có thành viên nào trong dự án này.');
 
+  // ── Profile Dialog ──────────────────────────────────────────────────────────
+  String get profileTitle => tr('Profile', 'Hồ sơ');
+  String get profileName => tr('Name', 'Họ tên');
+  String get profileEmail => tr('Email', 'Email');
+  String get profileAvatar => tr('Avatar / Photo', 'Ảnh đại diện');
+  String get profileThemeColor => tr('Theme Color', 'Màu chủ đề');
+  String get profileThemeColorReset => tr(
+        'Theme color reset to default.',
+        'Đã đặt lại màu chủ đề về mặc định.',
+      );
+  String get finishedTasks => tr('Finished Tasks', 'Công việc đã hoàn thành');
+  String finishedCount(int count) => tr(
+        '$count finished',
+        '$count đã hoàn thành',
+      );
+  String get finishedHistory => tr('Finished History', 'Lịch sử hoàn thành');
+  String get streakHeatmap => tr('Streak Heatmap', 'Bản đồ nhiệt xử số');
+  String get noFinishedTasks => tr('No finished tasks yet.', 'Chưa có công việc nào hoàn thành.');
+  String dayFinishedLabel(String date, int count) => tr(
+        '$date: $count finished',
+        '$date: $count đã hoàn thành',
+      );
+
   // Overview 3 Horizontal Work Sections
   String get myOngoingJobs => tr('My Ongoing Jobs', 'Công việc đang làm của tôi');
   String get myOngoingJobsSubtitle => tr('Assigned to you & active', 'Được giao cho bạn & đang xử lý');
