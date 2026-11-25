@@ -30,6 +30,11 @@ class User(BaseEntity):
         nullable=True,
         default=None,
     )
+    theme_color: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
+        default=None,
+    )
     is_active: Mapped[bool] = mapped_column(
         Boolean,
         default=True,
