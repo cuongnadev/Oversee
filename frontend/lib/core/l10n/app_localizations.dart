@@ -63,6 +63,29 @@ class AppLocalizations {
   String get reset => tr('Reset', 'Đặt lại');
   String get resetToDefaultViolet => tr('Reset to Default Violet', 'Khôi phục màu tím mặc định');
 
+  // ── Common UI ─────────────────────────────────────────────────────────────────
+  String get gotIt => tr('Got it', 'Đã hiểu');
+  String get pageNotFound => tr('Page Not Found', 'Không tìm thấy trang');
+  String get backToWorkspaces => tr('Back to Workspaces', 'Quay lại không gian làm việc');
+  String pageNotFoundUri(String? uri) {
+    if (uri == null) {
+      return tr(
+        'The page you are looking for does not exist or has been moved.',
+        'Trang bạn đang tìm không tồn tại hoặc đã được di chuyển.',
+      );
+    }
+    return tr(
+      'The requested URL "$uri" could not be found on Oversee.',
+      'URL được yêu cầu "$uri" không thể được tìm thấy trên Oversee.',
+    );
+  }
+
+  String get shortcutsSubtitle => tr(
+        'Speed up your navigation across Oversee using these hotkeys:',
+        'Nhanh chóng điều hướng trên Oversee bằng các phím tắt:',
+      );
+  String get closeEsc => tr('Close (Esc)', 'Đóng (Esc)');
+
   String get fontSize => tr('Font Size', 'Cỡ chữ');
   String get fontSizeDescription => tr(
         'Adjust in 10% steps and press Confirm to apply.',
@@ -301,6 +324,12 @@ class AppLocalizations {
         'Story points remaining over sprint duration',
         'Điểm câu chuyện còn lại theo thời gian sprint',
       );
+  String get sprintOverview => tr('Sprint Overview', 'Tổng quan Sprint');
+  String get viewBoard => tr('View Board', 'Xem bảng Kanban');
+  String get completeSprint => tr('Complete Sprint', 'Hoàn thành Sprint');
+  String get startSprint => tr('Start Sprint', 'Bắt đầu Sprint');
+  String get planSprint => tr('Plan', 'Kế hoạch');
+  String get sprintPlanning => tr('Sprint Planning', 'Lập kế hoạch Sprint');
   String get startActiveSprintHint => tr(
         'Start an active sprint to track daily burndown progress.',
         'Bắt đầu một sprint đang chạy để theo dõi tiến độ burndown hằng ngày.',

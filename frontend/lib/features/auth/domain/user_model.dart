@@ -16,6 +16,7 @@ class UserModel extends Equatable {
     required this.email,
     required this.fullName,
     this.avatarUrl,
+    this.themeColor,
     this.isActive = true,
     this.createdAt,
     this.updatedAt,

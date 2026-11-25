@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:frontend/core/l10n/app_localizations.dart';
 import 'package:frontend/core/errors/app_exception.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/shared/widgets/app_buttons.dart';
@@ -281,6 +282,7 @@ class AppErrorBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context);
     final presentation = ErrorPresentation.resolve(error);
     final displayMessage = message ?? presentation.message;
 
@@ -311,7 +313,7 @@ class AppErrorBanner extends StatelessWidget {
             const SizedBox(width: 8.0),
             TextButton.icon(
               icon: const Icon(Icons.refresh_rounded, size: 16.0),
-              label: const Text('Retry'),
+              label: Text(l10n.retry),
               style: TextButton.styleFrom(
                 foregroundColor: presentation.color,
                 padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),

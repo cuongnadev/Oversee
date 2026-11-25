@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:frontend/core/l10n/app_localizations.dart';
 import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 
@@ -12,6 +13,7 @@ class NotFoundScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
@@ -52,14 +54,12 @@ class NotFoundScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Page Not Found',
+                      l10n.pageNotFound,
                       style: theme.textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      uri != null
-                          ? 'The requested URL "$uri" could not be found on Oversee.'
-                          : 'The page you are looking for does not exist or has been moved.',
+                      l10n.pageNotFoundUri(uri),
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
@@ -71,7 +71,7 @@ class NotFoundScreen extends StatelessWidget {
                         context.go(AppRoutes.workspaces);
                       },
                       icon: const Icon(Icons.home_outlined),
-                      label: const Text('Back to Workspaces'),
+                      label: Text(l10n.backToWorkspaces),
                     ),
                   ],
                 ),

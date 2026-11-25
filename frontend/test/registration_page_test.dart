@@ -255,7 +255,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Navigate from Login to Register
-      final registerLink = find.widgetWithText(TextButton, 'Register');
+      final registerLink = find.widgetWithText(TextButton, 'Sign Up');
       expect(registerLink, findsOneWidget);
       await tester.ensureVisible(registerLink);
       await tester.tap(registerLink);

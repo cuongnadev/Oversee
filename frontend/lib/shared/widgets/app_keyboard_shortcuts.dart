@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:frontend/core/l10n/app_localizations.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/shared/widgets/app_dialog.dart';
 
@@ -124,6 +125,7 @@ class KeyboardShortcutsDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context);
 
     final shortcuts = [
       {'keys': 'R / Ctrl+R', 'desc': 'Refresh dashboard and screen metrics'},
@@ -161,7 +163,7 @@ class KeyboardShortcutsDialog extends StatelessWidget {
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        'Keyboard Shortcuts',
+                        l10n.keyboardShortcuts,
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -172,14 +174,14 @@ class KeyboardShortcutsDialog extends StatelessWidget {
                   ),
                   IconButton(
                     icon: const Icon(Icons.close_rounded, size: 20),
-                    tooltip: 'Close (Esc)',
+                    tooltip: l10n.closeEsc,
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
               ),
               const SizedBox(height: 18),
               Text(
-                'Speed up your navigation across Oversee using these hotkeys:',
+                l10n.shortcutsSubtitle,
                 style: TextStyle(
                   fontSize: 13,
                   color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
@@ -251,7 +253,7 @@ class KeyboardShortcutsDialog extends StatelessWidget {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Got it'),
+                  child: Text(l10n.gotIt),
                 ),
               ),
             ],
