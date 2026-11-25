@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/core/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/core/enums/app_enums.dart';
 import 'package:frontend/core/routing/route_names.dart';
@@ -224,6 +225,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     DashboardNotifier notifier,
     bool isDark,
   ) {
+    final l10n = context.l10n;
     final selectedSprint = state.selectedSprint!;
     final brightness = isDark ? Brightness.dark : Brightness.light;
     final borderColor = AppColors.borderFor(isDark);
@@ -300,7 +302,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           children: [
             OutlinedButton.icon(
               icon: const Icon(Icons.timer_outlined, size: 15),
-              label: const Text('Sprint Overview'),
+              label: Text(l10n.sprintOverview),
               style: OutlinedButton.styleFrom(
                 backgroundColor: AppColors.surface2For(isDark),
                 foregroundColor: textPrimary,

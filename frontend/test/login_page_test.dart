@@ -125,7 +125,7 @@ void main() {
       await tester.pumpWidget(_buildLoginApp(fakeRepo: fakeRepo));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Register'));
+      await tester.tap(find.text('Sign Up'));
       await tester.pumpAndSettle();
 
       expect(find.text('Create an Account'), findsOneWidget);

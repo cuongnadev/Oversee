@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:frontend/core/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:frontend/core/enums/app_enums.dart';
 import 'package:frontend/core/routing/route_names.dart';
@@ -116,6 +117,7 @@ class _SprintOverviewScreenState extends ConsumerState<SprintOverviewScreen> {
     SprintOverviewNotifier notifier,
     bool isDark,
   ) {
+    final l10n = context.l10n;
     return LayoutBuilder(
       builder: (context, constraints) {
         final isMobile = constraints.maxWidth < 640;
@@ -141,7 +143,7 @@ class _SprintOverviewScreenState extends ConsumerState<SprintOverviewScreen> {
           children: [
             OutlinedButton.icon(
               icon: const Icon(Icons.tune_outlined, size: 15),
-              label: const Text('Sprint Planning'),
+              label: Text(l10n.sprintPlanning),
               style: OutlinedButton.styleFrom(
                 backgroundColor: AppColors.surface2For(isDark),
                 foregroundColor: AppColors.textPrimaryFor(isDark),
@@ -156,7 +158,7 @@ class _SprintOverviewScreenState extends ConsumerState<SprintOverviewScreen> {
             const SizedBox(width: 8),
             ElevatedButton.icon(
               icon: const Icon(Icons.add_rounded, size: 16),
-              label: const Text('New Sprint'),
+              label: Text(l10n.newSprint),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.accentSolidFor(isDark),
                 foregroundColor: Colors.white,
@@ -223,6 +225,7 @@ class _SprintOverviewScreenState extends ConsumerState<SprintOverviewScreen> {
     SprintOverviewNotifier notifier,
     bool isDark,
   ) {
+    final l10n = context.l10n;
     final activeSprint = state.activeSprint;
     final progress = state.activeSprintProgress;
     final accentColor = AppColors.accentFor(isDark);
@@ -475,7 +478,7 @@ class _SprintOverviewScreenState extends ConsumerState<SprintOverviewScreen> {
                   children: [
                     OutlinedButton.icon(
                       icon: const Icon(Icons.view_kanban_outlined, size: 15),
-                      label: const Text('View Board'),
+                      label: Text(l10n.viewBoard),
                       style: OutlinedButton.styleFrom(
                         backgroundColor: AppColors.surface2For(isDark),
                         foregroundColor: AppColors.textPrimaryFor(isDark),
@@ -497,12 +500,12 @@ class _SprintOverviewScreenState extends ConsumerState<SprintOverviewScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
                       ),
                       onPressed: () => _openCompleteSprintDialog(context, activeSprint, progress, state, notifier),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.check_circle_outline_rounded, size: 16),
-                          SizedBox(width: 6),
-                          Text('Complete Sprint'),
+                          const Icon(Icons.check_circle_outline_rounded, size: 16),
+                          const SizedBox(width: 6),
+                          Text(l10n.completeSprint),
                         ],
                       ),
                     ),
@@ -522,6 +525,7 @@ class _SprintOverviewScreenState extends ConsumerState<SprintOverviewScreen> {
     SprintOverviewNotifier notifier,
     bool isDark,
   ) {
+    final l10n = context.l10n;
     final plannedSprints = state.plannedSprints;
     final borderColor = AppColors.borderFor(isDark);
 
@@ -645,7 +649,7 @@ class _SprintOverviewScreenState extends ConsumerState<SprintOverviewScreen> {
                           textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
                         ),
-                        child: const Text('Plan'),
+                        child: Text(l10n.planSprint),
                       ),
                       const SizedBox(width: 8),
                       ElevatedButton(
@@ -658,12 +662,12 @@ class _SprintOverviewScreenState extends ConsumerState<SprintOverviewScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
                         ),
                         onPressed: () => _openStartSprintDialog(context, sprint, state.hasActiveSprint, notifier),
-                        child: const Row(
+                        child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.play_arrow_rounded, size: 16),
-                            SizedBox(width: 4),
-                            Text('Start Sprint'),
+                            const Icon(Icons.play_arrow_rounded, size: 16),
+                            const SizedBox(width: 4),
+                            Text(l10n.startSprint),
                           ],
                         ),
                       ),

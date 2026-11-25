@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:frontend/core/l10n/app_localizations.dart';
 import 'package:frontend/core/routing/route_names.dart';
 import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/features/auth/application/auth_provider.dart';
@@ -141,7 +142,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ref.read(authNotifierProvider.notifier).clearError();
               context.go(AppRoutes.register);
             },
-            child: const Text('Register'),
+            child: Text(context.l10n.signUp),
           ),
         ],
       ),
