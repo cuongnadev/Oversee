@@ -3,8 +3,11 @@ import 'package:frontend/core/theme/app_colors.dart';
 import 'package:frontend/features/issue/domain/issue_model.dart';
 
 /// One finished task row shown when a heatmap day cell is tapped.
-class _FinishedTaskItem extends StatelessWidget {
-  const _FinishedTaskItem({required this.issue});
+class FinishedTaskItem extends StatelessWidget {
+  const FinishedTaskItem({
+    super.key,
+    required this.issue,
+  });
 
   final IssueModel issue;
 

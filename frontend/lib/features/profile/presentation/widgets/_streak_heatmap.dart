@@ -7,8 +7,9 @@ import 'package:frontend/features/profile/domain/profile_domain.dart';
 
 /// 12-month GitHub-style streak heatmap: one cell per day, color scaled by
 /// finished-task count for that day. Tapping a cell reports its day + tasks.
-class _StreakHeatmap extends ConsumerWidget {
-  const _StreakHeatmap({
+class StreakHeatmap extends ConsumerWidget {
+  const StreakHeatmap({
+    super.key,
     required this.finishedIssues,
     required this.selectedDay,
     required this.onDayTap,
@@ -64,11 +65,14 @@ class _StreakHeatmap extends ConsumerWidget {
         ),
         const SizedBox(height: 10),
         SizedBox(
+          width: double.infinity,
           height: 6 * (_cellSize + _cellGap) + _cellGap,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: months.map((month) {
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: months.map((month) {
               final firstOfMonth = DateTime(month.year, month.month, 1);
               final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
               final startOffset = firstOfMonth.weekday - 1; // Monday = 1
@@ -117,6 +121,7 @@ class _StreakHeatmap extends ConsumerWidget {
                 }),
               );
             }).toList(),
+          ),
           ),
         ),
       ],

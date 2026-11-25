@@ -12,6 +12,7 @@ import 'package:frontend/features/auth/application/auth_provider.dart';
 import 'package:frontend/features/project/application/project_list_provider.dart';
 import 'package:frontend/features/project/application/project_overview_provider.dart';
 import 'package:frontend/features/project/domain/project_model.dart';
+import 'package:frontend/features/profile/presentation/profile_dialog.dart';
 import 'package:frontend/features/workspace/presentation/widgets/workspace_switcher_dropdown.dart';
 import 'package:frontend/shared/widgets/widgets.dart';
 
@@ -489,6 +490,16 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                     ),
                   ),
                   PopupMenuItem<String>(
+                    value: 'profile',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.person_outlined, size: 17.0),
+                        const SizedBox(width: 10.0),
+                        Expanded(child: Text(l10n.profileTitle)),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem<String>(
                     value: 'seed_color',
                     child: Row(
                       children: [
@@ -537,6 +548,9 @@ class AppHeader extends ConsumerWidget implements PreferredSizeWidget {
                 ],
                 onSelected: (String value) async {
                   switch (value) {
+                    case 'profile':
+                      await ProfileDialog.show(context, projectId: projectId);
+                      break;
                     case 'seed_color':
                       await SeedColorPickerDialog.show(context);
                       break;
